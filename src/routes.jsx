@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import SidebarLayout from "./components/SidebarLayout";
 import CategoryMapping from "./pages/CategoryMapping";
 import AllCategories from "./pages/AllCategories";
+import PortalManagement from "./pages/PortalManagement";
 
 export default function AppRoutes() {
   const authUser = JSON.parse(localStorage.getItem("auth_data") || "{}");
@@ -38,6 +39,7 @@ const isMaster = role === "master";
         <Route path="create-news" element={<CreateNews />} />
         <Route path="news-list" element={<NewsList />} />
         <Route path="news/:id" element={<NewsDetail />} />
+        <Route path="/portal-management" element={<PortalManagement />} />
 
         {/* Master-only routes */}
         {isMaster && (
@@ -45,6 +47,7 @@ const isMaster = role === "master";
             <Route path="/access-control" element={<AccessControl />} />
             <Route path="/user-access-list" element={<UserAccessList />} />
             <Route path="/category-mapping" element={<CategoryMapping />} />
+            <Route path="/portal-management" element={<PortalManagement />} />
             <Route path="/all-categories" element={<AllCategories />} />
           </>
         )}

@@ -1,28 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { User, List, CheckCircle2, Trash2, Send, Plus } from "lucide-react";
-import {
-  createMasterCategory,
-  fetchMasterCategories,
-  fetchUnassignedUsers,
-  assignMasterCategoriesToUser, // new API wrapper
-} from "../../server";
+import { createMasterCategory, fetchMasterCategories, fetchUnassignedUsers, assignMasterCategoriesToUser, fetchAllUsersList,  } from "../../server";
 
 const AccessControl = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [masterCategoryName, setMasterCategoryName] = useState("");
-  const [masterCategoryDescription, setMasterCategoryDescription] = useState(
-    ""
-  );
+  const [masterCategoryDescription, setMasterCategoryDescription] = useState("");
   const [masterCategories, setMasterCategories] = useState([]);
   const [selectedMasterCategories, setSelectedMasterCategories] = useState([]);
   const [unassignedUsers, setUnassignedUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
 
-  // Load users and master categories
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const response = await fetchUnassignedUsers();
+        const response = await fetchAllUsersList();
         setUnassignedUsers(response.data.data);
       } catch (error) {
         console.error("Error fetching users:", error);

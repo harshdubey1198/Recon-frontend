@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Home,
-  User,
-  Settings,
-  Menu,
-  X,
-  Bell,
-  Search,
-  FileText,
-  LogOut,   // ✅ Fix: Import LogOut icon
-  List
-} from "lucide-react";
+import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,List} from "lucide-react";
 import Dashboard from "../pages/Dashboard";
 import CreateNews from "../pages/CreateNews";
 import NewsList from "../pages/NewsList";
@@ -18,6 +7,7 @@ import AccessControl from "../pages/AccessControl";
 import UserAccessList from "../pages/UserAcessList";
 import CategoryMapping from "../pages/CategoryMapping";
 import AllCategories from "../pages/AllCategories";
+import PortalManagement from "../pages/PortalManagement";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -40,12 +30,14 @@ const menuItems = [
   { name: "Dashboard", icon: Home },
   { name: "Create News", icon: FileText },
   { name: "News List", icon: FileText },
+  // { name: "Portal Management",icon:List},
   // Only show these if role is master
   ...(isMaster
     ? [
         { name: "Access Control", icon: User },
         { name: "User Access List", icon: User },
         { name: "Category Mapping", icon: List },
+        { name: "Portal Management",icon:List},
         { name: "All Categories", icon: List },
       ]
     : []),
@@ -319,6 +311,7 @@ const menuItems = [
             </div>
             {activeItem === "Create News" && <CreateNews />}
             {activeItem === "News List" && <NewsList />}
+            {activeItem === "Portal Management" && <PortalManagement />}
             {activeItem === "Access Control" && <AccessControl />}
             {activeItem === "User Access List" && <UserAccessList />}
             {activeItem === "Category Mapping" && <CategoryMapping />}

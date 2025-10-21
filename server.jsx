@@ -120,6 +120,24 @@ export async function fetchUnassignedUsers() {
   return axiosInstance.get("/account/unassigned/users/");
 }
 
+export async function fetchAllUsersList() {
+  return axiosInstance.get("/account/all/users/list/");
+}
+
+export async function fetchPortalStatusByUsername(username) {
+  return axiosInstance.get(`/account/check/username/?username=${username}`);
+}
+
+export async function mapPortalUser(username, user_id) {
+  const formData = new FormData();
+  formData.append("username", username);
+  formData.append("user_id", user_id);
+
+  return axiosInstance.post("/account/portal/user/mapping/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
 
 /**
  * Fetch categories for a given portal
