@@ -12,6 +12,7 @@ import SidebarLayout from "./components/SidebarLayout";
 import CategoryMapping from "./pages/CategoryMapping";
 import AllCategories from "./pages/AllCategories";
 import PortalManagement from "./pages/PortalManagement";
+import UserCategories from "./pages/UserCategories";
 
 export default function AppRoutes() {
   const authUser = JSON.parse(localStorage.getItem("auth_data") || "{}");
@@ -46,9 +47,10 @@ const isMaster = role === "master";
           <>
             <Route path="/access-control" element={<AccessControl />} />
             <Route path="/user-access-list" element={<UserAccessList />} />
+            <Route path="/all-categories" element={<AllCategories />} />
             <Route path="/category-mapping" element={<CategoryMapping />} />
             <Route path="/portal-management" element={<PortalManagement />} />
-            <Route path="/all-categories" element={<AllCategories />} />
+            <Route path="/user-categories" element={<UserCategories />} />
           </>
         )}
       </Route>

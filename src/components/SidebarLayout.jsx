@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,List} from "lucide-react";
+import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,List,ListTree} from "lucide-react";
 import Dashboard from "../pages/Dashboard";
 import CreateNews from "../pages/CreateNews";
 import NewsList from "../pages/NewsList";
@@ -10,6 +10,7 @@ import AllCategories from "../pages/AllCategories";
 import PortalManagement from "../pages/PortalManagement";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import UserCategories from "../pages/UserCategories";
 
 
 
@@ -36,9 +37,10 @@ const menuItems = [
     ? [
         { name: "Access Control", icon: User },
         { name: "User Access List", icon: User },
+        { name: "All Categories", icon: List },
         { name: "Category Mapping", icon: List },
         { name: "Portal Management",icon:List},
-        { name: "All Categories", icon: List },
+        { name: "User Categories",icon:ListTree},
       ]
     : []),
 ];
@@ -316,6 +318,7 @@ const menuItems = [
             {activeItem === "User Access List" && <UserAccessList />}
             {activeItem === "Category Mapping" && <CategoryMapping />}
             {activeItem === "All Categories" && <AllCategories />}
+            {activeItem === "User Categories" && <UserCategories />}
           </div>
         </div>
       </main>

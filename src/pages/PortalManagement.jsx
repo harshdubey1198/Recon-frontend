@@ -49,9 +49,8 @@ export default function PortalManagement() {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="max-w-3xl mx-auto bg-white shadow-md rounded-lg p-6">
-        <h1 className="text-2xl font-bold mb-4">Portal Management</h1>
 
-        <div className="flex gap-3 mb-6">
+        {/* <div className="flex gap-3 mb-6">
           <input
             type="text"
             placeholder="Enter username"
@@ -66,9 +65,10 @@ export default function PortalManagement() {
           >
             {loading ? "Checking..." : "Check"}
           </button>
-        </div>
+        </div> */}
 
        <ul className="space-y-2">
+        <h2>List of Users </h2>
             {users.map((u, i) => (
                 <li
                 key={i}
@@ -78,7 +78,7 @@ export default function PortalManagement() {
                 }}
                 className="p-2 border rounded cursor-pointer hover:bg-gray-100"
                 >
-                {u.username} {u.id}
+                {u.username}
                 </li>
             ))}
             </ul>

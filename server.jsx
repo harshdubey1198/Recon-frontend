@@ -138,6 +138,10 @@ export async function mapPortalUser(username, user_id) {
   });
 }
 
+export async function fetchAssignmentsByUsername(username) {
+  return axiosInstance.get(`/account/assignments/list/?username=${username}`);
+}
+
 
 /**
  * Fetch categories for a given portal
