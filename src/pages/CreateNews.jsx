@@ -1,25 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Upload,
-  X,
-  Plus,
-  Calendar,
-  Eye,
-  Save,
-  RefreshCw,
-  Image as ImageIcon,
-  Tag,
-  FileText,
-  Settings,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  Star,
-  Crop,
-  RotateCw,
-  ZoomIn,
-  Maximize2,
-} from "lucide-react";
+import { Upload, X, Plus, Calendar, Eye, Save, RefreshCw, Image as ImageIcon, Tag, FileText, Settings, Clock, TrendingUp, AlertCircle, Star, Crop, RotateCw, ZoomIn, Maximize2, } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
 import {
@@ -32,7 +12,7 @@ import {
 const NewsArticleForm = () => {
   const [formData, setFormData] = useState({
     headline: "",
-    master_category_id: "", // keep only this
+    master_category_id: "", 
     shortDesc: "",
     longDesc: "",
     image: null,
@@ -271,14 +251,14 @@ const NewsArticleForm = () => {
   
   
 
-  useEffect(() => {
-    if (assignedCategories.length && !formData.master_category_id) {
-      setFormData((prev) => ({
-        ...prev,
-        master_category_id: assignedCategories[0].id, // this must be a number
-      }));
-    }
-  }, [assignedCategories]);
+  // useEffect(() => {
+  //   if (assignedCategories.length && !formData.master_category_id) {
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       master_category_id: assignedCategories[0].id, 
+  //     }));
+  //   }
+  // }, [assignedCategories]);
   
   
   
@@ -606,21 +586,24 @@ const NewsArticleForm = () => {
               </div>
               <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Category *
+                Category <span className="text-red-500">*</span>
               </label>
+
               <select
-  name="master_category_id"
-  value={formData.master_category_id || ""}
-  onChange={handleInputChange}
-  required
->
-  <option value="">-- Select Category --</option>
-  {assignedCategories.map((cat) => (
-    <option key={cat.id} value={cat.id}>
-      {cat.name}
-    </option>
-  ))}
-</select>
+                name="master_category_id"
+                value={formData.master_category_id ?? ""}
+                onChange={handleInputChange}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+              >
+                <option value="">-- Select Category --</option>
+                {assignedCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+
 
 
             </div>
@@ -642,7 +625,7 @@ const NewsArticleForm = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Headline *
+                    Headline <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
