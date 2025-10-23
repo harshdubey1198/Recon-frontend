@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchUserDetails, registerUser } from "../../server"; // adjust path
+import { toast } from "react-toastify";
 
 export default function UserAccessTable() {
   const [users, setUsers] = useState([]);
@@ -80,7 +81,7 @@ export default function UserAccessTable() {
       setIsModalOpen(false);
     } catch (err) {
       console.error("Failed to register user:", err);
-      alert("Error creating user. Check console for details.");
+      toast.error("Error creating user. Check console for details.");
     } finally {
       setIsLoading(false);
     }

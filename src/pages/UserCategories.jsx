@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchAllUsersList, fetchAssignmentsByUsername } from "../../server";
+import { toast } from "react-toastify";
+
 
 export default function UserCategories() {
   const [username, setUsername] = useState("");
@@ -18,7 +20,7 @@ export default function UserCategories() {
 
   const handleCheckUsername = async (name = selectedUser.username) => {
     if (!name.trim()) {
-      alert("⚠️ Please enter a username");
+      toast.warning(" Please enter a username");
       return;
     }
     setLoading(true);
@@ -28,12 +30,12 @@ export default function UserCategories() {
         setAssignments(res.data.data);
         setShowModal(true);
       } else {
-        alert("No assignments found for this username");
+        toast.info("No assignments found for this username");
         setAssignments([]);
       }
     } catch (err) {
       console.error("Error fetching assignments:", err);
-      alert("❌ Error fetching data. Check console for details.");
+      toast.error(err.response?.data?.message );
     } finally {
       setLoading(false);
     }

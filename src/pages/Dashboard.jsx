@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { fetchAdminStats, fetchDomainDistribution , fetchMasterCategories, fetchNewsList   } from "../../server"; 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
-
   const [domains, setDomains] = useState([]);
-    const [categories, setCategories] = useState([]);
-      const [recentPosts, setRecentPosts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [recentPosts, setRecentPosts] = useState([]);
 
 
 
@@ -29,12 +28,15 @@ export default function Dashboard() {
             domains: res.data.data.total_portals,
             targets: res.data.data.news_distribution.total_distributions,
             activeUsers: res.data.data.total_users,
-            revenue: res.data.data.news_distribution.successful_distributions, // फिलहाल revenue नहीं है तो example के लिए success counts
+            revenue: res.data.data.news_distribution.successful_distributions, 
           });
         }
+        toast.success(res.data.message);
       } catch (err) {
-        console.error("Failed to fetch stats:", err);
-      }
+          const errorMsg = err.response?.data?.message || err.message || "Something went wrong";
+          console.error("Failed to fetch stats:", errorMsg);
+          toast.error(`Failed to fetch stats: ${errorMsg}`);
+        }
     };
 
     const loadDomains = async () => {
@@ -50,7 +52,9 @@ export default function Dashboard() {
           setDomains(mapped);
         }
       } catch (err) {
+        toast.error(err.res?.data?.message );
         console.error("Failed to fetch domains:", err);
+      
       }
     };
 
@@ -74,6 +78,7 @@ export default function Dashboard() {
           setCategories(mapped);
         }
       } catch (err) {
+        toast.error(err.res?.data?.message );
         console.error("Failed to fetch categories:", err);
       }
     };
@@ -231,9 +236,9 @@ useEffect(() => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+           <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
+           <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <svg
                   className="w-6 h-6 text-blue-600"

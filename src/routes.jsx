@@ -13,6 +13,7 @@ import CategoryMapping from "./pages/CategoryMapping";
 import AllCategories from "./pages/AllCategories";
 import PortalManagement from "./pages/PortalManagement";
 import UserCategories from "./pages/UserCategories";
+import { ToastContainer } from "react-toastify";
 
 export default function AppRoutes() {
   const authUser = JSON.parse(localStorage.getItem("auth_data") || "{}");
