@@ -15,7 +15,8 @@ import UserCategories from "../pages/UserCategories";
 
 
 export default function SidebarLayout() {
-    const [activeItem, setActiveItem] = useState("Dashboard");
+    // const [activeItem, setActiveItem] = useState("Dashboard");
+    const [activeItem, setActiveItem] = useState(localStorage.getItem("activeTab") || "Dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
@@ -113,6 +114,7 @@ const menuItems = [
                   <button
                     onClick={() => {
                       setActiveItem(item.name);
+                      localStorage.setItem("activeTab", item.name);
                       setIsMobileMenuOpen(false);
                     }}
                     className={`
