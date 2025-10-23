@@ -2,14 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Upload, X, Plus, Calendar, Eye, Save, RefreshCw, Image as ImageIcon, Tag, FileText, Settings, Clock, TrendingUp, AlertCircle, Star, Crop, RotateCw, ZoomIn, Maximize2, SaveAll, } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById } from "../../server";
+import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews  } from "../../server";
+import constant from "../../Constant";
+import { toast } from "react-toastify";
 
 const NewsArticleForm = () => {
-  const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "active", meta_title: "", slug: "", slugEdited: false, });
+  const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
+  console.log("formData",formData);
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
   const [tagInput, setTagInput] = useState("");
-  const [imagePreview, setImagePreview] = useState(null);
+  const [imagePreview, setImagePreview] = useState(formData.image ? `${constant.appBaseUrl}${formData?.image}` : null);
+  console.log("imagepreview",imagePreview);
   const [isLoading, setIsLoading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -20,6 +24,8 @@ const NewsArticleForm = () => {
   const [assignedCategories, setAssignedCategories] = useState([]);
   const [mappedPortals, setMappedPortals] = useState([]);
   const [showPortalSection, setShowPortalSection] = useState(false);
+  const [drafts, setDrafts] = useState([]);
+  const [showDrafts, setShowDrafts] = useState(false);
 
 
   const handleCategorySelect = async (e) => {
@@ -29,14 +35,15 @@ const NewsArticleForm = () => {
     }));
 
     const categoryId = e.target.value;
-    console.log("categoryId : ",categoryId);
+    // console.log("categoryId : ",categoryId);
     if (categoryId) {
       try {
         const res = await fetchMappedCategoriesById(categoryId);
+        // console.log("data for fetchmapped ",res.data?.data)
         if (res.data?.status && Array.isArray(res.data?.data)) {
           const formatted = res.data.data.map((item) => ({
             id: item.id,
-            portalId: item.portal_category,
+            portalId: item.portal_id,
             portalName: item.portal_name,
             categoryId: item.master_category,
             categoryName: item.master_category_name,
@@ -53,6 +60,46 @@ const NewsArticleForm = () => {
       setMappedPortals([]);
       setShowPortalSection(false);
     }
+  };
+
+  const handleViewDrafts = async () => {
+  try {
+    const res = await fetchDraftNews();
+    if (res.data?.status && Array.isArray(res.data.data)) {
+      setDrafts(res.data.data);
+      setShowDrafts(!showDrafts);
+      console.log("🟢 Drafts fetched:", res.data.data);
+    }
+  } catch (err) {
+    console.error("Error fetching drafts:", err);
+  }
+  };
+
+  const handleSelectDraft = (draft) => {
+    setFormData({
+      ...formData,
+      id: draft?.id || "",
+      headline: draft.title || "",
+      shortDesc: draft.short_description || "",
+      longDesc: draft.content || "",
+      meta_title: draft.meta_title || "",
+      slug: draft.slug || "",
+      status: draft.status || "DRAFT",
+      image: draft?.post_image || null,
+      latestNews: draft.latest_news || false,
+      upcomingEvents: draft.upcoming_event || false,
+      headlines: draft.Head_Lines || false,
+      articles: draft.articles || false,
+      trending: draft.trending || false,
+      breakingNews: draft.BreakingNews || false,
+      eventStartDate: draft.Event_date || "",
+      eventEndDate: draft.Event_end_date || "",
+      scheduleDate: draft.schedule_date || "",
+      counter: draft.counter || 0,
+    });
+    setImagePreview(draft?.post_image ? `${constant.appBaseUrl}${draft.post_image}` : null);
+    setShowDrafts(false);
+    // toast.info(`Loaded draft: ${draft.title}`);
   };
 
   const generateSlug = (text) => {
@@ -279,10 +326,11 @@ const NewsArticleForm = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, statusType = "PUBLISHED") => {
+    console.log(statusType);
     e.preventDefault();
   
-    const valid_statuses = ["active", "inactive", "rejected"];
+    const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
   
     if (!formData.meta_title.trim()) {
       toast.warning(" Meta title is required.");
@@ -322,7 +370,7 @@ const NewsArticleForm = () => {
       formDataToSend.append("post_image", formData.image);
       formDataToSend.append("meta_title", formData.meta_title);
       formDataToSend.append("slug", formData.slug);
-      formDataToSend.append("status", formData.status);
+      formDataToSend.append("status", statusType);
       formDataToSend.append("counter", formData.counter);
       formDataToSend.append("order", formData.order);
   
@@ -360,11 +408,24 @@ const NewsArticleForm = () => {
       if (formData.scheduleDate) {
         formDataToSend.append("schedule_date", formData.scheduleDate);
       }
-  
-      const response = await createNewsArticle(formDataToSend);
-      const createdArticle = response.data.data;
-      console.log("Created Article:", createdArticle);
-  
+      
+      let createdArticle;
+      if (formData.status === "DRAFT" && formData.id) {
+        createdArticle = { id: formData.id }; 
+        await updateDraftNews(formData.id, "PUBLISHED");
+        toast.success("Draft published successfully!");
+      } else {
+        // Create new article
+        const response = await createNewsArticle(formDataToSend);
+        createdArticle = response.data.data;
+      }
+      if (statusType === "DRAFT") {
+        toast.success("Draft saved successfully.");
+        resetForm();
+        setIsLoading(false);
+        return;
+      }
+      
       if (createdArticle?.id) {
         const categoryId = Number(formData.master_category_id);
         if (!categoryId) {
@@ -384,10 +445,12 @@ const NewsArticleForm = () => {
           master_category_id: Number(formData.master_category_id),
         };
         console.log("payload",payload)
-        await publishNewsArticle(createdArticle.id, payload);
-
+        if (statusType === "PUBLISHED") {
+          const res= await publishNewsArticle(createdArticle.id, payload);
+          console.log(res?.data);
+          // toast.success(res?.data?.message );
+        }
       
-       toast.success(res.data?.message );
       }
       
   
@@ -419,7 +482,7 @@ const NewsArticleForm = () => {
       scheduleDate: "",
       counter: 0,
       order: 0,
-      status: "active",
+      status: "PUBLISHED",
       meta_title: "",
       slug: "",
       slugEdited: false,
@@ -432,6 +495,8 @@ const NewsArticleForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200">
+          
+
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -450,16 +515,25 @@ const NewsArticleForm = () => {
               </div>
               <div className="flex space-x-2">
                 <button
+                    type="button"
+                    onClick={handleViewDrafts}
+                    className="px-4 py-2 bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>View Drafts</span>
+                  </button>
+
+                <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
+                  className="px-4 py-2 bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span>Reset</span>
                 </button>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
+                  className="px-4 py-2 bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
                 >
                   <Eye className="w-4 h-4" />
                   <span>Preview</span>
@@ -482,6 +556,7 @@ const NewsArticleForm = () => {
                    <button
                       type="button"
                       disabled={isLoading}
+                      onClick={(e) => handleSubmit(e, "DRAFT")}
                       className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
                     >
                       <SaveAll className="w-4 h-4 mr-2" />
@@ -558,24 +633,24 @@ const NewsArticleForm = () => {
                         <label
                           key={i}
                           className={`flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
-                            portal.selected
-                              ? "bg-gray-900 border-gray-900 text-white shadow-lg"
-                              : "bg-white border-gray-300 hover:border-gray-400"
-                          }`}
-                        >
+                              portal.selected
+                                ? "bg-gray-900 border-gray-900 text-white shadow-lg"
+                                : "bg-white border-gray-300 hover:border-gray-400"
+                            }`}
+                          >
                           <input
                             type="checkbox"
                             checked={portal.selected}
                             onChange={() =>
-  setMappedPortals((prev) => {
-    const updated = prev.map((p, idx) =>
-      idx === i ? { ...p, selected: !p.selected } : p
-    );
-    const excluded = updated.filter((p) => !p.selected).map((p) => p.portalId);
-    console.log(`🟠 Excluded portals (${excluded.length}):`, excluded);
-    return updated;
-  })
-}
+                            setMappedPortals((prev) => {
+                              const updated = prev.map((p, idx) =>
+                                idx === i ? { ...p, selected: !p.selected } : p
+                              );
+                              const excluded = updated.filter((p) => !p.selected).map((p) => p.portalId);
+                              console.log(`🟠 Excluded portals (${excluded.length}):`, excluded);
+                              return updated;
+                            })
+                          }
 
                             className="w-5 h-5 accent-gray-900"
                           />
@@ -595,7 +670,7 @@ const NewsArticleForm = () => {
             </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
+                {/* <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Status
                   </label>
@@ -608,7 +683,7 @@ const NewsArticleForm = () => {
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
-                </div>
+                </div> */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Headline <span className="text-red-500">*</span>
@@ -737,8 +812,9 @@ const NewsArticleForm = () => {
                     <img
                       src={imagePreview}
                       alt="Preview"
-                      className="w-full h-full object-cover"
+                      className="absolute top-1/2 left-1/2 w-auto h-full max-w-full max-h-full object-cover -translate-x-1/2 -translate-y-1/2"
                     />
+
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
                       <button
                         type="button"
@@ -1317,6 +1393,48 @@ const NewsArticleForm = () => {
           </form>
         </div>
       </div>
+      {showDrafts && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 relative">
+              <button
+                onClick={() => setShowDrafts(false)}
+                className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+              >
+                ✕
+              </button>
+
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-gray-700" />
+                Select a Draft to Edit
+              </h2>
+
+              <div className="max-h-80 overflow-y-auto space-y-2">
+                {drafts.length > 0 ? (
+                  drafts.map((draft) => (
+                    <div
+                      key={draft.id}
+                      onClick={() => handleSelectDraft(draft)}
+                      className="p-4 border border-gray-300 rounded-lg hover:bg-gray-100 cursor-pointer transition"
+                    >
+                      <p className="font-medium text-gray-800">{draft.title}</p>
+                      <p className="text-xs text-gray-500">
+                        Created: {new Date(draft.created_at).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-600 font-semibold">
+                        Status: {draft.status}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No drafts found.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
     </div>
   );
 };
