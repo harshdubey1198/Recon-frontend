@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 const NewsArticleForm = () => {
   const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
   console.log("formData",formData);
+  const [isCategoryloading, setIsCategoryloading]= useState(true);
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
   const [tagInput, setTagInput] = useState("");
@@ -26,6 +27,11 @@ const NewsArticleForm = () => {
   const [showPortalSection, setShowPortalSection] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDrafts, setShowDrafts] = useState(false);
+  useEffect(() => {
+    if (!formData.master_category_id) {
+      setShowPortalSection(false);
+    }
+  }, [formData.master_category_id]);
 
 
   const handleCategorySelect = async (e) => {
@@ -291,6 +297,7 @@ const NewsArticleForm = () => {
             }));
   
           setAssignedCategories(categories);
+          setIsCategoryloading(false);
         } else {
           console.warn(" No assigned categories found");
         }
@@ -448,6 +455,7 @@ const NewsArticleForm = () => {
         if (statusType === "PUBLISHED") {
           const res= await publishNewsArticle(createdArticle.id, payload);
           console.log(res?.data);
+          resetForm();
           // toast.success(res?.data?.message );
         }
       
@@ -606,19 +614,26 @@ const NewsArticleForm = () => {
               </label>
 
               <select
-                name="master_category_id"
-                value={formData.master_category_id ?? ""}
-                onChange={handleCategorySelect}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-              >
-                <option value="">-- Select Category --</option>
-                {assignedCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+                  name="master_category_id"
+                  value={formData.master_category_id ?? ""}
+                  onChange={handleCategorySelect}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+                >
+                  {isCategoryloading ? (
+                    <option value="">Loading categories...</option>
+                  ) : (
+                    <>
+                      <option value="">-- Select Category --</option>
+                      {assignedCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
+
 
                 {showPortalSection && (
                   <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded">
