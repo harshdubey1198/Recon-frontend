@@ -37,7 +37,7 @@ const AccessControl = () => {
   // Create Master Category
   const handleCreateMasterCategory = async () => {
     if (!masterCategoryName || !masterCategoryDescription) {
-      alert("⚠️ Please fill both name and description");
+      toast.warning("⚠️ Please fill both name and description");
       return;
     }
     try {
@@ -45,7 +45,7 @@ const AccessControl = () => {
         name: masterCategoryName,
         description: masterCategoryDescription,
       });
-      alert("✅ Master Category created!");
+       toast.success("✅ Master Category created!");
       setIsModalOpen(false);
       setMasterCategoryName("");
       setMasterCategoryDescription("");
@@ -55,14 +55,14 @@ const AccessControl = () => {
       setMasterCategories(response.data.data);
     } catch (error) {
       console.error(error);
-      alert("❌ Failed to create master category");
+      toast.error("❌ Failed to create master category");
     }
   };
 
   // Add access (assign master categories to user)
   const handleAddAccess = async () => {
     if (!selectedUser || selectedMasterCategories.length === 0) {
-      alert("⚠️ Please select a user and at least one master category");
+      toast.warning("⚠️ Please select a user and at least one master category");
       return;
     }
 
@@ -77,7 +77,7 @@ const AccessControl = () => {
         master_categories: categoryIds,
       });
 
-      alert(
+         toast.success(
         `✅ Access assigned to ${userObj.username}:\n` +
           selectedMasterCategories.join(", ")
       );

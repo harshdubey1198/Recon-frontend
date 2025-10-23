@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchPortalStatusByUsername, fetchAllUsersList, mapPortalUser } from "../../server";
-
+import { toast } from "react-toastify";
 export default function PortalManagement() {
   const [username, setUsername] = useState("");
   const [portalData, setPortalData] = useState([]);
@@ -20,7 +20,7 @@ export default function PortalManagement() {
 
   const handleCheckUsername = async (name = selectedUser.username) => {
     if (!name.trim()) {
-      alert("⚠️ Please enter a username");
+  toast.warning("⚠️ Please enter a username");
       return;
     }
     setLoading(true);
@@ -35,12 +35,12 @@ export default function PortalManagement() {
         setPortalData(mappedData);
         setShowModal(true);
       } else {
-        alert("No data found for this username");
+         toast.info("No data found for this username");
         setPortalData([]);
       }
     } catch (err) {
       console.error("Error fetching portal data:", err);
-      alert("❌ Error fetching data. Check console for details.");
+      toast.error("❌ Error fetching data. Check console for details.");
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,6 @@ export default function PortalManagement() {
                                     handleCheckUsername();
                                   } catch (err) {
                                     console.error(err);
-                                    // alert("❌ Error during portal mapping");
                                   } finally {
                                     setLoading(false);
                                   }

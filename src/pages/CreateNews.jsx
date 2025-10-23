@@ -8,7 +8,7 @@ import {
   fetchAllTags,
   fetchAssignedCategories
 } from "../../server";
-
+import { toast } from "react-toastify";
 const NewsArticleForm = () => {
   const [formData, setFormData] = useState({
     headline: "",
@@ -157,7 +157,7 @@ const NewsArticleForm = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert("Image size must be less than 10MB");
+        toast.warning("Image size must be less than 10MB");
         return;
       }
       setFormData((prev) => ({ ...prev, image: file }));
@@ -239,7 +239,7 @@ const NewsArticleForm = () => {
   
           setAssignedCategories(categories);
         } else {
-          console.warn("⚠️ No assigned categories found");
+          console.warn(" No assigned categories found");
         }
       } catch (err) {
         console.error("Failed to fetch assigned categories:", err);
@@ -394,28 +394,28 @@ const NewsArticleForm = () => {
   
     // Basic validations
     if (!formData.meta_title.trim()) {
-      alert("⚠️ Meta title is required.");
+      toast.warning(" Meta title is required.");
       return;
     }
   
     if (!valid_statuses.includes(formData.status)) {
-      alert(`⚠️ Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
+     toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
       return;
     }
   
     if (!formData.image) {
-      alert("⚠️ Please upload a post image before submitting.");
+      toast.warning(" Please upload a post image before submitting.");
       return;
     }
   
     if (formData.shortDesc.length > 160) {
-      alert("⚠️ Short description must be less than 160 characters.");
+      toast.warning(" Short description must be less than 160 characters.");
       return;
     }
     const categoryId = Number(formData.master_category_id);
 
     if (!categoryId) {
-      alert("⚠️ Please select a category.");
+      toast.warning("Please select a category.");
       return;
     }
     
@@ -484,22 +484,23 @@ const NewsArticleForm = () => {
       if (createdArticle?.id) {
         const categoryId = Number(formData.master_category_id);
         if (!categoryId) {
-          alert("⚠️ Please select a category before publishing.");
+          toast.warning(" Please select a category before publishing.");
           setIsLoading(false);
           return;
         }
       
         // Publish article with category
-        await publishNewsArticle(createdArticle.id, categoryId);
+      const res =  await publishNewsArticle(createdArticle.id, categoryId);
+      console.log("resMessage",res.data.message);
       
-        alert("✅ Article created and published successfully!");
+       toast.success(res.data?.message );
       }
       
   
       resetForm();
     } catch (err) {
       console.error("Error creating article:", err);
-      alert(err?.message || "Failed to publish article.");
+     toast.error(err?.message || "Failed to publish article.");
     } finally {
       setIsLoading(false);
     }
