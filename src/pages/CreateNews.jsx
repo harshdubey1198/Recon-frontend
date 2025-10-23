@@ -539,13 +539,13 @@ const NewsArticleForm = () => {
                   <RefreshCw className="w-4 h-4" />
                   <span>Reset</span>
                 </button>
-                <button
+                {/* <button
                   type="button"
                   className="px-4 py-2 bg-white/10 text-white rounded-lg text-xs hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
                 >
                   <Eye className="w-4 h-4" />
                   <span>Preview</span>
-                </button>
+                </button> */} 
               </div>
             </div>
           </div>
