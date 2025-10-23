@@ -82,6 +82,8 @@ export default function Dashboard() {
     const loadNews = async () => {
       try {
         const res = await fetchNewsList();
+        console.log("");
+        
         if (res?.data?.status) {
           // API से आए data को map करके UI format में बदलते हैं
           const mapped = res.data.data.map((item) => ({
@@ -344,7 +346,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          {/* <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                 <svg
@@ -386,9 +388,9 @@ useEffect(() => {
               </svg>
               +8.3% engagement
             </div>
-          </div>
+          </div> */}
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          {/* <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                 <svg
@@ -424,9 +426,9 @@ useEffect(() => {
               </svg>
               +15.2% this week
             </div>
-          </div>
+          </div> */}
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          {/* <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
                 <svg
@@ -462,7 +464,7 @@ useEffect(() => {
               </svg>
               +22.1% from last month
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

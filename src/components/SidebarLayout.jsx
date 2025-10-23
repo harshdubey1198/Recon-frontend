@@ -20,7 +20,7 @@ export default function SidebarLayout() {
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
  const { user, logout } = useAuth();
-//  console.log("Authenticated user:", user);
+ console.log("Authenticated user:", user);
   const isMaster = user?.role === "master";
 
 
@@ -168,9 +168,8 @@ const menuItems = [
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-700 transition-colors duration-200">
-                John Doe
+                {user?.username || "User Name"}
               </p>
-              <p className="text-xs text-gray-500 truncate">john@example.com</p>
             </div>
             <div className="text-gray-400 group-hover:text-blue-600 transition-colors duration-200">
               <Settings className="w-4 h-4" />
