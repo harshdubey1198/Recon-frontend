@@ -1,40 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Upload, X, Plus, Calendar, Eye, Save, RefreshCw, Image as ImageIcon, Tag, FileText, Settings, Clock, TrendingUp, AlertCircle, Star, Crop, RotateCw, ZoomIn, Maximize2, } from "lucide-react";
+import { Upload, X, Plus, Calendar, Eye, Save, RefreshCw, Image as ImageIcon, Tag, FileText, Settings, Clock, TrendingUp, AlertCircle, Star, Crop, RotateCw, ZoomIn, Maximize2, SaveAll, } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {
-  createNewsArticle,
-  publishNewsArticle,
-  fetchAllTags,
-  fetchAssignedCategories
-} from "../../server";
-import { toast } from "react-toastify";
-const NewsArticleForm = () => {
-  const [formData, setFormData] = useState({
-    headline: "",
-    master_category_id: "", 
-    shortDesc: "",
-    longDesc: "",
-    image: null,
-    tags: [],
-    latestNews: true,
-    headlines: false,
-    articles: false,
-    trending: false,
-    breakingNews: false,
-    upcomingEvents: false,
-    eventStartDate: "",
-    eventEndDate: "",
-    scheduleDate: "",
-    counter: 0,
-    order: 0,
-    status: "active",
-    meta_title: "",
-    slug: "",
-    slugEdited: false,
-  });
-  
+import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById } from "../../server";
 
+const NewsArticleForm = () => {
+  const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "active", meta_title: "", slug: "", slugEdited: false, });
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
   const [tagInput, setTagInput] = useState("");
@@ -47,7 +18,38 @@ const NewsArticleForm = () => {
   const [rotation, setRotation] = useState(0);
   const [aspect, setAspect] = useState(16 / 9);
   const [assignedCategories, setAssignedCategories] = useState([]);
+  const [mappedPortals, setMappedPortals] = useState([]);
+  const [showPortalSection, setShowPortalSection] = useState(false);
 
+
+  const handleCategorySelect = async (e) => {
+    handleInputChange(e);
+    const categoryId = e.target.value;
+    console.log("categoryId : ",categoryId);
+    if (categoryId) {
+      try {
+        const res = await fetchMappedCategoriesById(categoryId);
+        if (res.data?.status && Array.isArray(res.data?.data)) {
+          const formatted = res.data.data.map((item) => ({
+            id: item.id,
+            portalId: item.portal_category,
+            portalName: item.portal_name,
+            categoryId: item.master_category,
+            categoryName: item.master_category_name,
+            portalCategoryName: item.portal_category_name,
+            selected: true,
+          }));
+          setMappedPortals(formatted);
+          setShowPortalSection(true);
+        }
+      } catch (err) {
+        console.error("Error fetching mapped portals:", err);
+      }
+    } else {
+      setMappedPortals([]);
+      setShowPortalSection(false);
+    }
+  };
 
   const generateSlug = (text) => {
     return text
@@ -248,23 +250,7 @@ const NewsArticleForm = () => {
   
     loadAssignedCategories();
   }, []);
-  
-  
-
-  // useEffect(() => {
-  //   if (assignedCategories.length && !formData.master_category_id) {
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       master_category_id: assignedCategories[0].id, 
-  //     }));
-  //   }
-  // }, [assignedCategories]);
-  
-  
-  
-  
-  
-
+ 
   const addTag = () => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
       setFormData((prev) => ({
@@ -289,110 +275,11 @@ const NewsArticleForm = () => {
     }));
   };
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   const valid_statuses = ["active", "inactive", "rejected"];
-
-  //   if (!formData.meta_title.trim()) {
-  //     alert("⚠️ Meta title is required.");
-  //     return;
-  //   }
-
-  //   if (!valid_statuses.includes(formData.status)) {
-  //     alert(`⚠️ Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
-  //     return;
-  //   }
-
-  //   if (!formData.image) {
-  //     alert("⚠️ Please upload a post image before submitting.");
-  //     return;
-  //   }
-
-  //   if (formData.shortDesc.length > 160) {
-  //     alert("⚠️ Short description must be less than 160 characters.");
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-  //   try {
-  //     const formDataToSend = new FormData();
-  //     formDataToSend.append("title", formData.headline);
-  //     formDataToSend.append("short_description", formData.shortDesc);
-  //     formDataToSend.append("content", formData.longDesc);
-  //      // ✅ Format tags as "#tag1, #tag2, #tag3"
-  //   if (formData.tags && formData.tags.length > 0) {
-  //     const formattedTags = formData.tags
-  //       .map((tag) => {
-  //         const tagData = availableTags.find((t) => t.id === tag);
-  //         const tagName = tagData ? tagData.name : tag;
-  //         return `#${tagName}`;
-  //       })
-  //       .join(", ");
-  //     formDataToSend.append("post_tag", formattedTags);
-  //   }
-  //     formDataToSend.append("post_image", formData.image);
-  //     formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
-  //     formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
-  //     formDataToSend.append("articles", formData.articles ? "true" : "false");
-  //     formDataToSend.append("trending", formData.trending ? "true" : "false");
-  //     formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
-  //     formDataToSend.append("upcoming_event", formData.upcomingEvents ? "true" : "false");
-
-  //     formDataToSend.append("master_category_id", Number(formData.category));
-
-
-  //     if (formData.eventStartDate) {
-  //       const eventDate = new Date(formData.eventStartDate).toISOString().split("T")[0];
-  //       formDataToSend.append("Event_date", eventDate);
-  //     }
-  //     if (formData.eventEndDate) {
-  //       const eventEndDate = new Date(formData.eventEndDate).toISOString().split("T")[0];
-  //       formDataToSend.append("Event_end_date", eventEndDate);
-  //     }
-  //     if (formData.scheduleDate) {
-  //       formDataToSend.append("schedule_date", formData.scheduleDate);
-  //     }
-
-  //     formDataToSend.append("counter", formData.counter);
-  //     formDataToSend.append("order", formData.order);
-  //     formDataToSend.append("status", formData.status);
-  //     formDataToSend.append("meta_title", formData.meta_title);
-  //     formDataToSend.append("slug", formData.slug);
-
-  //     // formData.tags.forEach((tagId) => {
-  //     //   formDataToSend.append("tags", tagId);
-  //     // });
-
-  //     const response = await createNewsArticle(formDataToSend);
-  //     const createdArticle = response.data.data;
-  //     console.log(createdArticle)
-
-  //     if (createdArticle?.id) {
-  //       await publishNewsArticle(createdArticle.id, {
-  //         master_category_id: Number(formData.category), // make sure it's a number
-  //       });
-  //       alert("✅ Article created and published successfully!");
-  //     } else {
-  //       alert("⚠️ Article created but publish failed: No ID returned.");
-  //     }
-
-  //     resetForm();
-  //   } catch (err) {
-  //     console.error("Error creating article:", err?.message?.slug);
-  //     alert(err?.message?.slug || "Failed to publish article.");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-
   const handleSubmit = async (e) => {
     e.preventDefault();
   
     const valid_statuses = ["active", "inactive", "rejected"];
   
-    // Basic validations
     if (!formData.meta_title.trim()) {
       toast.warning(" Meta title is required.");
       return;
@@ -425,7 +312,6 @@ const NewsArticleForm = () => {
     try {
       const formDataToSend = new FormData();
   
-      // Basic fields
       formDataToSend.append("title", formData.headline);
       formDataToSend.append("short_description", formData.shortDesc);
       formDataToSend.append("content", formData.longDesc);
@@ -436,10 +322,8 @@ const NewsArticleForm = () => {
       formDataToSend.append("counter", formData.counter);
       formDataToSend.append("order", formData.order);
   
-      // Category
       formDataToSend.append("master_category_id", categoryId);
   
-      // Tags
       if (formData.tags && formData.tags.length > 0) {
         const formattedTags = formData.tags
           .map((tag) => {
@@ -451,15 +335,12 @@ const NewsArticleForm = () => {
         formDataToSend.append("post_tag", formattedTags);
       }
   
-      // Boolean fields
       formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
       formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
       formDataToSend.append("articles", formData.articles ? "true" : "false");
       formDataToSend.append("trending", formData.trending ? "true" : "false");
       formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
       formDataToSend.append("upcoming_event", formData.upcomingEvents ? "true" : "false");
-  
-      // Dates
       if (formData.eventStartDate) {
         formDataToSend.append(
           "Event_date",
@@ -476,7 +357,6 @@ const NewsArticleForm = () => {
         formDataToSend.append("schedule_date", formData.scheduleDate);
       }
   
-      // Create article
       const response = await createNewsArticle(formDataToSend);
       const createdArticle = response.data.data;
       console.log("Created Article:", createdArticle);
@@ -489,9 +369,19 @@ const NewsArticleForm = () => {
           return;
         }
       
-        // Publish article with category
-      const res =  await publishNewsArticle(createdArticle.id, categoryId);
-      console.log("resMessage",res.data.message);
+        const excludedPortals = mappedPortals
+          .filter((p) => !p.selected)
+          .map((p) => p.portalId);
+
+        console.log("🟡 Deselected portals for API:", excludedPortals);
+
+        const payload = {
+          excluded_portals: excludedPortals,
+          master_category_id: Number(formData.master_category_id),
+        };
+
+        await publishNewsArticle(createdArticle.id, payload);
+
       
        toast.success(res.data?.message );
       }
@@ -577,13 +467,59 @@ const NewsArticleForm = () => {
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
             {/* Basic Info */}
             <section className="space-y-5">
-              <div className="flex items-center space-x-2 pb-3 border-b-2 border-gray-200">
+              <div className="flex relative items-center space-x-2 pb-3 border-b-2 border-gray-200">
                 <div className="p-2 bg-gray-100 rounded-lg">
                   <Settings className="w-5 h-5 text-gray-700" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   Basic Information
                 </h2>
+                <div className="absolute right-2.5 flex gap-0.5">
+                   <button
+                      type="button"
+                      disabled={isLoading}
+                      className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
+                    >
+                      <SaveAll className="w-4 h-4 mr-2" />
+                      Save as Draft
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-xs font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
+                    >
+                      {isLoading ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-3 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Publish Article
+                        </>
+                      )}
+                    </button>
+                </div>
               </div>
               <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -593,7 +529,7 @@ const NewsArticleForm = () => {
               <select
                 name="master_category_id"
                 value={formData.master_category_id ?? ""}
-                onChange={handleInputChange}
+                onChange={handleCategorySelect}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               >
@@ -605,6 +541,51 @@ const NewsArticleForm = () => {
                 ))}
               </select>
 
+                {showPortalSection && (
+                  <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded">
+                    <div className="flex items-center space-x-2 pb-3 border-b-2 border-gray-200">
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <Settings className="w-5 h-5 text-gray-700" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900">Select Portals to Publish</h2>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {mappedPortals.map((portal, i) => (
+                        <label
+                          key={i}
+                          className={`flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
+                            portal.selected
+                              ? "bg-gray-900 border-gray-900 text-white shadow-lg"
+                              : "bg-white border-gray-300 hover:border-gray-400"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={portal.selected}
+                            onChange={() =>
+  setMappedPortals((prev) => {
+    const updated = prev.map((p, idx) =>
+      idx === i ? { ...p, selected: !p.selected } : p
+    );
+    const excluded = updated.filter((p) => !p.selected).map((p) => p.portalId);
+    console.log(`🟠 Excluded portals (${excluded.length}):`, excluded);
+    return updated;
+  })
+}
+
+                            className="w-5 h-5 accent-gray-900"
+                          />
+                          <div>
+                            <p className="font-medium">{portal.portalName}</p>
+                            <p className="text-xs text-gray-400">
+                              {portal.portalCategoryName}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
 
             </div>
@@ -696,71 +677,41 @@ const NewsArticleForm = () => {
                   Full Content *
                 </label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  {/* <CKEditor
-                    initData={formData.longDesc}
+                  <CKEditor
+                    scriptUrl="/ckeditor/ckeditor.js" 
+                    initData={formData.longDesc} onBeforeLoad={(CKEDITOR) => { CKEDITOR.disableAutoInline = true; }}
                     config={{
                       height: 400,
-                      licenseKey: 'eyJhbGciOiJFUzI1NiJ9.eyJleHAiOjE3NjAzOTk5OTksImp0aSI6Ijg5MTg0MmZmLTgxYTYtNGVkZS04MDBiLWIxZmEzODI2ZGZlZCIsInVzYWdlRW5kcG9pbnQiOiJodHRwczovL3Byb3h5LWV2ZW50LmNrZWRpdG9yLmNvbSIsImRpc3RyaWJ1dGlvbkNoYW5uZWwiOlsiY2xvdWQiLCJkcnVwYWwiLCJzaCJdLCJ3aGl0ZUxhYmVsIjp0cnVlLCJsaWNlbnNlVHlwZSI6InRyaWFsIiwiZmVhdHVyZXMiOlsiKiJdLCJ2YyI6IjllYjBhYmQyIn0.FQMKlIgJugkHsuMd24DxsZ-bavs8KkEAe_XnQQFvPL06eFfKdKN7CrbqSKqJ0GoPVTXmQPSKHgocSjKlGzLWyg',
-                      toolbar: [
-                        { name: "document", items: ["Source", "-", "Save", "Preview", "Print"] },
-                        { name: "clipboard", items: ["Cut", "Copy", "Paste", "-", "Undo", "Redo"] },
-                        { name: "editing", items: ["Find", "Replace", "-", "SelectAll"] },
-                        { name: "basicstyles", items: ["Bold", "Italic", "Underline", "Strike", "-", "RemoveFormat"] },
-                        { name: "paragraph", items: ["NumberedList", "BulletedList", "-", "Outdent", "Indent", "-", "Blockquote"] },
-                        { name: "insert", items: ["Image", "Table", "HorizontalRule", "SpecialChar"] },
-                        { name: "styles", items: ["Styles", "Format", "Font", "FontSize"] },
-                        { name: "colors", items: ["TextColor", "BGColor"] },
-                        { name: "tools", items: ["Maximize"] },
-                      ],
-                      extraPlugins: "image2,autogrow,justify,colorbutton,font",
-                      removePlugins: "easyimage,cloudservices",
+                      removePlugins: 'easyimage,cloudservices',
+                      extraPlugins: 'widget,justify,colorbutton,font',
                       autoGrow_minHeight: 300,
                       autoGrow_maxHeight: 600,
+                      contentsCss: '/ckeditor/contents.css',      
+                      language: 'en',
+                      skin: 'moono-lisa,/ckeditor/skins/moono-lisa/',
+                      toolbar: [
+                        { name: 'document', items: ['Source', '-', 'Preview', 'Print'] },
+                        { name: 'clipboard', items: ['Cut', 'Copy', 'Paste', '-', 'Undo', 'Redo'] },
+                        { name: 'editing', items: ['Find', 'Replace', '-', 'SelectAll'] },
+                        {
+                          name: 'insert',
+                          items: ['Image', 'Table', 'HorizontalRule', 'SpecialChar', 'CodeSnippet', 'Youtube', 'Html5video']
+                        },
+                        { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat'] },
+                        {
+                          name: 'paragraph',
+                          items: ['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','JustifyLeft','JustifyCenter','JustifyRight']
+                        },
+                        { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                        { name: 'colors', items: ['TextColor','BGColor'] },
+                        { name: 'tools', items: ['Maximize'] },
+                      ],
                     }}
                     onChange={(event) => {
                       const data = event.editor.getData();
                       setFormData((prev) => ({ ...prev, longDesc: data }));
                     }}
-                  /> */}
-
-<CKEditor
-  scriptUrl="/ckeditor/ckeditor.js" // points to your local copy
-  initData={formData.longDesc} onBeforeLoad={(CKEDITOR) => { CKEDITOR.disableAutoInline = true; }}
-  config={{
-    height: 400,
-    removePlugins: 'easyimage,cloudservices',
-    extraPlugins: 'widget,justify,colorbutton,font',
-    autoGrow_minHeight: 300,
-    autoGrow_maxHeight: 600,
-    contentsCss: '/ckeditor/contents.css',      // ensures editor content styling loads
-    language: 'en',
-    skin: 'moono-lisa,/ckeditor/skins/moono-lisa/',
-    toolbar: [
-      { name: 'document', items: ['Source', '-', 'Preview', 'Print'] },
-      { name: 'clipboard', items: ['Cut', 'Copy', 'Paste', '-', 'Undo', 'Redo'] },
-      { name: 'editing', items: ['Find', 'Replace', '-', 'SelectAll'] },
-      {
-        name: 'insert',
-        items: ['Image', 'Table', 'HorizontalRule', 'SpecialChar', 'CodeSnippet', 'Youtube', 'Html5video']
-      },
-      { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat'] },
-      {
-        name: 'paragraph',
-        items: ['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','JustifyLeft','JustifyCenter','JustifyRight']
-      },
-      { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
-      { name: 'colors', items: ['TextColor','BGColor'] },
-      { name: 'tools', items: ['Maximize'] },
-    ],
-  }}
-  onChange={(event) => {
-    const data = event.editor.getData();
-    setFormData((prev) => ({ ...prev, longDesc: data }));
-  }}
-/>
-
-
-
+                  />
                 </div>
               </div>
             </section>
@@ -1060,116 +1011,116 @@ const NewsArticleForm = () => {
               )}
             </section> */}
 
-<section className="space-y-5">
-  {/* Header */}
-  <div className="flex items-center space-x-2 pb-3 border-b-2 border-gray-200">
-    <div className="p-2 bg-gray-100 rounded-lg">
-      <Tag className="w-5 h-5 text-gray-700" />
-    </div>
-    <h2 className="text-lg font-semibold text-gray-900">Tags</h2>
-  </div>
+      <section className="space-y-5">
+        {/* Header */}
+        <div className="flex items-center space-x-2 pb-3 border-b-2 border-gray-200">
+          <div className="p-2 bg-gray-100 rounded-lg">
+            <Tag className="w-5 h-5 text-gray-700" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900">Tags</h2>
+        </div>
 
-  {/* Inputs */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    {/* Add Custom Tag */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Add Custom Tag
-      </label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyPress={handleTagKeyPress}
-          placeholder="Enter custom tag..."
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-        />
-        <button
-          type="button"
-          onClick={addTag}
-          className="px-4 py-3 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add
-        </button>
-      </div>
-    </div>
-
-    {/* Select Existing Tag */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Select Existing Tag
-      </label>
-      <select
-        onChange={(e) => {
-          const tagId = e.target.value;
-          if (tagId && !formData.tags.includes(tagId)) {
-            setFormData((prev) => ({
-              ...prev,
-              tags: [...prev.tags, tagId],
-            }));
-          }
-          e.target.value = "";
-        }}
-        disabled={isTagsLoading}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
-      >
-        <option value="">
-          {isTagsLoading ? "Loading tags..." : "-- Select Tag --"}
-        </option>
-        {availableTags.map((tag) => (
-          <option key={tag.id} value={tag.id}>
-            {tag.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  </div>
-
-  {/* Display Selected Tags */}
-  {formData.tags.length > 0 && (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Selected Tags ({formData.tags.length})
-      </label>
-
-      {/* Tag Pills */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        {formData.tags.map((tag, i) => {
-          const tagData = availableTags.find((t) => t.id === tag);
-          const displayName = tagData ? tagData.name : tag;
-          return (
-            <span
-              key={i}
-              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm"
-            >
-              <span>#{displayName}</span>
+        {/* Inputs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Add Custom Tag */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Add Custom Tag
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={handleTagKeyPress}
+                placeholder="Enter custom tag..."
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+              />
               <button
                 type="button"
-                onClick={() => removeTag(tag)}
-                className="hover:bg-white/20 rounded p-0.5 transition-all"
+                onClick={addTag}
+                className="px-4 py-3 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all flex items-center gap-2"
               >
-                <X className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
+                Add
               </button>
-            </span>
-          );
-        })}
-      </div>
+            </div>
+          </div>
 
-      {/* Comma-separated tag list */}
-      <div className="text-sm text-gray-800 font-medium">
-        {formData.tags
-          .map((tag) => {
-            const tagData = availableTags.find((t) => t.id === tag);
-            const name = tagData ? tagData.name : tag;
-            return `#${name}`;
-          })
-          .join(", ")}
-      </div>
-    </div>
-  )}
-</section>
+          {/* Select Existing Tag */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Existing Tag
+            </label>
+            <select
+              onChange={(e) => {
+                const tagId = e.target.value;
+                if (tagId && !formData.tags.includes(tagId)) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    tags: [...prev.tags, tagId],
+                  }));
+                }
+                e.target.value = "";
+              }}
+              disabled={isTagsLoading}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">
+                {isTagsLoading ? "Loading tags..." : "-- Select Tag --"}
+              </option>
+              {availableTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Display Selected Tags */}
+        {formData.tags.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Selected Tags ({formData.tags.length})
+            </label>
+
+            {/* Tag Pills */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {formData.tags.map((tag, i) => {
+                const tagData = availableTags.find((t) => t.id === tag);
+                const displayName = tagData ? tagData.name : tag;
+                return (
+                  <span
+                    key={i}
+                    className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm"
+                  >
+                    <span>#{displayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="hover:bg-white/20 rounded p-0.5 transition-all"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Comma-separated tag list */}
+            <div className="text-sm text-gray-800 font-medium">
+              {formData.tags
+                .map((tag) => {
+                  const tagData = availableTags.find((t) => t.id === tag);
+                  const name = tagData ? tagData.name : tag;
+                  return `#${name}`;
+                })
+                .join(", ")}
+            </div>
+          </div>
+        )}
+      </section>
 
 
             {/* Publishing Options */}

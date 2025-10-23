@@ -142,6 +142,10 @@ export async function fetchAssignmentsByUsername(username) {
   return axiosInstance.get(`/account/assignments/list/?username=${username}`);
 }
 
+export async function fetchMappedCategoriesById(id) {
+  return axiosInstance.get(`/api/master/categories/mapped/${id}/`);
+}
+
 
 /**
  * Fetch categories for a given portal
