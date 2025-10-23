@@ -23,7 +23,11 @@ const NewsArticleForm = () => {
 
 
   const handleCategorySelect = async (e) => {
-    handleInputChange(e);
+    setFormData((prev) => ({
+      ...prev,
+      master_category_id: e.target.value,
+    }));
+
     const categoryId = e.target.value;
     console.log("categoryId : ",categoryId);
     if (categoryId) {
@@ -379,7 +383,7 @@ const NewsArticleForm = () => {
           excluded_portals: excludedPortals,
           master_category_id: Number(formData.master_category_id),
         };
-
+        console.log("payload",payload)
         await publishNewsArticle(createdArticle.id, payload);
 
       
