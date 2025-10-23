@@ -72,7 +72,7 @@ const CategoryMapping = () => {
   // Add mapping
   const handleAddMapping = async () => {
     if (!selectedMasterCategory || !selectedPortal || !selectedPortalCategory) {
-      toast.warning("⚠️ Please select Master Category, Portal, and Portal Category");
+      toast.warning("Please select Master Category, Portal, and Portal Category");
       return;
     }
 
@@ -98,13 +98,13 @@ const CategoryMapping = () => {
     );
 
     if (exists) {
-     toast.info("⚠️ Mapping already exists!");
+     toast.info("Mapping already exists!");
       return;
     }
 
     try {
       // Call API with IDs
-      await mapMasterCategory({
+     const res = await mapMasterCategory({
         master_category: masterCategoryObj.id,
         portal_categories: [portalCategoryObj.id],
         use_default_content: useDefaultContent, // dynamic true/false
@@ -113,17 +113,17 @@ const CategoryMapping = () => {
       // Update local state if API succeeds
       setMappings([...mappings, newMapping]);
       setSelectedPortalCategory("");
-      toast.success("✅ Mapping saved successfully!");
+      toast.success(res.data.message );
     } catch (err) {
       console.error("Failed to map category:", err);
-     toast.error("❌ Failed to save mapping. Check console.");
+     toast.error(err.response?.data?.message || "Failed to map category" );
     }
   };
 
   // Create new Master Category
   const handleCreateMasterCategory = async () => {
     if (!newMasterCategoryName || !newMasterCategoryDescription) {
-     toast.warning("⚠️ Please fill both Name and Description");
+     toast.warning("Please fill both Name and Description");
       return;
     }
 
@@ -132,7 +132,7 @@ const CategoryMapping = () => {
         name: newMasterCategoryName,
         description: newMasterCategoryDescription,
       });
-       toast.success("✅ Master Category created successfully!");
+       toast.success("Master Category created successfully!");
 
       // Refresh master categories
       const updated = await fetchMasterCategories();
@@ -143,7 +143,7 @@ const CategoryMapping = () => {
       setNewMasterCategoryDescription("");
     } catch (error) {
       console.error("Error creating master category:", error);
-     toast.error("❌ Failed to create master category!");
+     toast.error("Failed to create master category!");
     }
   };
 

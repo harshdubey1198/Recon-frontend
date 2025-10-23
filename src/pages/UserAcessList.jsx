@@ -63,12 +63,12 @@ export default function UserAccessTable() {
     setIsLoading(true);
 
     try {
-      await registerUser({
+     const res = await registerUser({
         username: newUser.username,
         email: newUser.email,
         password: newUser.password,
       });
-
+      toast.success(res.data.message );
       const newUserData = {
         name: newUser.username,
         joined: new Date().toISOString().split("T")[0],
@@ -80,8 +80,8 @@ export default function UserAccessTable() {
       setNewUser({ username: "", email: "", password: "" });
       setIsModalOpen(false);
     } catch (err) {
-      console.error("Failed to register user:", err);
-      toast.error("Error creating user. Check console for details.");
+      console.error("Failed to register user:gr", err.message.username[0]);
+      toast.error( err.message.username[0]);
     } finally {
       setIsLoading(false);
     }

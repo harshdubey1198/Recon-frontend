@@ -494,13 +494,31 @@ const NewsArticleForm = () => {
       console.log("resMessage",res.data.message);
       
        toast.success(res.data?.message );
-      }
+      } 
       
   
       resetForm();
     } catch (err) {
-      console.error("Error creating article:", err);
-     toast.error(err?.message || "Failed to publish article.");
+    let errorMessage = " Failed to publish article.";
+      
+      if (err?.response?.data?.message) {
+        // Backend returned structured error
+        const backendMessage = err.response.data.message;
+        
+        // Handle slug error specifically
+        if (typeof backendMessage === 'object' && backendMessage.slug) {
+          errorMessage = `${backendMessage.slug[0] || backendMessage.slug}`;
+        } else if (typeof backendMessage === 'string') {
+          errorMessage = ` ${backendMessage}`;
+        } else {
+          errorMessage = ` ${JSON.stringify(backendMessage)}`;
+        }
+      } else if (err?.message) {
+        errorMessage = ` ${err.message}`;
+      }
+      
+      toast.error(errorMessage);
+    
     } finally {
       setIsLoading(false);
     }
@@ -723,45 +741,42 @@ const NewsArticleForm = () => {
                     }}
                   /> */}
 
-<CKEditor
-  scriptUrl="/ckeditor/ckeditor.js" // points to your local copy
-  initData={formData.longDesc} onBeforeLoad={(CKEDITOR) => { CKEDITOR.disableAutoInline = true; }}
-  config={{
-    height: 400,
-    removePlugins: 'easyimage,cloudservices',
-    extraPlugins: 'widget,justify,colorbutton,font',
-    autoGrow_minHeight: 300,
-    autoGrow_maxHeight: 600,
-    contentsCss: '/ckeditor/contents.css',      // ensures editor content styling loads
-    language: 'en',
-    skin: 'moono-lisa,/ckeditor/skins/moono-lisa/',
-    toolbar: [
-      { name: 'document', items: ['Source', '-', 'Preview', 'Print'] },
-      { name: 'clipboard', items: ['Cut', 'Copy', 'Paste', '-', 'Undo', 'Redo'] },
-      { name: 'editing', items: ['Find', 'Replace', '-', 'SelectAll'] },
-      {
-        name: 'insert',
-        items: ['Image', 'Table', 'HorizontalRule', 'SpecialChar', 'CodeSnippet', 'Youtube', 'Html5video']
-      },
-      { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat'] },
-      {
-        name: 'paragraph',
-        items: ['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','JustifyLeft','JustifyCenter','JustifyRight']
-      },
-      { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
-      { name: 'colors', items: ['TextColor','BGColor'] },
-      { name: 'tools', items: ['Maximize'] },
-    ],
-  }}
-  onChange={(event) => {
-    const data = event.editor.getData();
-    setFormData((prev) => ({ ...prev, longDesc: data }));
-  }}
-/>
-
-
-
-                </div>
+                    <CKEditor
+                      scriptUrl="/ckeditor/ckeditor.js" // points to your local copy
+                      initData={formData.longDesc} onBeforeLoad={(CKEDITOR) => { CKEDITOR.disableAutoInline = true; }}
+                      config={{
+                        height: 400,
+                        removePlugins: 'easyimage,cloudservices',
+                        extraPlugins: 'widget,justify,colorbutton,font',
+                        autoGrow_minHeight: 300,
+                        autoGrow_maxHeight: 600,
+                        contentsCss: '/ckeditor/contents.css',      // ensures editor content styling loads
+                        language: 'en',
+                        skin: 'moono-lisa,/ckeditor/skins/moono-lisa/',
+                        toolbar: [
+                          { name: 'document', items: ['Source', '-', 'Preview', 'Print'] },
+                          { name: 'clipboard', items: ['Cut', 'Copy', 'Paste', '-', 'Undo', 'Redo'] },
+                          { name: 'editing', items: ['Find', 'Replace', '-', 'SelectAll'] },
+                          {
+                            name: 'insert',
+                            items: ['Image', 'Table', 'HorizontalRule', 'SpecialChar', 'CodeSnippet', 'Youtube', 'Html5video']
+                          },
+                          { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat'] },
+                          {
+                            name: 'paragraph',
+                            items: ['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','JustifyLeft','JustifyCenter','JustifyRight']
+                          },
+                          { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                          { name: 'colors', items: ['TextColor','BGColor'] },
+                          { name: 'tools', items: ['Maximize'] },
+                        ],
+                      }}
+                      onChange={(event) => {
+                        const data = event.editor.getData();
+                        setFormData((prev) => ({ ...prev, longDesc: data }));
+                      }}
+                    />
+               </div>
               </div>
             </section>
 

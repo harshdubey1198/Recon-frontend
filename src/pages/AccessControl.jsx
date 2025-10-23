@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { User, List, CheckCircle2, Trash2, Send, Plus } from "lucide-react";
 import { createMasterCategory, fetchMasterCategories, fetchUnassignedUsers, assignMasterCategoriesToUser, fetchAllUsersList,  } from "../../server";
+import { toast } from "react-toastify";
 
 const AccessControl = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,7 +38,7 @@ const AccessControl = () => {
   // Create Master Category
   const handleCreateMasterCategory = async () => {
     if (!masterCategoryName || !masterCategoryDescription) {
-      toast.warning("⚠️ Please fill both name and description");
+      toast.warning("Please fill both name and description");
       return;
     }
     try {
@@ -45,7 +46,7 @@ const AccessControl = () => {
         name: masterCategoryName,
         description: masterCategoryDescription,
       });
-       toast.success("✅ Master Category created!");
+       toast.success("Master Category created!");
       setIsModalOpen(false);
       setMasterCategoryName("");
       setMasterCategoryDescription("");
@@ -55,14 +56,14 @@ const AccessControl = () => {
       setMasterCategories(response.data.data);
     } catch (error) {
       console.error(error);
-      toast.error("❌ Failed to create master category");
+      toast.error(error.response?.data?.message || "Failed to create master category" );
     }
   };
 
   // Add access (assign master categories to user)
   const handleAddAccess = async () => {
     if (!selectedUser || selectedMasterCategories.length === 0) {
-      toast.warning("⚠️ Please select a user and at least one master category");
+      toast.warning("Please select a user and at least one master category");
       return;
     }
 
@@ -72,21 +73,19 @@ const AccessControl = () => {
         .filter((cat) => selectedMasterCategories.includes(cat.name))
         .map((cat) => cat.id);
 
-      await assignMasterCategoriesToUser({
+     const res = await assignMasterCategoriesToUser({
         username: userObj.username,
         master_categories: categoryIds,
       });
 
-         toast.success(
-        `✅ Access assigned to ${userObj.username}:\n` +
-          selectedMasterCategories.join(", ")
-      );
-
-      setSelectedUser("");
+        toast.success(
+            `${res.data.message}\n${selectedMasterCategories.join(", ")}`
+          );
+       setSelectedUser("");
       setSelectedMasterCategories([]);
     } catch (error) {
       console.error(error);
-      alert("❌ Failed to assign access");
+      toast.error(error.response?.data?.message || " Failed to assign categories" );
     }
   };
 
