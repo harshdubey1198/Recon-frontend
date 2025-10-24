@@ -331,8 +331,11 @@ export default function Dashboard() {
               </div>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {stats.totaltodayPosts.toLocaleString()}
-            </h3>
+            {stats?.totaltodayPosts != null
+              ? stats.totaltodayPosts.toLocaleString()
+              : "0"}
+          </h3>
+
             <p className="text-sm text-gray-500">Total Today Posts</p>
             <div className="mt-2 flex items-center text-xs text-green-600">
               <svg
