@@ -456,7 +456,7 @@ const NewsArticleForm = () => {
           const res= await publishNewsArticle(createdArticle.id, payload);
           // console.log(res?.data);
           resetForm();
-          // toast.success(res?.data?.message );
+          toast.success(res?.data?.message );
         }
       
       }
