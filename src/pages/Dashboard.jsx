@@ -11,6 +11,7 @@ export default function Dashboard() {
 
   const [stats, setStats] = useState({
     totalPosts: 0,
+    totaltodayPosts: 0,
     categories: 0,
     domains: 0,
     targets: 0,
@@ -22,9 +23,11 @@ export default function Dashboard() {
     const loadStats = async () => {
       try {
         const res = await fetchAdminStats();
+        console.log("Admin stats response:", res);
         if (res?.data?.status) {
           setStats({
             totalPosts: res.data.data.total_posts,
+            totaltodayPosts: res.data.data.today_total_posts,
             categories: res.data.data.total_master_categories,
             domains: res.data.data.total_portals,
             targets: res.data.data.news_distribution.total_distributions,
@@ -37,22 +40,62 @@ export default function Dashboard() {
       }
     };
 
+    // const loadDomains = async () => {
+    //   try {
+    //     const res = await fetchDomainDistribution();
+    //     if (res?.data?.status) {
+    //       const mapped = res.data.data.map((d) => ({
+    //         name: d.portal_name, // Domain name
+    //         posts: d.total_distributions, // Total posts distributed
+    //         traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
+    //         status: d.failed_distributions > 0 ? "Partial" : "Active", // Simple status logic
+    //       }));
+    //       setDomains(mapped);
+    //     }
+    //   } catch (err) {
+    //     console.error("Failed to fetch domains:", err);
+    //   }
+    // };
+
     const loadDomains = async () => {
-      try {
-        const res = await fetchDomainDistribution();
-        if (res?.data?.status) {
-          const mapped = res.data.data.map((d) => ({
-            name: d.portal_name, // Domain name
-            posts: d.total_distributions, // Total posts distributed
-            traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
-            status: d.failed_distributions > 0 ? "Partial" : "Active", // Simple status logic
-          }));
-          setDomains(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to fetch domains:", err);
-      }
-    };
+  try {
+    const res = await fetchDomainDistribution();
+
+    if (res?.data?.status) {
+      const mapped = res.data.data.map((d) => ({
+        id: d.portal_id,
+        name: d.portal_name,
+        total: d.total_distributions,
+        success: d.successful_distributions,
+        failed: d.failed_distributions,
+        pending: d.pending_distributions,
+        retry: d.retry_counts,
+        todayTotal: d.today_total_distributions,
+        todaySuccess: d.today_successful_distributions,
+        todayFailed: d.today_failed_distributions,
+        todayPending: d.today_pending_distributions,
+        todayRetry: d.today_retry_counts,
+
+        // Optional display helpers
+        traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
+        todayTraffic: `${d.today_successful_distributions} success / ${d.today_failed_distributions} failed`,
+
+        // Smart status logic
+        status:
+          d.failed_distributions > 0
+            ? "Partial"
+            : d.successful_distributions > 0
+            ? "Active"
+            : "Idle",
+      }));
+
+      setDomains(mapped);
+    }
+  } catch (err) {
+    console.error("❌ Failed to fetch domains:", err);
+  }
+};
+
 
     const loadCategories = async () => {
       try {
@@ -229,7 +272,7 @@ useEffect(() => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6   gap-6     mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -265,6 +308,43 @@ useEffect(() => {
                 />
               </svg>
               +12.5% from last month
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-1">
+              {stats.totaltodayPosts.toLocaleString()}
+            </h3>
+            <p className="text-sm text-gray-500">Total Today Posts</p>
+            <div className="mt-2 flex items-center text-xs text-green-600">
+              <svg
+                className="w-3 h-3 mr-1"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {/* +12.5% from last month */}
             </div>
           </div>
 
@@ -548,74 +628,91 @@ useEffect(() => {
 
         {/* Domain Access Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Domain Access
-            </h3>
-            <p className="text-sm text-gray-500">
-              Overview of all active domains and their performance
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Domain
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Posts
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Success/Faild
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {domains.map((domain, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">
-                        {domain.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {domain.posts}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {domain.traffic}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          domain.status === "Active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {domain.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-gray-600 hover:text-gray-900 mr-3">
-                        Edit
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+  <div className="p-6 border-b border-gray-100">
+    <h3 className="text-lg font-semibold text-gray-900">Domain Access</h3>
+    <p className="text-sm text-gray-500">
+      Overview of all active domains and their performance
+    </p>
+  </div>
+
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Domain
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Total
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Success
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Failed
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Pending
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Retry
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Today (T/F/P/R)
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Status
+          </th>
+          <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+            Actions
+          </th>
+        </tr>
+      </thead>
+
+      <tbody className="divide-y divide-gray-200">
+        {domains.map((domain, index) => (
+          <tr key={index} className="hover:bg-gray-50">
+            <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+              {domain.name}
+            </td>
+            <td className="px-6 py-4 text-gray-700">{domain.total}</td>
+            <td className="px-6 py-4 text-green-600">{domain.success}</td>
+            <td className="px-6 py-4 text-red-600">{domain.failed}</td>
+            <td className="px-6 py-4 text-yellow-600">{domain.pending}</td>
+            <td className="px-6 py-4 text-purple-600">{domain.retry}</td>
+            <td className="px-6 py-4 text-gray-700">
+              {domain.todayTotal}/{domain.todayFailed}/{domain.todayPending}/
+              {domain.todayRetry}
+            </td>
+            <td className="px-6 py-4">
+              <span
+                className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  domain.status === "Active"
+                    ? "bg-green-100 text-green-800"
+                    : domain.status === "Partial"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {domain.status}
+              </span>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap font-medium">
+              <button className="text-blue-600 hover:text-blue-800 mr-3">
+                View
+              </button>
+              <button className="text-gray-600 hover:text-gray-900 mr-3">
+                Edit
+              </button>
+              <button className="text-red-600 hover:text-red-900">Delete</button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 
         {/* Quick Actions */}
         {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
