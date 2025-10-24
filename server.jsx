@@ -193,8 +193,8 @@ export const fetchCategoryMappings = () => {
 };
 
 
-export async function fetchUserDetails() {
-  return axiosInstance.get("/account/user/details/list/");
+export async function fetchUserDetails(page = 1) {
+  return axiosInstance.get(`/account/user/details/list/?page=${page}`);
 }
 // export async function fetchMasterCategories() {
 //   return axiosInstance.get("/api/master/category/");
