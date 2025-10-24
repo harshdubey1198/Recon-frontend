@@ -397,7 +397,7 @@ export default function Dashboard() {
                 Recent Posts
               </h3>
               <p className="text-sm text-gray-500">
-                Latest published content (Page {page} of {pagination?.total_pages || 1})
+                Latest published content
               </p>
             </div>
             <div className="p-6">
