@@ -4,17 +4,17 @@ import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
 import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews  } from "../../server";
 import constant from "../../Constant";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 
 const NewsArticleForm = () => {
   const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
-  console.log("formData",formData);
+  // console.log("formData",formData);
   const [isCategoryloading, setIsCategoryloading]= useState(true);
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
   const [tagInput, setTagInput] = useState("");
   const [imagePreview, setImagePreview] = useState(formData.image ? `${constant.appBaseUrl}${formData?.image}` : null);
-  console.log("imagepreview",imagePreview);
+  // console.log("imagepreview",imagePreview);
   const [isLoading, setIsLoading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -74,7 +74,7 @@ const NewsArticleForm = () => {
     if (res.data?.status && Array.isArray(res.data.data)) {
       setDrafts(res.data.data);
       setShowDrafts(!showDrafts);
-      console.log("🟢 Drafts fetched:", res.data.data);
+      // console.log("🟢 Drafts fetched:", res.data.data);
     }
   } catch (err) {
     console.error("Error fetching drafts:", err);
@@ -334,7 +334,7 @@ const NewsArticleForm = () => {
   };
 
   const handleSubmit = async (e, statusType = "PUBLISHED") => {
-    console.log(statusType);
+    // console.log(statusType);
     e.preventDefault();
   
     const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
@@ -445,18 +445,18 @@ const NewsArticleForm = () => {
           .filter((p) => !p.selected)
           .map((p) => p.portalId);
 
-        console.log("🟡 Deselected portals for API:", excludedPortals);
+        // console.log("🟡 Deselected portals for API:", excludedPortals);
 
         const payload = {
           excluded_portals: excludedPortals,
           master_category_id: Number(formData.master_category_id),
         };
-        console.log("payload",payload)
+        // console.log("payload",payload)
         if (statusType === "PUBLISHED") {
           const res= await publishNewsArticle(createdArticle.id, payload);
-          console.log(res?.data);
+          // console.log(res?.data);
           resetForm();
-          // toast.success(res?.data?.message );
+          toast.success(res?.data?.message );
         }
       
       }
@@ -464,30 +464,29 @@ const NewsArticleForm = () => {
   
       resetForm();
     } catch (err) {
-    let errorMessage = " Failed to publish article.";
-      
-      if (err?.response?.data?.message) {
-        // Backend returned structured error
-        const backendMessage = err.response.data.message;
-        
-        // Handle slug error specifically
-        if (typeof backendMessage === 'object' && backendMessage.slug) {
-          errorMessage = `${backendMessage.slug[0] || backendMessage.slug}`;
-        } else if (typeof backendMessage === 'string') {
-          errorMessage = ` ${backendMessage}`;
-        } else {
-          errorMessage = ` ${JSON.stringify(backendMessage)}`;
+      if (err?.message) {
+        const backendMessage = err.message;
+
+        if (typeof backendMessage === "object") {
+          Object.keys(backendMessage).forEach((field) => {
+            const messages = backendMessage[field];
+            if (Array.isArray(messages)) {
+              messages.forEach((msg) => toast.error(`${field} : ${msg}`));
+            } else {
+              toast.error(`${field} : ${messages}`);
+            }
+          });
+        } else if (typeof backendMessage === "string") {
+          toast.error(backendMessage);
         }
-      } else if (err?.message) {
-        errorMessage = ` ${err.message}`;
+      } else {
+        toast.error("Failed to publish article.");
       }
-      
-      toast.error(errorMessage);
-    
     } finally {
       setIsLoading(false);
     }
-  };
+
+    };
   
   const resetForm = () => {
     revokeIfBlob(imagePreview);
@@ -521,7 +520,15 @@ const NewsArticleForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200">
-          
+        {/* <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          pauseOnHover
+          draggable
+        /> */}
 
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-6">
@@ -680,7 +687,7 @@ const NewsArticleForm = () => {
                                 idx === i ? { ...p, selected: !p.selected } : p
                               );
                               const excluded = updated.filter((p) => !p.selected).map((p) => p.portalId);
-                              console.log(`🟠 Excluded portals (${excluded.length}):`, excluded);
+                              // console.log(`🟠 Excluded portals (${excluded.length}):`, excluded);
                               return updated;
                             })
                           }
