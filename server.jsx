@@ -65,8 +65,8 @@ export async function publishNewsArticle(id, master_category_id) {
 }
 
 
-export async function fetchNewsList() {
-  return axiosInstance.get("/api/news/distributed/list/");
+export async function fetchNewsList(page = 1){
+  return axiosInstance.get(`/api/news/distributed/list/?page=${page}`);
 }
 
 /**
@@ -120,8 +120,8 @@ export async function fetchUnassignedUsers() {
   return axiosInstance.get("/account/unassigned/users/");
 }
 
-export async function fetchAllUsersList() {
-  return axiosInstance.get("/account/all/users/list/");
+export async function fetchAllUsersList(page = 1) {
+  return axiosInstance.get(`/account/all/users/list/?page=${page}`);
 }
 
 export async function fetchPortalStatusByUsername(username) {
