@@ -54,15 +54,31 @@ export async function createNewsArticle(formData) {
   });
 }
 
-export async function publishNewsArticle(id, master_category_id) {
-  if (!master_category_id) {
-    throw new Error("Please provide master_category_id.");
+export async function publishNewsArticle(id, payload) {
+  if (!payload || !payload.master_category_id) {
+    throw new Error("Please provide valid payload with master_category_id.");
   }
 
-  return axiosInstance.post(`/api/publish/news/${id}/`, {
-    master_category_id: Number(master_category_id), // ensure it's a number
+  return axiosInstance.post(`/api/publish/news/${id}/`, payload, {
+    headers: { "Content-Type": "application/json" },
   });
 }
+export async function fetchDraftNews() {
+  return axiosInstance.get(`/api/my/news/posts/?status=DRAFT`);
+}
+
+export async function updateDraftNews(id, status = "PUBLISHED") {
+  if (!id) throw new Error("News ID is required to update draft.");
+
+  const formData = new FormData();
+  formData.append("status", status);
+
+  return axiosInstance.put(`/api/news/update/${id}/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+
 
 
 export async function fetchNewsList(page = 1){
@@ -140,6 +156,10 @@ export async function mapPortalUser(username, user_id) {
 
 export async function fetchAssignmentsByUsername(username) {
   return axiosInstance.get(`/account/assignments/list/?username=${username}`);
+}
+
+export async function fetchMappedCategoriesById(id) {
+  return axiosInstance.get(`/api/master/categories/mapped/${id}/`);
 }
 
 
