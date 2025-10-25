@@ -55,9 +55,9 @@ export async function createNewsArticle(formData) {
 }
 
 export async function publishNewsArticle(id, payload) {
-  if (!payload || !payload.master_category_id) {
-    throw new Error("Please provide valid payload with master_category_id.");
-  }
+  // if (!payload || !payload.master_category) {
+  //   throw new Error("Please provide valid payload with master_category.");
+  // }
 
   return axiosInstance.post(`/api/publish/news/${id}/`, payload, {
     headers: { "Content-Type": "application/json" },
@@ -67,11 +67,21 @@ export async function fetchDraftNews() {
   return axiosInstance.get(`/api/my/news/posts/?status=DRAFT`);
 }
 
-export async function updateDraftNews(id, status = "PUBLISHED") {
+export async function updateDraftNews(id, status = "PUBLISHED",payload) {
   if (!id) throw new Error("News ID is required to update draft.");
 
   const formData = new FormData();
   formData.append("status", status);
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) 
+      if (Array.isArray(value)) {
+        formData.append(key, JSON.stringify(value)); 
+      } else {
+        formData.append(key, value);
+      }
+
+  });
 
   return axiosInstance.put(`/api/news/update/${id}/`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
