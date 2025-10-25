@@ -850,7 +850,7 @@ class MasterNewsPostPublishAPIView(APIView):
 
                 api_url = f"{portal.base_url}/api/create-news/"
                 try:
-                    response = requests.post(api_url, data=payload, files=files, timeout=10)
+                    response = requests.post(api_url, data=payload, files=files, timeout=90)
                     success = response.status_code in [200, 201]
                     response_msg = response.text
                 except Exception as e:
@@ -1381,7 +1381,7 @@ class AllPortalsTagsLiveAPIView(APIView):
         for portal in portals:
             try:
                 api_url = f"{portal.base_url}/api/tags/"
-                response = requests.get(api_url, timeout=10)
+                response = requests.get(api_url, timeout=90)
                 if response.status_code == 200:
                     res_json = response.json()
                     # adapt to actual response structure
