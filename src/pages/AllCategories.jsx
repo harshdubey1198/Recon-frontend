@@ -59,9 +59,8 @@ const AllCategories = () => {
   };
 
   useEffect(() => {
-    setCurrentPage(1);
-    setCategories([]);
-    loadData(1, false);
+   
+    loadData();
   }, [searchTerm]);
 
   const loadMoreCategories = useCallback(() => {
@@ -133,16 +132,7 @@ const AllCategories = () => {
     setDetailsPage(1);
   };
 
-  if (loading && categories.length === 0) {
-    return (
-      <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-700 font-medium">Loading categories...</p>
-        </div>
-      </div>
-    );
-  }
+  
 
   const filteredCategories = categories.filter((cat) =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -228,44 +218,54 @@ const AllCategories = () => {
               </div>
             ) : (
               <div className="border-2 border-gray-300 rounded-2xl bg-gradient-to-br from-gray-50 to-white h-[410px] p-4 shadow-inner">
-                <div 
-                  ref={categoriesScrollRef}
-                  onScroll={handleCategoriesScroll}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto h-full pr-2"
-                >
-                  {visibleCategories.map((cat) => (
-                    <div
-                      key={cat.id}
-                      onClick={() => handleCategoryClick(cat)}
-                      className="group relative px-4 py-3 bg-white border-2 border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer transform"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gray-900 rounded-lg group-hover:bg-black transition-all">
-                          <Folder className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {cat.name}
-                          </p>
-                          {cat.description && (
-                            <p className="text-xs text-gray-600 truncate mt-0.5">
-                              {cat.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ArrowRight className="w-4 h-4 text-gray-900" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {loadingMoreCategories && (
-                    <div className="col-span-full flex justify-center py-4">
-                      <Loader2 className="w-6 h-6 text-gray-900 animate-spin" />
-                    </div>
-                  )}
-                </div>
+               <div 
+  ref={categoriesScrollRef}
+  onScroll={handleCategoriesScroll}
+  className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto h-full pr-2"
+>
+  {loading && categories.length === 0 ? (
+    <div className="col-span-full flex justify-center items-center py-10">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-3"></div>
+        <p className="text-gray-700 text-sm font-medium">Loading categories...</p>
+      </div>
+    </div>
+  ) : (
+    visibleCategories.map((cat) => (
+      <div
+        key={cat.id}
+        onClick={() => handleCategoryClick(cat)}
+        className="group relative px-4 py-3 bg-white border-2 border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer transform"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gray-900 rounded-lg group-hover:bg-black transition-all">
+            <Folder className="w-4 h-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {cat.name}
+            </p>
+            {cat.description && (
+              <p className="text-xs text-gray-600 truncate mt-0.5">
+                {cat.description}
+              </p>
+            )}
+          </div>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <ArrowRight className="w-4 h-4 text-gray-900" />
+          </div>
+        </div>
+      </div>
+    ))
+  )}
+
+  {loadingMoreCategories && (
+    <div className="col-span-full flex justify-center py-4">
+      <Loader2 className="w-6 h-6 text-gray-900 animate-spin" />
+    </div>
+  )}
+</div>
+
               </div>
             )}
 
