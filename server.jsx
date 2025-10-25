@@ -101,9 +101,11 @@ export async function fetchDomainDistribution() {
   return axiosInstance.get("/api/domain/distribution/");
 }
 
-export async function fetchMasterCategories(page = 1) {
-  return axiosInstance.get(`/api/master/category/?page=${page}`);
+export async function fetchMasterCategories(page = 1, search = "") {
+  const query = search ? `&search=${encodeURIComponent(search)}` : "";
+  return axiosInstance.get(`/api/master/category/?page=${page}${query}`);
 }
+
 
 
 export async function fetchAssignedCategories() {
@@ -158,8 +160,8 @@ export async function fetchAssignmentsByUsername(username) {
   return axiosInstance.get(`/account/assignments/list/?username=${username}`);
 }
 
-export async function fetchMappedCategoriesById(id) {
-  return axiosInstance.get(`/api/master/categories/mapped/${id}/`);
+export async function fetchMappedCategoriesById(id,page=1) {
+  return axiosInstance.get(`/api/master/categories/mapped/${id}/?page=${page}`);
 }
 
 
