@@ -5,6 +5,7 @@ import {
   mapPortalUser,
 } from "../../server";
 import { toast } from "react-toastify";
+import { flushSync } from "react-dom";
 
 export default function PortalManagement() {
   const [username, setUsername] = useState("");
@@ -94,33 +95,34 @@ export default function PortalManagement() {
   }, [pagination, page, isFetching]);
 
   // 👉 Fetch portal status for a user
-  const handleCheckUsername = async (name = selectedUser.username) => {
-    if (!name.trim()) {
-      toast.warning(" Please enter a username");
-      return;
+ const handleCheckUsername = async (name = selectedUser.username) => {
+  if (!name.trim()) {
+    toast.warning(" Please enter a username");
+    return;
+  }
+  setLoading(true);
+  try {
+    const res = await fetchPortalStatusByUsername(name);
+    if (res.data?.status) {
+      const mappedData = res.data.data.map((item) => {
+        const user = users.find((u) => u.username === item.username);
+        return { ...item, user_id: user?.user_id || null };
+      });
+      setPortalData(mappedData); // ✅ Only load data now
+    } else {
+      toast.info("No data found for this username");
+      setPortalData([]);
     }
-    setLoading(true);
-    try {
-      const res = await fetchPortalStatusByUsername(name);
-      if (res.data?.status) {
-        // Attach user_id from users list
-        const mappedData = res.data.data.map((item) => {
-          const user = users.find((u) => u.username === item.username);
-          return { ...item, user_id: user?.user_id || null };
-        });
-        setPortalData(mappedData);
-        setShowModal(true);
-      } else {
-        toast.info("No data found for this username");
-        setPortalData([]);
-      }
-    } catch (err) {
-      console.error("Error fetching portal data:", err);
-      toast.error(err.response?.data?.message || "Error fetching data. Check console for details.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    console.error("Error fetching portal data:", err);
+    toast.error(
+      err.response?.data?.message || "Error fetching data. Check console for details."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -156,10 +158,15 @@ export default function PortalManagement() {
               {users.map((u, i) => (
                 <li
                   key={u.id}
-                  onClick={() => {
-                    setSelectedUser({ username: u.username, user_id: u.id });
-                    handleCheckUsername(u.username);
-                  }}
+                 onClick={() => {
+  flushSync(() => {
+    setSelectedUser({ username: u.username, user_id: u.id });
+    setShowModal(true); // ✅ Open modal instantly
+    setPortalData([]);  // ✅ Clear old data (optional)
+  });
+  handleCheckUsername(u.username); // 🔄 Load data asynchronously
+}}
+
                   className="group relative p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-black hover:shadow-lg hover:-translate-y-1 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white"
                 >
                   <span className="text-lg font-semibold text-gray-800 group-hover:text-black transition-colors">
@@ -192,95 +199,119 @@ export default function PortalManagement() {
         </ul>
 
         {/* 🪟 Modal for portal data */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-28 pl-72">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative">
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-2 right-3 text-gray-600 hover:text-black"
-              >
-                ✖
-              </button>
-              {portalData.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-                    <thead className="bg-black text-white">
-                      <tr>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Portal
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Found
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Username
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Message
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {portalData.map((item, index) => (
-                        <tr
-                          key={index}
-                          className="hover:bg-gray-50 transition duration-150"
-                        >
-                          <td className="py-3 px-6 font-medium text-gray-900">
-                            {item.portal}
-                          </td>
-                          <td className="py-3 px-6">
-                            {item.found ? (
-                              <span className="text-green-600 font-semibold">
-                                Found
-                              </span>
-                            ) : (
-                              <span className="text-red-600 font-semibold">
-                                Not Found
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-6 text-gray-700">
-                            {item.username || "-"}
-                          </td>
-                          <td className="py-3 px-6 text-gray-500">
-                            {item.message || "-"}
-                          </td>
-                          <td className="py-3 px-6 text-right">
-                            {!item.found && (
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    setLoading(true);
-                                    await mapPortalUser(
-                                      selectedUser.username,
-                                      selectedUser.user_id
-                                    );
-                                    handleCheckUsername();
-                                  } catch (err) {
-                                    console.error(err);
-                                  } finally {
-                                    setLoading(false);
-                                  }
-                                }}
-                                className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+     {showModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-28 pl-72 z-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative">
+                    {/* Close button */}
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="absolute top-2 right-3 text-gray-600 hover:text-black"
+                    >
+                      ✖
+                    </button>
+
+                    {/* Table structure always visible */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
+                        <thead className="bg-black text-white">
+                          <tr>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Portal
+                            </th>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Found
+                            </th>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Username
+                            </th>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Message
+                            </th>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-gray-200">
+                          {/* 🔄 Show loader while API fetching */}
+                          {loading ? (
+                            <tr>
+                              <td
+                                colSpan="5"
+                                className="py-10 text-center text-gray-600 font-medium"
                               >
-                                Retry
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                                <div className="flex flex-col items-center justify-center">
+                                  <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+                                  <p className="mt-3">Loading data...</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : portalData.length > 0 ? (
+                            portalData.map((item, index) => (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-50 transition duration-150"
+                              >
+                                <td className="py-3 px-6 font-medium text-gray-900">
+                                  {item.portal}
+                                </td>
+                                <td className="py-3 px-6">
+                                  {item.found ? (
+                                    <span className="text-green-600 font-semibold">Found</span>
+                                  ) : (
+                                    <span className="text-red-600 font-semibold">
+                                      Not Found
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-6 text-gray-700">
+                                  {item.username || "-"}
+                                </td>
+                                <td className="py-3 px-6 text-gray-500">
+                                  {item.message || "-"}
+                                </td>
+                                <td className="py-3 px-6 text-right">
+                                  {!item.found && (
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          setLoading(true);
+                                          await mapPortalUser(
+                                            selectedUser.username,
+                                            selectedUser.user_id
+                                          );
+                                          handleCheckUsername();
+                                        } catch (err) {
+                                          console.error(err);
+                                        } finally {
+                                          setLoading(false);
+                                        }
+                                      }}
+                                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                                    >
+                                      Retry
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td
+                                colSpan="5"
+                                className="text-center text-gray-500 py-8 font-medium"
+                              >
+                                No data found for this user.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -197,7 +197,7 @@ const handleScroll = () => {
                           </p>
                         </div>
                       </div>
-                      <button
+                      {/* <button
                         onClick={() => toggleStatus(user.name)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
                           isActive
@@ -207,7 +207,7 @@ const handleScroll = () => {
                       >
                         <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-white' : 'bg-gray-400'}`} />
                         {isActive ? 'Active' : 'Inactive'}
-                      </button>
+                      </button> */}
                     </div>
                   </div>
 
@@ -231,14 +231,14 @@ const handleScroll = () => {
                                   <Globe className="text-white" size={20} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <a
-                                    href={access.domain.name}
+                                  <p
+                                    // href={access.domain.name}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-lg font-bold text-gray-900 hover:text-gray-700 hover:underline block truncate"
                                   >
                                     {access.domain.name}
-                                  </a>
+                                  </p>
                                 </div>
                               </div>
                              <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg flex-shrink-0 ml-4">

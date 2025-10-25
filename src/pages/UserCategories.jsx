@@ -158,51 +158,79 @@ export default function UserCategories() {
         </div>
 
         {/* Modal for user details */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-28 pl-72">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative">
-              <h2 className="text-xl font-semibold mb-4">
-                Details of categories assigned to: {selectedUser.username}
-              </h2>
+       {showModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-28 pl-72 z-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative">
+                    {/* Title */}
+                    <h2 className="text-xl font-semibold mb-4">
+                      Details of categories assigned to:{" "}
+                      <span className="text-blue-700">{selectedUser.username}</span>
+                    </h2>
 
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-2 right-3 text-gray-600 hover:text-black"
-              >
-                ✖
-              </button>
+                    {/* Close Button */}
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="absolute top-2 right-3 text-gray-600 hover:text-black"
+                    >
+                      ✖
+                    </button>
 
-              {assignments.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-                    <thead className="bg-black text-white">
-                      <tr>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Master Category
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Created At
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {assignments.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50 transition duration-150">
-                          <td className="py-3 px-6 text-gray-700">
-                            {item.master_category?.name || "-"}
-                          </td>
-                          <td className="py-3 px-6 text-gray-500">
-                            {new Date(item.created_at).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                    {/* Table layout (always visible) */}
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
+                        <thead className="bg-black text-white">
+                          <tr>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Master Category
+                            </th>
+                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                              Created At
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-gray-200">
+                          {/* 🔄 Loader state */}
+                          {loading ? (
+                            <tr>
+                              <td colSpan="2" className="py-10 text-center text-gray-600 font-medium">
+                                <div className="flex flex-col items-center justify-center">
+                                  <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+                                  <p className="mt-3">Loading data...</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : assignments.length > 0 ? (
+                            assignments.map((item, index) => (
+                              <tr
+                                key={index}
+                                className="hover:bg-gray-50 transition duration-150"
+                              >
+                                <td className="py-3 px-6 text-gray-700">
+                                  {item.master_category?.name || "-"}
+                                </td>
+                                <td className="py-3 px-6 text-gray-500">
+                                  {new Date(item.created_at).toLocaleString()}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td
+                                colSpan="2"
+                                className="text-center text-gray-500 py-8 font-medium"
+                              >
+                                No assigned categories found.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );
