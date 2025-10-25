@@ -205,7 +205,7 @@ const AllCategories = () => {
                   placeholder="Search categories..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-3 w-full border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm bg-white shadow-sm transition-all"
+                  className="pl-12 pr-4 py-3 w-full border-2 border-gray-300 rounded-xl  text-sm bg-white shadow-sm transition-all"
                 />
               </div>
             </div>
