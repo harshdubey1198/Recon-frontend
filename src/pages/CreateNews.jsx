@@ -7,8 +7,9 @@ import constant from "../../Constant";
 import { toast, ToastContainer } from "react-toastify";
 
 const NewsArticleForm = () => {
-  const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
+  const [formData, setFormData] = useState({ headline: "",title:"", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
   // console.log("formData",formData);
+  const [originalDraft, setOriginalDraft] = useState(null);
   const [isCategoryloading, setIsCategoryloading]= useState(true);
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
@@ -86,6 +87,7 @@ const NewsArticleForm = () => {
       ...formData,
       id: draft?.id || "",
       headline: draft.title || "",
+      title: draft.title || "",
       shortDesc: draft.short_description || "",
       longDesc: draft.content || "",
       meta_title: draft.meta_title || "",
@@ -103,9 +105,19 @@ const NewsArticleForm = () => {
       scheduleDate: draft.schedule_date || "",
       counter: draft.counter || 0,
     });
+    setOriginalDraft(draft);
+
     setImagePreview(draft?.post_image ? `${constant.appBaseUrl}${draft.post_image}` : null);
     setShowDrafts(false);
     // toast.info(`Loaded draft: ${draft.title}`);
+  };
+
+  const buildDraftDiff = (oldData, newData) => {
+    const diff = {};
+    Object.keys(newData).forEach((key) => {
+      if (newData[key] !== oldData[key]) diff[key] = newData[key];
+    });
+    return diff;
   };
 
   const generateSlug = (text) => {
@@ -344,7 +356,7 @@ const NewsArticleForm = () => {
       return;
     }
   
-    if (!valid_statuses.includes(formData.status)) {
+    if (!valid_statuses.includes(statusType)) {
      toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
       return;
     }
@@ -360,18 +372,19 @@ const NewsArticleForm = () => {
     }
     const categoryId = Number(formData.master_category_id);
 
-    if (!categoryId) {
+    if (statusType === "PUBLISHED" && !categoryId && !formData.id) {
       toast.warning("Please select a category.");
       return;
     }
-    
+
+        
   
     setIsLoading(true);
   
     try {
       const formDataToSend = new FormData();
   
-      formDataToSend.append("title", formData.headline);
+      formDataToSend.append("title", formData.title || formData.headline);
       formDataToSend.append("short_description", formData.shortDesc);
       formDataToSend.append("content", formData.longDesc);
       formDataToSend.append("post_image", formData.image);
@@ -417,17 +430,26 @@ const NewsArticleForm = () => {
       }
       
       let createdArticle;
-      if (formData.status === "DRAFT" && formData.id) {
-        createdArticle = { id: formData.id }; 
-        await updateDraftNews(formData.id, "PUBLISHED");
-        toast.success("Draft published successfully!");
+      if (formData.id) {
+        const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+        const changedFields = originalDraft ? buildDraftDiff(originalDraft, formData) : formData;
+        if (changedFields.longDesc) {
+          changedFields.content = changedFields.longDesc;
+          delete changedFields.longDesc;
+        }
+        changedFields.title = changedFields.title || formData.headline;
+        changedFields.content = formData.longDesc || formData.content;
+        await updateDraftNews(formData.id, nextStatus, changedFields);
+        createdArticle = { id: formData.id };
+        if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
       } else {
-        // Create new article
         const response = await createNewsArticle(formDataToSend);
         createdArticle = response.data.data;
       }
-      if (statusType === "DRAFT") {
-        toast.success("Draft saved successfully.");
+
+
+        if (statusType === "DRAFT") {
+        // toast.success("Draft saved successfully.");
         resetForm();
         setIsLoading(false);
         return;
@@ -435,31 +457,30 @@ const NewsArticleForm = () => {
       
       if (createdArticle?.id) {
         const categoryId = Number(formData.master_category_id);
-        if (!categoryId) {
-          toast.warning(" Please select a category before publishing.");
+
+        // Only require category if publishing a brand-new article (not updating draft)
+        if (!categoryId && !formData.id) {
+          toast.warning("Please select a category before publishing.");
           setIsLoading(false);
           return;
         }
-      
+
         const excludedPortals = mappedPortals
           .filter((p) => !p.selected)
           .map((p) => p.portalId);
 
-        // console.log("🟡 Deselected portals for API:", excludedPortals);
-
         const payload = {
           excluded_portals: excludedPortals,
-          master_category_id: Number(formData.master_category_id),
+          master_category_id: categoryId || null,
         };
-        // console.log("payload",payload)
+
         if (statusType === "PUBLISHED") {
-          const res= await publishNewsArticle(createdArticle.id, payload);
-          // console.log(res?.data);
+          const res = await publishNewsArticle(createdArticle.id, payload);
           resetForm();
-          toast.success(res?.data?.message );
+          if (res?.data?.message) toast.success(res.data.message);
         }
-      
       }
+
       
   
       resetForm();
@@ -491,11 +512,13 @@ const NewsArticleForm = () => {
   const resetForm = () => {
     revokeIfBlob(imagePreview);
     setFormData({
+      title: "",
       headline: "",
       shortDesc: "",
       longDesc: "",
       image: null,
       tags: [],
+      content:"",
       latestNews: false,
       headlines: false,
       articles: false,
@@ -591,12 +614,13 @@ const NewsArticleForm = () => {
                       disabled={isLoading}
                       onClick={(e) => handleSubmit(e, "DRAFT")}
                       className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
-                    >
+                      >
                       <SaveAll className="w-4 h-4 mr-2" />
                       Save as Draft
                     </button>
                     <button
                       type="submit"
+                      onClick={(e) => handleSubmit(e, "PUBLISHED")}
                       disabled={isLoading}
                       className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-xs font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
                     >
@@ -639,25 +663,25 @@ const NewsArticleForm = () => {
               </label>
 
               <select
-                  name="master_category_id"
-                  value={formData.master_category_id ?? ""}
-                  onChange={handleCategorySelect}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                >
-                  {isCategoryloading ? (
-                    <option value="">Loading categories...</option>
-                  ) : (
-                    <>
-                      <option value="">-- Select Category --</option>
-                      {assignedCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
+                name="master_category_id"
+                value={formData.master_category_id ?? ""}
+                onChange={handleCategorySelect}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+              >
+                {isCategoryloading ? (
+                  <option value="">Loading categories...</option>
+                ) : (
+                  <>
+                    <option value="">-- Select Category --</option>
+                    {assignedCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+
 
 
                 {showPortalSection && (
@@ -1394,8 +1418,18 @@ const NewsArticleForm = () => {
                 Reset Form
               </button>
               <button
+                type="button"
+                disabled={isLoading}
+                onClick={(e) => handleSubmit(e, "DRAFT")}
+                className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
+                >
+                <SaveAll className="w-4 h-4 mr-2" />
+                Save as Draft
+              </button>
+              <button
                 type="submit"
                 disabled={isLoading}
+                onClick={(e) => handleSubmit(e, "PUBLISHED")}
                 className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-sm font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
               >
                 {isLoading ? (
