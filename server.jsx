@@ -101,8 +101,8 @@ export async function fetchDomainDistribution() {
   return axiosInstance.get("/api/domain/distribution/");
 }
 
-export async function fetchMasterCategories() {
-  return axiosInstance.get("/api/master/category/");
+export async function fetchMasterCategories(page = 1) {
+  return axiosInstance.get(`/api/master/category/?page=${page}`);
 }
 
 
@@ -188,8 +188,8 @@ export async function registerUser(data) {
   });
 }
 
-export const fetchCategoryMappings = () => {
-  return axiosInstance.get("/api/master/category/mapping/");
+export  async function fetchCategoryMappings(page = 1){
+  return axiosInstance.get(`/api/master/category/mapping/?page=${page}`);
 };
 
 
@@ -205,8 +205,9 @@ export async function fetchAllTags() {
   return axiosInstance.get("/api/all/tags/");
 }
 
-export async function fetchMappedCategories(mapped = false) {
-  return axiosInstance.get(`/api/master/category/?mapped=${mapped}`);
+export async function fetchMappedCategories(mapped = false,page=1) {
+ return axiosInstance.get(`/api/master/category/?mapped=${mapped}&page=${page}`);
+
 }
 
 

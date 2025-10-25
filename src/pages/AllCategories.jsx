@@ -1,27 +1,42 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+
 import { List, Info, Search, Folder, ArrowRight, Package } from "lucide-react";
 import { fetchCategoryMappings, fetchMappedCategories } from "../../server";
 import CategoryMapping from "../pages/CategoryMapping";
 
 const AllCategories = () => {
   const [mappings, setMappings] = useState([]);
-  const [categories, setCategories] = useState([]);
+   const [categories, setCategories] = useState([]);
+  const [categoriesCount, setCategoriesCount] = useState(0);
+  const [mappedcategoriesCount, setMappedCategoriesCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showMapping, setShowMapping] = useState(false);
+  // pagination states
+   const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [hasNext, setHasNext] = useState(false);
+    const [hasPrevious, setHasPrevious] = useState(false);
+    const [loadingPage, setLoadingPage] = useState(false);
+    
+    const scrollContainerRef = useRef(null);
+    const scrollTimeout = useRef(null);
+
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const [mappingRes, categoryRes] = await Promise.all([
-          fetchCategoryMappings(),
-          fetchMappedCategories(false),
+          fetchCategoryMappings(1),
+          fetchMappedCategories(false, 1),
         ]);
 
-        if (mappingRes.data.status) setMappings(mappingRes.data.message);
+        if (mappingRes.data.status) setMappings(mappingRes?.data?.data);
         if (categoryRes.data.status && Array.isArray(categoryRes.data.data))
           setCategories(categoryRes.data.data);
+        setCategoriesCount(categoryRes.data.pagination.count || 0);
+        setMappedCategoriesCount(mappingRes?.data?.pagination?.count || 0);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -49,7 +64,7 @@ const AllCategories = () => {
 
   const visibleCategories = showAll
     ? filteredCategories
-    : filteredCategories.slice(0, 10);
+    : filteredCategories
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 py-12">
@@ -102,7 +117,7 @@ const AllCategories = () => {
                     Unmapped Master Categories
                   </h2>
                   <p className="text-sm text-gray-600">
-                    <span className="font-bold text-gray-900 text-lg">{categories.length}</span> categories waiting to be mapped
+                    <span className="font-bold text-gray-900 text-lg">{categoriesCount}</span> categories waiting to be mapped
                   </p>
                 </div>
               </div>
@@ -126,12 +141,12 @@ const AllCategories = () => {
                 <p className="text-sm text-gray-500 mt-1">Try adjusting your search term</p>
               </div>
             ) : (
-              <div className="border-2 border-gray-300 rounded-2xl bg-gradient-to-br from-gray-50 to-white max-h-[450px] overflow-y-auto p-4 shadow-inner">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="border-2 border-gray-300 rounded-2xl bg-gradient-to-br from-gray-50 to-white h-[460px] p-4 shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto h-full pr-2">
                   {visibleCategories.map((cat, idx) => (
                     <div
                       key={cat.id}
-                      className="group relative px-4 py-3 bg-white border-2 border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer transform hover:-translate-y-0.5"
+                      className="group  relative px-4 py-3 bg-white border-2 border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer transform hover:-translate-y-0.5"
                     >
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-gray-900 rounded-lg group-hover:bg-black transition-all">
@@ -180,11 +195,13 @@ const AllCategories = () => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Existing Mappings</h2>
-                <p className="text-sm text-gray-600">{mappings.length} active category mappings</p>
+              <p className="text-sm text-gray-600">{mappedcategoriesCount} active category mappings</p>
+
               </div>
             </div>
             
-            {mappings.length === 0 ? (
+               {(!mappings || mappings.length === 0) ? (
+
               <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                 <List className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600 font-medium">No category mappings found</p>
