@@ -116,6 +116,7 @@ const menuItems = [
                     <button
                       onClick={() => {
                         setActiveItem(item.name);
+                        localStorage.setItem("activeTab", item.name);
                         setIsMobileMenuOpen(false);
                       }}
                       className={`
