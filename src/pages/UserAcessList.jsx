@@ -46,6 +46,7 @@ export default function UserAccessTable() {
             domain: { name: portal.name || portal.domain || '' },
             categories: (portal.categories || []).map((c) => typeof c === 'string' ? c : (c.name || '')),
             totalPosts: portal.total_posts || portal.totalPosts || 0,
+            todaysPosts: portal.todays_posts || portal.todaysPosts || 0,
           }));
         });
 
@@ -240,11 +241,17 @@ const handleScroll = () => {
                                   </a>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg flex-shrink-0 ml-4">
+                             <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg flex-shrink-0 ml-4">
+                                <FileText size={16} />
+                                <span className="font-bold">{access.todaysPosts}</span>
+                                <span className="text-sm">today posts</span>
+                              </div>
+                              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg flex-shrink-0 ml-4">
                                 <FileText size={16} />
                                 <span className="font-bold">{access.totalPosts}</span>
                                 <span className="text-sm">posts</span>
                               </div>
+                               
                             </div>
 
                             <div className="flex items-center gap-2 flex-wrap">

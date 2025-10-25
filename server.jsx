@@ -128,8 +128,8 @@ export async function assignMasterCategoriesToUser(data) {
 }
 
 
-export async function fetchPortals() {
-  return axiosInstance.get("/api/portals/list/");
+export async function fetchPortals(page = 1)  {
+  return axiosInstance.get(`/api/portals/list/?page=${page}`);
 }
 
 export async function fetchUnassignedUsers() {
@@ -167,8 +167,8 @@ export async function fetchMappedCategoriesById(id) {
  * Fetch categories for a given portal
  * @param {string} portalName - e.g., "newsableasia"
  */
-export async function fetchPortalCategories(portalName) {
-  return axiosInstance.get(`/api/portals/categories/list/${portalName}/`);
+export async function fetchPortalCategories(portalName,page=1) {
+  return axiosInstance.get(`/api/portals/categories/list/${portalName}/?page=${page}`);
 }
 
 export async function mapMasterCategory(data) {
