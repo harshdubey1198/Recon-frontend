@@ -67,6 +67,35 @@ export async function fetchDraftNews() {
   return axiosInstance.get(`/api/my/news/posts/?status=DRAFT`);
 }
 
+export async function fetchNewsReport(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.append(key, value);
+    }
+  });
+
+  return axiosInstance.get(`/api/news/report/?${params.toString()}`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+// export async function fetchNewsReport(filters = {}) {
+//   const params = new URLSearchParams(filters).toString();
+//   return axiosInstance.get(`/api/news/report/?${params}`, {
+//     headers: { "Content-Type": "application/json" },
+//   });
+// }
+export async function fetchDistributedNews(filters = {}) {
+  const params = new URLSearchParams(filters).toString();
+  return axiosInstance.get(`/api/news/distributed/list/${params ? `?${params}` : ""}`, {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+
 export async function updateDraftNews(id, status = "PUBLISHED",payload) {
   if (!id) throw new Error("News ID is required to update draft.");
 
@@ -148,6 +177,9 @@ export async function fetchUnassignedUsers() {
 
 export async function fetchAllUsersList(page = 1) {
   return axiosInstance.get(`/account/all/users/list/?page=${page}`);
+}
+export async function fetchAllUsersListSimple() {
+  return axiosInstance.get(`/account/all/users/list/`);
 }
 
 export async function fetchPortalStatusByUsername(username) {

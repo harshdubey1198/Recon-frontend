@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers} from "lucide-react";
+import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,BarChart3,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers} from "lucide-react";
 import Dashboard from "../pages/Dashboard";
 import CreateNews from "../pages/CreateNews";
 import NewsList from "../pages/NewsList";
@@ -11,6 +11,7 @@ import PortalManagement from "../pages/PortalManagement";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import UserCategories from "../pages/UserCategories";
+import NewsReports from "../pages/NewsReports";
 
 
 
@@ -32,8 +33,9 @@ const menuItems = [
   { name: "Dashboard", icon: Home },
   { name: "Create News", icon: FilePlus2 },
   { name: "News List", icon: Newspaper },
+  { name: "News Reports", icon: BarChart3 },
   ...(isMaster
-    ? [
+    ? [ 
         { name: "Access Control", icon: ShieldCheck },
         { name: "User Access List", icon: Users2 },
         { name: "All Categories", icon: FolderTree },
@@ -322,6 +324,7 @@ const menuItems = [
             {activeItem === "Category Mapping" && <CategoryMapping />}
             {activeItem === "All Categories" && <AllCategories />}
             {activeItem === "User Categories" && <UserCategories />}
+            {activeItem === "News Reports" && <NewsReports />}
           </div>
         </div>
       </main>
