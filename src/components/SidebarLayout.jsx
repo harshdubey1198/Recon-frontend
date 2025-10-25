@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,List,ListTree} from "lucide-react";
+import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers} from "lucide-react";
 import Dashboard from "../pages/Dashboard";
 import CreateNews from "../pages/CreateNews";
 import NewsList from "../pages/NewsList";
@@ -30,21 +30,20 @@ export default function SidebarLayout() {
 
 const menuItems = [
   { name: "Dashboard", icon: Home },
-  { name: "Create News", icon: FileText },
-  { name: "News List", icon: FileText },
-  // { name: "Portal Management",icon:List},
-  // Only show these if role is master
+  { name: "Create News", icon: FilePlus2 },
+  { name: "News List", icon: Newspaper },
   ...(isMaster
     ? [
-        { name: "Access Control", icon: User },
-        { name: "User Access List", icon: User },
-        { name: "All Categories", icon: List },
-        { name: "Category Mapping", icon: List },
-        { name: "Portal Management",icon:List},
-        { name: "User Categories",icon:ListTree},
+        { name: "Access Control", icon: ShieldCheck },
+        { name: "User Access List", icon: Users2 },
+        { name: "All Categories", icon: FolderTree },
+        { name: "Category Mapping", icon: Network },
+        { name: "Portal Management", icon: Building2 },
+        { name: "User Categories", icon: Layers },
       ]
     : []),
 ];
+
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
