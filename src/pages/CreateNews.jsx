@@ -135,13 +135,13 @@ const NewsArticleForm = () => {
     }
   };
 
-  const buildDraftDiff = (oldData, newData) => {
-    const diff = {};
-    Object.keys(newData).forEach((key) => {
-      if (newData[key] !== oldData[key]) diff[key] = newData[key];
-    });
-    return diff;
-  };
+  // const buildDraftDiff = (oldData, newData) => {
+  //   const diff = {};
+  //   Object.keys(newData).forEach((key) => {
+  //     if (newData[key] !== oldData[key]) diff[key] = newData[key];
+  //   });
+  //   return diff;
+  // };
 
   const buildDraftDiff = (oldData, newData) => {
     const diff = {};
