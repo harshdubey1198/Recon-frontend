@@ -103,7 +103,7 @@ const menuItems = [
         </div> */}
 
         {/* Scrollable Navigation Area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1">
           {/* Navigation */}
           <nav className="mt-6 px-4">
             <ul className="space-y-1">
@@ -198,8 +198,9 @@ const menuItems = [
       )}
 
       {/* Main content */}
-      <main className="flex-1 ml-0 lg:ml-72">
-        <div className="min-h-screen bg-gray-50">
+            <main className="flex-1 ml-0 lg:ml-72 flex flex-col h-screen overflow-hidden">
+        <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+
           {/* Header - Fixed at top */}
           <header className="bg-white border-b border-gray-200 shadow-sm backdrop-blur-sm bg-white/95 sticky top-0 z-30">
             <div className="px-6 py-4">
@@ -228,7 +229,7 @@ const menuItems = [
           </header>
 
           {/* Page content - Scrollable */}
-          <div className="p-6">
+          <div className="p-6 flex-1 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
               {/* Render your Dashboard component */}
               {activeItem === "Dashboard" && <Dashboard />}
