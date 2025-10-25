@@ -140,9 +140,11 @@ export async function fetchDomainDistribution() {
   return axiosInstance.get("/api/domain/distribution/");
 }
 
-export async function fetchMasterCategories() {
-  return axiosInstance.get("/api/master/category/");
+export async function fetchMasterCategories(page = 1, search = "") {
+  const query = search ? `&search=${encodeURIComponent(search)}` : "";
+  return axiosInstance.get(`/api/master/category/?page=${page}${query}`);
 }
+
 
 
 export async function fetchAssignedCategories() {
@@ -167,8 +169,8 @@ export async function assignMasterCategoriesToUser(data) {
 }
 
 
-export async function fetchPortals() {
-  return axiosInstance.get("/api/portals/list/");
+export async function fetchPortals(page = 1)  {
+  return axiosInstance.get(`/api/portals/list/?page=${page}`);
 }
 
 export async function fetchUnassignedUsers() {
@@ -200,8 +202,8 @@ export async function fetchAssignmentsByUsername(username) {
   return axiosInstance.get(`/account/assignments/list/?username=${username}`);
 }
 
-export async function fetchMappedCategoriesById(id) {
-  return axiosInstance.get(`/api/master/categories/mapped/${id}/`);
+export async function fetchMappedCategoriesById(id,page=1) {
+  return axiosInstance.get(`/api/master/categories/mapped/${id}/?page=${page}`);
 }
 
 
@@ -209,8 +211,8 @@ export async function fetchMappedCategoriesById(id) {
  * Fetch categories for a given portal
  * @param {string} portalName - e.g., "newsableasia"
  */
-export async function fetchPortalCategories(portalName) {
-  return axiosInstance.get(`/api/portals/categories/list/${portalName}/`);
+export async function fetchPortalCategories(portalName,page=1) {
+  return axiosInstance.get(`/api/portals/categories/list/${portalName}/?page=${page}`);
 }
 
 export async function mapMasterCategory(data) {
@@ -230,13 +232,13 @@ export async function registerUser(data) {
   });
 }
 
-export const fetchCategoryMappings = () => {
-  return axiosInstance.get("/api/master/category/mapping/");
+export  async function fetchCategoryMappings(page = 1){
+  return axiosInstance.get(`/api/master/category/mapping/?page=${page}`);
 };
 
 
-export async function fetchUserDetails() {
-  return axiosInstance.get("/account/user/details/list/");
+export async function fetchUserDetails(page = 1) {
+  return axiosInstance.get(`/account/user/details/list/?page=${page}`);
 }
 // export async function fetchMasterCategories() {
 //   return axiosInstance.get("/api/master/category/");
@@ -247,8 +249,9 @@ export async function fetchAllTags() {
   return axiosInstance.get("/api/all/tags/");
 }
 
-export async function fetchMappedCategories(mapped = false) {
-  return axiosInstance.get(`/api/master/category/?mapped=${mapped}`);
+export async function fetchMappedCategories(mapped = false,page=1) {
+ return axiosInstance.get(`/api/master/category/?mapped=${mapped}&page=${page}`);
+
 }
 
 

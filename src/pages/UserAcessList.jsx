@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { fetchUserDetails, registerUser } from "../../server"; // adjust path
-import { toast } from "react-toastify";
-
+import React, { useState, useEffect, useRef } from "react";
+import { User, Globe, Tag, FileText, Plus, X } from "lucide-react";
+import { fetchUserDetails, registerUser } from "../../server";
+import { toast, ToastContainer } from "react-toastify";
 export default function UserAccessTable() {
   const [users, setUsers] = useState([]);
   const [userAccess, setUserAccess] = useState({});
@@ -13,44 +13,92 @@ export default function UserAccessTable() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  const [loadingPage, setLoadingPage] = useState(false);
+  
+  const scrollContainerRef = useRef(null);
+  const scrollTimeout = useRef(null);
 
   // Load users from API
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const res = await fetchUserDetails();
-        const apiResponse = res.data; // unwrap Axios response
+  const loadUsers = async (page = 1) => {
+    if (loadingPage) return;
+    
+    setLoadingPage(true);
+    try {
+      const res = await fetchUserDetails(page);
+      const apiResponse = res.data;
 
-        if (apiResponse.status && Array.isArray(apiResponse.data)) {
-          const apiUsers = apiResponse.data.map((u) => ({
-            name: u.username,
-            joined: new Date(u.date_joined).toISOString().split("T")[0],
+      if (apiResponse.status && Array.isArray(apiResponse.data)) {
+        const apiUsers = apiResponse.data.map((u) => ({
+          name: u.username || '',
+          joined: u.date_joined ? new Date(u.date_joined).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        }));
+
+        const apiUserAccess = {};
+        apiResponse.data.forEach((u) => {
+          const username = u.username || '';
+          apiUserAccess[username] = (u.assigned_portals || []).map((portal) => ({
+            domain: { name: portal.name || portal.domain || '' },
+            categories: (portal.categories || []).map((c) => typeof c === 'string' ? c : (c.name || '')),
+            totalPosts: portal.total_posts || portal.totalPosts || 0,
+            todaysPosts: portal.todays_posts || portal.todaysPosts || 0,
           }));
+        });
 
-          const apiUserAccess = {};
-          apiResponse.data.forEach((u) => {
-            apiUserAccess[u.username] = u.assigned_portals.map((portal) => ({
-              domain: { name: portal.name },
-              categories: portal.categories.map((c) => c.name),
-              totalPosts: portal.total_posts,
-            }));
-          });
+       setUsers(prev => page === 1 ? apiUsers : [...prev, ...apiUsers]);
 
-          setUsers(apiUsers);
-          setStatus(
-            apiUsers.reduce((acc, u) => ({ ...acc, [u.name]: true }), {})
-          );
-          setUserAccess(apiUserAccess);
-        } else {
-          console.error("Invalid API response", apiResponse);
+       setStatus(prev => ({ ...prev, ...apiUsers.reduce((acc, u) => ({ ...acc, [u.name]: true }), {}) }));
+
+        setUserAccess(prev => ({ ...prev, ...apiUserAccess }));
+
+        
+        // Update pagination info
+        if (apiResponse.pagination) {
+          setCurrentPage(apiResponse.pagination.page);
+          setTotalPages(apiResponse.pagination.total_pages);
+          setHasNext(!!apiResponse.pagination.next);
+          setHasPrevious(!!apiResponse.pagination.previous);
         }
-      } catch (err) {
-        console.error("Failed to fetch users:", err);
+      } else {
+        console.error("Invalid API response", apiResponse);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setLoadingPage(false);
+    }
+  };
 
-    loadUsers();
+  useEffect(() => {
+    loadUsers(1);
   }, []);
+
+  // Handle scroll for pagination
+ // Handle scroll for pagination (replace your current handleScroll with this)
+const handleScroll = () => {
+  const container = scrollContainerRef.current;
+  if (!container || loadingPage) return;
+
+  const { scrollTop, scrollHeight, clientHeight } = container;
+  const scrolledToBottom = scrollHeight - scrollTop <= clientHeight + 50;
+
+  if (scrolledToBottom && hasNext) {
+    const nextPage = currentPage + 1;
+    if (nextPage <= totalPages) {
+      // optional debounce (uses your existing refs)
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      scrollTimeout.current = setTimeout(() => {
+        loadUsers(nextPage);
+      }, 150);
+    }
+  }
+};
+
 
   const toggleStatus = (userName) => {
     setStatus((prev) => ({ ...prev, [userName]: !prev[userName] }));
@@ -63,25 +111,20 @@ export default function UserAccessTable() {
     setIsLoading(true);
 
     try {
-     const res = await registerUser({
+    const res =  await registerUser({
         username: newUser.username,
         email: newUser.email,
         password: newUser.password,
       });
-      toast.success(res.data.message );
-      const newUserData = {
-        name: newUser.username,
-        joined: new Date().toISOString().split("T")[0],
-      };
+      // toast.success(res.data.message);
+      // console.log("successMeaage",res.data.message);
+      
+   await loadUsers(currentPage);
 
-      setUsers([...users, newUserData]);
-      setStatus((prev) => ({ ...prev, [newUserData.name]: true }));
-      setUserAccess((prev) => ({ ...prev, [newUserData.name]: [] }));
       setNewUser({ username: "", email: "", password: "" });
       setIsModalOpen(false);
     } catch (err) {
-      console.error("Failed to register user:gr", err.message.username[0]);
-      toast.error( err.message.username[0]);
+      toast.error(err.message?.username?.[0]);
     } finally {
       setIsLoading(false);
     }
@@ -95,135 +138,165 @@ export default function UserAccessTable() {
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
-          User Access Management
-        </h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-800 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
-        >
-          Add User
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              User Access Management
+            </h1>
+            <p className="text-gray-600">Manage user permissions and portal access</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-6 py-3 bg-gray-900 text-white font-semibold rounded-xl shadow-lg hover:bg-gray-800 hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+          >
+            <Plus size={20} />
+            Add User
+          </button>
+        </div>
 
-      <div className="overflow-x-auto shadow-lg rounded-lg">
-        <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-          <thead className="bg-black text-white">
-            <tr>
-              <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                User
-              </th>
-              <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                Status
-              </th>
-              <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                Joined Date
-              </th>
-              <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                Portal
-              </th>
-              <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                Categories
-              </th>
-              <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                Total Posts
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
+        {/* Pagination Info */}
+        <div className="mb-4 flex justify-between items-center">
+         
+          {loadingPage && (
+            <div className="text-sm text-gray-600 flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin"></div>
+              Loading...
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable Container */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="max-h-[calc(100vh-250px)] overflow-y-auto pr-2"
+          style={{ scrollBehavior: 'smooth' }}
+        >
+          <div className="grid gap-6">
             {users.map((user) => {
               const accessList = userAccess[user.name] || [];
-              if (accessList.length === 0) {
-                return (
-                  <tr
-                    key={user.name}
-                    className="hover:bg-gray-50 transition duration-150"
-                  >
-                    <td className="py-4 px-6 font-medium text-gray-900">
-                      {user.name}
-                    </td>
-                    <td className="py-4 px-6">
-                      <input
-                        type="checkbox"
-                        checked={status[user.name]}
-                        onChange={() => toggleStatus(user.name)}
-                      />
-                    </td>
-                    <td className="py-4 px-6">{user.joined}</td>
-                    <td className="py-4 px-6 text-gray-500" colSpan={3}>
-                      No Access Assigned
-                    </td>
-                  </tr>
-                );
-              }
-
-              return accessList.map((access, idx) => (
-                <tr
-                  key={`${user.name}-${idx}`}
-                  className="hover:bg-gray-50 transition duration-150"
+              const isActive = status[user.name];
+              
+              return (
+                <div
+                  key={user.name}
+                  className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200"
                 >
-                  {idx === 0 && (
-                    <>
-                      <td
-                        className="py-4 px-6 font-medium text-gray-900"
-                        rowSpan={accessList.length}
+                  <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                          <User className="text-gray-900" size={24} />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold text-white">{user.name}</h2>
+                          <p className="text-gray-300 text-sm">
+                            Joined {user.joined} • {accessList.length} {accessList.length === 1 ? 'Portal' : 'Portals'} Assigned
+                          </p>
+                        </div>
+                      </div>
+                      {/* <button
+                        onClick={() => toggleStatus(user.name)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
+                          isActive
+                            ? 'bg-green-500 text-white hover:bg-green-600'
+                            : 'bg-gray-600 text-gray-200 hover:bg-gray-700'
+                        }`}
                       >
-                        {user.name}
-                      </td>
-                      <td className="py-4 px-6" rowSpan={accessList.length}>
-                        <input
-                          type="checkbox"
-                          checked={status[user.name]}
-                          onChange={() => toggleStatus(user.name)}
-                        />
-                      </td>
-                      <td className="py-4 px-6" rowSpan={accessList.length}>
-                        {user.joined}
-                      </td>
-                    </>
-                  )}
-                  <td className="py-4 px-6">
-                    <a
-                      href={access.domain.name}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-black hover:underline font-medium"
-                    >
-                      {access.domain.name}
-                    </a>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex flex-wrap gap-2">
-                      {access.categories.map((cat, i) => (
-                        <span
-                          key={i}
-                          className="bg-gray-200 text-gray-900 text-xs font-semibold px-3 py-1 rounded-full"
-                        >
-                          {cat}
-                        </span>
-                      ))}
+                        <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-white' : 'bg-gray-400'}`} />
+                        {isActive ? 'Active' : 'Inactive'}
+                      </button> */}
                     </div>
-                  </td>
-                  <td className="py-4 px-6 font-semibold">
-                    {access.totalPosts}
-                  </td>
-                </tr>
-              ));
+                  </div>
+
+                  <div className="p-6">
+                    {accessList.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Globe className="mx-auto mb-3 opacity-30" size={48} />
+                        <p className="font-medium">No Portal Access Assigned</p>
+                        <p className="text-sm mt-1">Assign portals to grant access</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4">
+                        {accessList.map((access, idx) => (
+                          <div
+                            key={idx}
+                            className="border border-gray-200 rounded-xl p-5 hover:border-gray-400 hover:shadow-md transition-all duration-200 bg-gradient-to-br from-white to-gray-50"
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3 flex-1">
+                                <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <Globe className="text-white" size={20} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p
+                                    // href={access.domain.name}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-lg font-bold text-gray-900 hover:text-gray-700 hover:underline block truncate"
+                                  >
+                                    {access.domain.name}
+                                  </p>
+                                </div>
+                              </div>
+                             <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg flex-shrink-0 ml-4">
+                                <FileText size={16} />
+                                <span className="font-bold">{access.todaysPosts}</span>
+                                <span className="text-sm">today posts</span>
+                              </div>
+                              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg flex-shrink-0 ml-4">
+                                <FileText size={16} />
+                                <span className="font-bold">{access.totalPosts}</span>
+                                <span className="text-sm">posts</span>
+                              </div>
+                               
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Tag size={16} className="text-gray-500 flex-shrink-0" />
+                              {access.categories.map((cat, i) => (
+                                <span
+                                  key={i}
+                                  className="bg-gray-200 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full hover:bg-gray-300 transition-colors"
+                                >
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
             })}
-          </tbody>
-        </table>
+          </div>
+
+          {/* Scroll Indicators */}
+          {hasPrevious && (
+            <div className="text-center py-2 text-gray-500 text-sm">
+              Scroll up to load previous page
+            </div>
+          )}
+          {hasNext && (
+            <div className="text-center py-2 text-gray-500 text-sm">
+              Scroll down to load next page
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100">
-            <div className="bg-gradient-to-r from-gray-600 to-gray-600 text-white rounded-t-2xl px-8 py-6 flex justify-between items-center">
+            <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-t-2xl px-8 py-6 flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">Add New User</h2>
-                <p className="text-blue-100 text-sm">
+                <p className="text-gray-300 text-sm mt-1">
                   Fill in the details to create a new user account
                 </p>
               </div>
@@ -232,11 +305,11 @@ export default function UserAccessTable() {
                 disabled={isLoading}
                 className="p-2 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition disabled:opacity-50"
               >
-                ✕
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-8 space-y-6">
+            <form onSubmit={handleAddUser} className="p-8 space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Username
@@ -248,7 +321,7 @@ export default function UserAccessTable() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, username: e.target.value })
                   }
-                  className="w-full pl-3 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 placeholder-gray-400"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-100 focus:border-gray-500 transition-all duration-200 placeholder-gray-400"
                   disabled={isLoading}
                 />
               </div>
@@ -263,7 +336,7 @@ export default function UserAccessTable() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, email: e.target.value })
                   }
-                  className="w-full pl-3 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 placeholder-gray-400"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-100 focus:border-gray-500 transition-all duration-200 placeholder-gray-400"
                   disabled={isLoading}
                 />
               </div>
@@ -278,28 +351,29 @@ export default function UserAccessTable() {
                   onChange={(e) =>
                     setNewUser({ ...newUser, password: e.target.value })
                   }
-                  className="w-full pl-3 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 placeholder-gray-400"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-100 focus:border-gray-500 transition-all duration-200 placeholder-gray-400"
                   disabled={isLoading}
                 />
               </div>
-            </div>
 
-            <div className="px-8 pb-8 flex justify-end gap-3">
-              <button
-                onClick={closeModal}
-                disabled={isLoading}
-                className="px-5 py-2.5 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddUser}
-                disabled={isLoading}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-gray-600 to-gray-600 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
-              >
-                {isLoading ? "Adding..." : "Add User"}
-              </button>
-            </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={isLoading}
+                  className="px-5 py-2.5 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
+                >
+                  {isLoading ? "Adding..." : "Add User"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

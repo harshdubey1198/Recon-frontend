@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   fetchAdminStats,
   fetchDomainDistribution,
   fetchMasterCategories,
   fetchNewsList,
 } from "../../server";
+import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2 } from "lucide-react";
 export default function Dashboard() {
   const [user, setUser] = useState(null);
 
   const [domains, setDomains] = useState([]);
   const [categories, setCategories] = useState([]);
   const [recentPosts, setRecentPosts] = useState([]);
-
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const scrollContainerRef = useRef(null);
   const [stats, setStats] = useState({
     totalPosts: 0,
     totaltodayPosts: 0,
@@ -21,7 +25,52 @@ export default function Dashboard() {
     activeUsers: 0,
     revenue: 0,
   });
+ const loadNews = async (pageNumber = 1) => {
+    if (isFetching) return;
+    setIsFetching(true);
+    try {
+      const res = await fetchNewsList(pageNumber);
+      if (res?.data?.status) {
+        const mapped = res.data.data.map((item) => ({
+          id: item.id,
+          title: item.news_post_title,
+          category: item.portal_category_name || item.master_category_name,
+          status: item.status === "SUCCESS" ? "Published" : "Draft",
+          views: item.retry_count || 0,
+          date: new Date(item.sent_at).toLocaleDateString(),
+          image: item.news_post_image,
+        }));
 
+        setRecentPosts((prev) =>
+          pageNumber === 1 ? mapped : [...prev, ...mapped]
+        );
+        setPagination(res.data.pagination);
+        setPage(pageNumber);
+      }
+    } catch (err) {
+      console.error("Failed to fetch news list:", err);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // Handle scroll for infinite loading
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container || isFetching || !pagination) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const scrolledToBottom = scrollHeight - scrollTop <= clientHeight + 50;
+
+    // Load next page when scrolled to bottom
+    if (scrolledToBottom && pagination.next) {
+      const nextPage = page + 1;
+      if (nextPage <= pagination.total_pages) {
+        console.log(`Loading page ${nextPage}...`); // Debug log
+        loadNews(nextPage);
+      }
+    }
+  };
   useEffect(() => {
     const loadStats = async () => {
       try {
@@ -43,24 +92,7 @@ export default function Dashboard() {
       }
     };
 
-    // const loadDomains = async () => {
-    //   try {
-    //     const res = await fetchDomainDistribution();
-    //     if (res?.data?.status) {
-    //       const mapped = res.data.data.map((d) => ({
-    //         name: d.portal_name, // Domain name
-    //         posts: d.total_distributions, // Total posts distributed
-    //         traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
-    //         status: d.failed_distributions > 0 ? "Partial" : "Active", // Simple status logic
-    //       }));
-    //       setDomains(mapped);
-    //     }
-    //   } catch (err) {
-    //     console.error("Failed to fetch domains:", err);
-    //   }
-    // };
-
-    const loadDomains = async () => {
+  const loadDomains = async () => {
       try {
         const res = await fetchDomainDistribution();
 
@@ -123,33 +155,11 @@ export default function Dashboard() {
       }
     };
 
-    const loadNews = async () => {
-      try {
-        const res = await fetchNewsList();
-        if (res?.data?.status) {
-          // API से आए data को map करके UI format में बदलते हैं
-          const mapped = res.data.data.map((item) => ({
-            id: item.id,
-            title: item.news_post_title,
-            category: item.portal_category_name || item.master_category_name,
-            status: item.status === "SUCCESS" ? "Published" : "Draft",
-            views: item.retry_count || 0, // views API से नहीं आ रहे तो fallback
-            date: new Date(item.sent_at).toLocaleDateString(),
-            image: item.news_post_image,
-          }));
-          setRecentPosts(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to fetch news list:", err);
-      }
-    };
-
-    loadStats();
+   loadStats();
     loadDomains();
     loadCategories();
-    loadNews();
+    loadNews(1); // Load first page on mount
   }, []);
-
   useEffect(() => {
     const savedUser = localStorage.getItem("auth_user");
     if (savedUser) {
@@ -162,63 +172,13 @@ export default function Dashboard() {
     }
   }, []);
 
-  // const recentPosts = [
-  //   {
-  //     id: 1,
-  //     title: "Getting Started with React Hooks",
-  //     category: "Development",
-  //     status: "Published",
-  //     views: 1250,
-  //     date: "2024-01-15",
-  //   },
-  //   {
-  //     id: 2,
-  //     title: "Modern CSS Grid Layouts",
-  //     category: "Design",
-  //     status: "Draft",
-  //     views: 0,
-  //     date: "2024-01-14",
-  //   },
-  //   {
-  //     id: 3,
-  //     title: "API Security Best Practices",
-  //     category: "Security",
-  //     status: "Published",
-  //     views: 890,
-  //     date: "2024-01-13",
-  //   },
-  //   {
-  //     id: 4,
-  //     title: "Database Optimization Tips",
-  //     category: "Backend",
-  //     status: "Published",
-  //     views: 654,
-  //     date: "2024-01-12",
-  //   },
-  // ];
-
-  // const categories = [
-  //   { name: "Development", posts: 342, color: "bg-blue-500" },
-  //   { name: "Design", posts: 189, color: "bg-purple-500" },
-  //   { name: "Marketing", posts: 234, color: "bg-green-500" },
-  //   { name: "Business", posts: 156, color: "bg-orange-500" },
-  //   { name: "Technology", posts: 198, color: "bg-red-500" },
-  //   { name: "Security", posts: 128, color: "bg-indigo-500" },
-  // ];
-
-  // const domains = [
-  //   { name: "https://www.dxbnewsnetwork.com/", posts: 456, traffic: "85.2K", status: "Active" },
-  //   { name: "https://cninews.ca/", posts: 234, traffic: "42.1K", status: "Active" },
-  //   { name: "https://www.janhimachal.com/", posts: 189, traffic: "28.5K", status: "Active" },
-  //   { name: "https://www.gcc.com/", posts: 167, traffic: "31.8K", status: "Maintenance" }
-  // ];
 
   const handleLogout = () => {
     console.log("Logout clicked");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 ">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="px-6 py-4">
@@ -274,8 +234,8 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6   gap-6     mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <svg
@@ -428,205 +388,132 @@ export default function Dashboard() {
               All operational
             </div>
           </div>
+   </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-orange-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {stats.targets}
-            </h3>
-            <p className="text-sm text-gray-500">Target Audience</p>
-            <div className="mt-2 flex items-center text-xs text-orange-600">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              +8.3% engagement
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {stats?.activeUsers?.toLocaleString() ?? "0"}
-            </h3>
-            <p className="text-sm text-gray-500">Active Users</p>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              +15.2% this week
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-indigo-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                  />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              ${stats.revenue.toLocaleString()}
-            </h3>
-            <p className="text-sm text-gray-500">Revenue</p>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              +22.1% from last month
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Recent Posts */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Recent Posts
-              </h3>
-              <p className="text-sm text-gray-500">Latest published content</p>
+         <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div className="p-6 border-b border-blue-100/50 bg-black">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Recent Posts
+                  </h3>
+                  <p className="text-sm text-blue-100">
+                    Latest published content
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {recentPosts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
-                  >
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 mb-1">
-                        {post.title}
-                      </h4>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span className="bg-gray-200 px-2 py-1 rounded-full text-xs">
-                          {post.category}
-                        </span>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            post.status === "Published"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-yellow-100 text-yellow-600"
-                          }`}
-                        >
-                          {post.status}
-                        </span>
-                        <span>{post.views} views</span>
+              <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="space-y-3 overflow-y-auto h-[920px] recent-posts-scroll pr-2"
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                {recentPosts.length === 0 && !isFetching ? (
+                  <div className="text-center py-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                      <FileText className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 font-medium">No posts available</p>
+                  </div>
+                ) : (
+                  recentPosts.map((post) => (
+                    <div key={post.id} className="group relative bg-white rounded-xl p-4 border border-gray-200 hover:border-black/50 hover:shadow-md transition-all duration-200">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/0 via-blue-50/50 to-blue-50/0 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-200"></div>
+                      <div className="relative">
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 flex-1 pr-4">
+                            {post.title}
+                          </h4>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">{post.date}</span>
+                        </div>
+                        <div className="flex items-center flex-wrap gap-2">
+                          <span className="inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 px-3 py-1 rounded-full text-xs font-medium text-gray-700 border border-gray-200">
+                            {post.category}
+                          </span>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                              post.status === "Published"
+                                ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200"
+                                : "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border border-yellow-200"
+                            }`}
+                          >
+                            {post.status}
+                          </span>
+                          <span className="inline-flex items-center text-xs text-gray-600 font-medium">
+                            <Eye className="w-3 h-3 mr-1" />
+                            {post.views}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-400">{post.date}</div>
+                  ))
+                )}
+                {isFetching && (
+                  <div className="flex justify-center py-8">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-100"></div>
+                      <div className="animate-spin rounded-full h-10 w-10 border-4 border-t-blue-600 absolute top-0 left-0"></div>
+                    </div>
                   </div>
-                ))}
+                )}
+                {pagination && page >= pagination.total_pages && !isFetching && recentPosts.length > 0 && (
+                  <div className="text-center py-6">
+                    <div className="inline-flex items-center px-4 py-2 bg-gray-50 rounded-full border border-gray-200">
+                      <CheckCircle2 className="w-4 h-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-500 font-medium">All posts loaded</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Categories Overview */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Categories
-              </h3>
-              <p className="text-sm text-gray-500">
-                Content distribution by category
-              </p>
+          <div className="bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-lg border border-black/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div className="p-6 border-b border-purple-100/50 bg-black">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <FolderOpen className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Categories
+                  </h3>
+                  <p className="text-sm text-purple-100">
+                    Content distribution by category
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {categories.map((category, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between"
+                    className="group relative bg-white rounded-xl p-4 border border-gray-100 hover:border-black/50 hover:shadow-md transition-all duration-200"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-3 h-3 rounded-full ${category.color}`}
-                      ></div>
-                      <span className="font-medium text-gray-900">
-                        {category.name}
-                      </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-50/0 via-purple-50/50 to-purple-50/0 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-200"></div>
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center space-x-3 flex-1">
+                        <div className={`w-10 h-10 rounded-lg ${category.color} flex items-center justify-center shadow-sm`}>
+                          <Tag className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {category.name}
+                        </span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
                     </div>
-                    {/* <div className="text-right">
-                <div className="font-semibold text-gray-900">
-                  {category.posts}
-                </div>
-                <div className="text-xs text-gray-500">posts</div>
-              </div> */}
                   </div>
                 ))}
-              </div>
+               </div>
             </div>
           </div>
         </div>
