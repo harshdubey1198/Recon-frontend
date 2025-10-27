@@ -1,19 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { FileText, BarChart3, Loader2, ExternalLink, Globe, AlertTriangle, Filter, X, } from "lucide-react";
+import {
+  FileText,
+  BarChart3,
+  Loader2,
+  ExternalLink,
+  Globe,
+  AlertTriangle,
+  Filter,
+  Search,
+  X,
+} from "lucide-react";
 import { fetchNewsReport, fetchDistributedNews } from "../../server";
 import MasterFilter from "../components/filters/MasterFilter";
+import SearchFilter from "../components/filters/SearchFilter";
 
 export default function NewsReports() {
   const [filters, setFilters] = useState({});
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [selectedPostTitle, setSelectedPostTitle] = useState(null);
   const [distribution, setDistribution] = useState([]);
   const [distLoading, setDistLoading] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [selectedPostTitle, setSelectedPostTitle] = useState(null);
 
-  // 🔹 Fetch report data
+  // 🔹 Fetch Report Data
   useEffect(() => {
     const loadReport = async () => {
       setLoading(true);
@@ -29,12 +40,13 @@ export default function NewsReports() {
     loadReport();
   }, [filters]);
 
-  // 🔹 Fetch distribution data for selected post
-  const handleViewDistribution = async (newsId, postTitle) => {
-    setSelectedPost(newsId);
+  // 🔹 Fetch Distribution Data
+  const handleViewDistribution = async (post) => {
+    setSelectedPost(post.id);
+    setSelectedPostTitle(post.title || post.news_post_title || "Untitled");
     setDistLoading(true);
     try {
-      const res = await fetchDistributedNews({ news_post_id: newsId });
+      const res = await fetchDistributedNews({ news_post_id: post.id });
       if (res.data?.status) setDistribution(res.data.data || []);
       else setDistribution([]);
     } catch (err) {
@@ -44,9 +56,14 @@ export default function NewsReports() {
     }
   };
 
-  // 🔹 Apply Filters
+  // 🔹 Handle Search
+  const handleSearch = (query) => {
+    setFilters((prev) => ({ ...prev, search: query }));
+  };
+
+  // 🔹 Apply Filters from Modal
   const handleApplyFilters = (newFilters) => {
-    setFilters(newFilters);
+    setFilters((prev) => ({ ...prev, ...newFilters }));
     setShowFilterModal(false);
   };
 
@@ -54,20 +71,27 @@ export default function NewsReports() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-lg border border-gray-200 relative">
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-4 mb-6 gap-4">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-gray-100 rounded-lg">
               <BarChart3 className="w-5 h-5 text-gray-700" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900">News Reports</h2>
           </div>
-          <button
-            onClick={() => setShowFilterModal(true)}
-            className="px-4 py-2 flex items-center gap-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all"
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-          </button>
+
+          {/* 🔍 Search + Filter Buttons */}
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex-1 md:w-72">
+              <SearchFilter onChange={handleSearch} />
+            </div>
+            <button
+              onClick={() => setShowFilterModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-all"
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+            </button>
+          </div>
         </div>
 
         {/* Loading */}
@@ -113,7 +137,7 @@ export default function NewsReports() {
                   {user.master_posts.map((post) => (
                     <div
                       key={post.id}
-                      onClick={() => handleViewDistribution(post.id)}
+                      onClick={() => handleViewDistribution(post)}
                       className={`border-2 p-4 rounded-lg cursor-pointer transition-all ${
                         selectedPost === post.id
                           ? "border-gray-900 bg-gray-900 text-white shadow-lg"
@@ -147,7 +171,8 @@ export default function NewsReports() {
               <div className="mt-8 border-t pt-6">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-800">
                   <Globe className="w-5 h-5 text-gray-700" />
-                  Distributions for Post ID: {selectedPost}
+                  Distributions for:{" "}
+                  <span className="text-gray-900">{selectedPostTitle}</span>
                 </h3>
 
                 {distLoading ? (
@@ -251,14 +276,13 @@ export default function NewsReports() {
             <div className="space-y-4">
               <MasterFilter
                 visibleFilters={[
-                    "date_filter",
-                    "portal_id",
-                    "master_category_id",
-                    "username",
-                    "search",
+                  "date_filter",
+                  "portal_id",
+                  "master_category_id",
+                  "username",
                 ]}
                 onChange={handleApplyFilters}
-                />
+              />
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
