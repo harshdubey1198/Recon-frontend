@@ -104,9 +104,9 @@ const menuItems = [
         </div> */}
 
         {/* Scrollable Navigation Area */}
-        <div className="flex-1">
+         <div className="flex-1 overflow-y-auto">
           {/* Navigation */}
-          <nav className="mt-6 px-4">
+          <nav className="mt-4 sm:mt-6 px-3 sm:px-4">
             <ul className="space-y-1">
               {menuItems.map((item) => {
                 const isActive = activeItem === item.name;
@@ -149,44 +149,41 @@ const menuItems = [
           </nav>
 
           {/* Quick Actions */}
-          <div className="mt-8 px-4 pb-6">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+           <div className="mt-6 sm:mt-8 px-3 sm:px-4 pb-4 sm:pb-6">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
               Quick Actions
             </h3>
-            <div className="space-y-2">
-              <button className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span>Create New</span>
+            <div className="space-y-1.5 sm:space-y-2">
+              <button className="w-full flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
+                <span className="truncate">Create New</span>
               </button>
-              <button className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
-                <span>Import Data</span>
+              <button className="w-full flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                <div className="w-2 h-2 bg-orange-400 rounded-full flex-shrink-0"></div>
+                <span className="truncate">Import Data</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* User section at bottom - Fixed */}
-        <div className="p-4 border-t border-gray-100 bg-white flex-shrink-0">
-          <div className="flex items-center space-x-3 p-3 rounded-xl bg-gray-100 hover:from-blue-50 hover:to-purple-50 transition-all duration-200 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-r from-black to-gray-500 rounded-full flex items-center justify-center shadow-md">
-              <User className="w-5 h-5 text-white" />
+       <div className="p-3 sm:p-4 border-t border-gray-100 bg-white flex-shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 rounded-xl bg-gray-100 hover:from-blue-50 hover:to-purple-50 transition-all duration-200 group">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-black to-gray-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-700 transition-colors duration-200">
+              <p className="text-xs sm:text-sm font-medium text-gray-900 truncate group-hover:text-blue-700 transition-colors duration-200">
                 {user?.username || "User Name"}
               </p>
             </div>
-            <div className="text-gray-400 group-hover:text-blue-600 transition-colors duration-200">
-                  <button
-                           title="Logout"
-                          onClick={logout}
-                          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          <LogOut className="w-4 h-4 mr-2" />
-                          
-                        </button>
-            </div>
+            <button
+              title="Logout"
+              onClick={logout}
+              className="text-gray-400 group-hover:text-blue-600 transition-colors duration-200 flex-shrink-0"
+            >
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
           </div>
         </div>
       </aside>
