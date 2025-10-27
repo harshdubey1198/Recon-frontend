@@ -24,10 +24,14 @@ const NewsArticleForm = () => {
   const [rotation, setRotation] = useState(0);
   const [aspect, setAspect] = useState(16 / 9);
   const [assignedCategories, setAssignedCategories] = useState([]);
+  const [nextCategoryPage, setNextCategoryPage] = useState(null);
+  const [isLoadingMoreCategories, setIsLoadingMoreCategories] = useState(false);
   const [mappedPortals, setMappedPortals] = useState([]);
+  const [showPortalSection, setShowPortalSection] = useState(false);
+  const [nextPage, setNextPage] = useState(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   console.log("mappedPortals : ", mappedPortals);
   
-  const [showPortalSection, setShowPortalSection] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDrafts, setShowDrafts] = useState(false);
   useEffect(() => {
@@ -37,12 +41,64 @@ const NewsArticleForm = () => {
   }, [formData.master_category]);
 
 
-const handleCategorySelect = async (e) => {
-  const categoryId = e.target.value;
-  setFormData((prev) => ({
-    ...prev,
-    master_category: categoryId,
-  }));
+// const handleCategorySelect = async (e) => {
+//   const categoryId = e.target.value;
+//   setFormData((prev) => ({
+//     ...prev,
+//     master_category: categoryId,
+//   }));
+
+//   if (!categoryId) {
+//     setMappedPortals([]);
+//     setShowPortalSection(false);
+//     return;
+//   }
+
+//   try {
+//    const res = await fetchMappedCategoriesById(categoryId, mappedPortals?.nextPage ?? 1);
+//    const raw = res?.data?.data;
+//     const mappings = raw?.mappings ?? [];
+//     if (Array.isArray(mappings) && mappings.length > 0) {
+//       const excluded = Array.isArray(drafts?.excluded_portals)
+//         ? drafts.excluded_portals.map(Number)
+//         : [];
+
+//       const formatted = mappings.map((item) => ({ 
+//         id: item.id,
+//         portalId: Number(item.portal_id),
+//         portalName: item.portal_name || "Unnamed Portal",
+//         categoryId: item.master_category,
+//         categoryName: item.master_category_name || "",
+//         portalCategoryName: item.portal_category_name || "",
+//         selected: !excluded.includes(Number(item.portal_id)),
+//       }));
+
+//      setMappedPortals((prev) => [...prev, ...formatted]);
+
+//       setShowPortalSection(true);
+
+//       setTimeout(() => {
+//       }, 400);
+//     } else {
+//       setMappedPortals([]);
+//       setShowPortalSection(false);
+//     }
+//   } catch (err) {
+//     console.error("❌ Error fetching mapped portals:", err);
+//   }
+// };
+
+const handleCategorySelect = async (e, loadNext = false) => {
+  const categoryId = loadNext ? formData.master_category : e.target.value;
+
+  if (!loadNext) {
+    setFormData((prev) => ({
+      ...prev,
+      master_category: categoryId,
+    }));
+    setMappedPortals([]);
+    setNextPage(null);
+  }
 
   if (!categoryId) {
     setMappedPortals([]);
@@ -51,9 +107,14 @@ const handleCategorySelect = async (e) => {
   }
 
   try {
-    const res = await fetchMappedCategoriesById(categoryId);
-   const raw = res?.data?.data;
+    if (loadNext) setIsLoadingMore(true);
+    const res = await fetchMappedCategoriesById(categoryId, loadNext ? nextPage : 1);
+    const raw = res?.data?.data;
     const mappings = raw?.mappings ?? [];
+    const next = res?.data?.pagination.next || null;
+    // console.log("🔹 Next page URL:", next);
+
+    
     if (Array.isArray(mappings) && mappings.length > 0) {
       const excluded = Array.isArray(drafts?.excluded_portals)
         ? drafts.excluded_portals.map(Number)
@@ -69,17 +130,23 @@ const handleCategorySelect = async (e) => {
         selected: !excluded.includes(Number(item.portal_id)),
       }));
 
-     setMappedPortals(formatted);
+      setMappedPortals((prev) => [...prev, ...formatted]);
       setShowPortalSection(true);
+      if (next) {
+        const nextPageParam = new URL(next).searchParams.get("page");
+        setNextPage(Number(nextPageParam));
+        // console.log(Number(nextPageParam))
+      } else {
+        setNextPage(null);
+      }
 
-      setTimeout(() => {
-      }, 400);
     } else {
-      setMappedPortals([]);
       setShowPortalSection(false);
     }
   } catch (err) {
     console.error("❌ Error fetching mapped portals:", err);
+  } finally {
+    setIsLoadingMore(false);
   }
 };
 
@@ -337,31 +404,46 @@ const handleViewDrafts = async () => {
     };
   }, []);
 
-  useEffect(() => {
-    const loadAssignedCategories = async () => {
+  const loadAssignedCategories = async (page = 1, append = false) => {
       try {
-        const res = await fetchAssignedCategories();
-        if (res.data?.status && Array.isArray(res.data.data)) {
+        const res = await fetchAssignedCategories(page);
+        if (res?.data?.status && Array.isArray(res.data.data)) {
           const categories = res.data.data
             .map((item) => item.master_category)
-            .filter(Boolean) // remove nulls
+            .filter(Boolean)
             .map((cat) => ({
               id: Number(cat.id),
               name: cat.name,
             }));
-  
-          setAssignedCategories(categories);
+
+          // Append or replace based on page
+          setAssignedCategories((prev) =>
+            append ? [...prev, ...categories] : categories
+          );
+
+          // handle pagination
+          const nextUrl = res.data?.pagination?.next;
+          if (nextUrl) {
+            const nextPageParam = new URL(nextUrl).searchParams.get("page");
+            setNextCategoryPage(Number(nextPageParam));
+          } else {
+            setNextCategoryPage(null);
+          }
+
           setIsCategoryloading(false);
         } else {
-          console.warn(" No assigned categories found");
+          console.warn("⚠️ No assigned categories found");
         }
       } catch (err) {
-        console.error("Failed to fetch assigned categories:", err);
+        console.error("❌ Failed to fetch assigned categories:", err);
       }
     };
-  
+  useEffect(() => {
+
+
     loadAssignedCategories();
   }, []);
+
  
   const addTag = () => {
     if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
@@ -718,10 +800,21 @@ const handleViewDrafts = async () => {
                 Category <span className="text-red-500">*</span>
               </label>
 
+             <div className="space-y-2">
               <select
                 name="master_category"
                 value={formData.master_category ?? ""}
-                onChange={handleCategorySelect}
+                onChange={async (e) => {
+                  if (e.target.value === "load_more") {
+                    if (nextCategoryPage) {
+                      setIsLoadingMoreCategories(true);
+                      await loadAssignedCategories(nextCategoryPage, true); // ✅ correct function call
+                      setIsLoadingMoreCategories(false);
+                    }
+                    return;
+                  }
+                  handleCategorySelect(e);
+                }}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
               >
                 {isCategoryloading ? (
@@ -734,9 +827,18 @@ const handleViewDrafts = async () => {
                         {cat.name}
                       </option>
                     ))}
+
+                    {/* 🔹 Inline "Load More" option */}
+                    {nextCategoryPage && (
+                      <option value="load_more" disabled={isLoadingMoreCategories}>
+                        {isLoadingMoreCategories ? "Loading more..." : "↓ Load More Categories"}
+                      </option>
+                    )}
                   </>
                 )}
               </select>
+            </div>
+
 
 
 
@@ -786,6 +888,18 @@ const handleViewDrafts = async () => {
                         </label>
                       ))}
                     </div>
+                      {nextPage && (
+                        <div className="flex justify-center mt-4">
+                          <button
+                            onClick={() => handleCategorySelect(null, true)}
+                            disabled={isLoadingMore}
+                            className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            {isLoadingMore ? "Loading more..." : "Load More Portals"}
+                          </button>
+                        </div> 
+                      )}
+
                   </section>
                 )}
 
