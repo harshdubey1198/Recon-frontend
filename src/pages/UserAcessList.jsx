@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Globe, Tag, FileText, Plus, X } from "lucide-react";
+import { User, Globe, Tag, FileText, Plus, X, Loader2 } from "lucide-react";
 import { fetchUserDetails, registerUser } from "../../server";
 import { toast, ToastContainer } from "react-toastify";
 export default function UserAccessTable() {
@@ -159,12 +159,14 @@ const handleScroll = () => {
         {/* Pagination Info */}
         <div className="mb-4 flex justify-between items-center">
          
-          {loadingPage && (
-            <div className="text-sm text-gray-600 flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin"></div>
-              Loading...
-            </div>
-          )}
+         {loadingPage && (
+              <div className="fixed inset-0 flex items-center justify-center bg-white/60 z-50">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              </div>
+            )}
         </div>
 
         {/* Scrollable Container */}

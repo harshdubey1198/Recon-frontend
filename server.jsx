@@ -151,8 +151,8 @@ export async function fetchMasterCategories(page = 1, search = "") {
 
 
 
-export async function fetchAssignedCategories() {
-  return axiosInstance.get("/account/my/assignments/list/");
+export async function fetchAssignedCategories(page = 1) {
+  return axiosInstance.get(`/account/my/assignments/list/?page=${page}`);
 }
 
 /**

@@ -3,6 +3,7 @@ import { FileText, BarChart3, Loader2, ExternalLink, Globe, AlertTriangle, Filte
 import { fetchNewsReport, fetchDistributedNews } from "../../server";
 import MasterFilter from "../components/filters/MasterFilter";
 import SearchFilter from "../components/filters/SearchFilter";
+import formatUsername from "../utils/formateName";
 
 export default function NewsReports() {
   const [filters, setFilters] = useState({});
@@ -171,7 +172,7 @@ const handleSearch = (query) => {
                 <div className="flex items-center gap-2 mb-2">
                   <FileText className="w-5 h-5 text-gray-700" />
                   <h3 className="text-lg font-semibold text-gray-800">
-                    {user.username}{" "}
+                    {formatUsername(user.username)}{" "}
                     <span className="text-sm text-gray-500">
                       ({user.master_posts_count} posts)
                     </span>
