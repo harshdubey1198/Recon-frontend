@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchPortals } from "../../../server";
 
-export default function PortalFilter({ onChange }) {
+export default function PortalFilter({ onChange, value = "" }) {
   const [portals, setPortals] = useState([]);
 
   useEffect(() => {
@@ -13,6 +13,7 @@ export default function PortalFilter({ onChange }) {
   return (
     <select
       className="border rounded-lg p-2 w-full"
+      value={value}
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="">All Portals</option>

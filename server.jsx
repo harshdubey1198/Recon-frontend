@@ -76,12 +76,16 @@ export async function fetchNewsReport(filters = {}) {
     }
   });
 
-  return axiosInstance.get(`/api/news/report/?${params.toString()}`, {
+  const queryString = params.toString();
+  const url = queryString ? `/api/news/report/?${queryString}` : `/api/news/report/`;
+
+  return axiosInstance.get(url, {
     headers: {
       "Content-Type": "application/json",
     },
   });
 }
+
 // export async function fetchNewsReport(filters = {}) {
 //   const params = new URLSearchParams(filters).toString();
 //   return axiosInstance.get(`/api/news/report/?${params}`, {

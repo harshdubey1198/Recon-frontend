@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  FileText,
-  BarChart3,
-  Loader2,
-  ExternalLink,
-  Globe,
-  AlertTriangle,
-  Filter,
-  Search,
-  X,
-} from "lucide-react";
+import { FileText, BarChart3, Loader2, ExternalLink, Globe, AlertTriangle, Filter, Search, X, } from "lucide-react";
 import { fetchNewsReport, fetchDistributedNews } from "../../server";
 import MasterFilter from "../components/filters/MasterFilter";
 import SearchFilter from "../components/filters/SearchFilter";
@@ -56,16 +46,71 @@ export default function NewsReports() {
     }
   };
 
-  // 🔹 Handle Search
-  const handleSearch = (query) => {
-    setFilters((prev) => ({ ...prev, search: query }));
-  };
+ // 🔹 Handle Search
+const handleSearch = (query) => {
+  // ✅ Reset distribution panel when searching
+  setSelectedPost(null);
+  setSelectedPostTitle(null);
+  setDistribution([]);
 
-  // 🔹 Apply Filters from Modal
+  setFilters((prev) => ({ ...prev, search: query }));
+};
+
+  // 🔹 Apply Filters
   const handleApplyFilters = (newFilters) => {
-    setFilters((prev) => ({ ...prev, ...newFilters }));
+    console.log("📅 Raw Filters from UI:", newFilters);
+
+    const dateFilter =
+      typeof newFilters.date_filter === "object"
+        ? newFilters.date_filter
+        : {
+            date_filter: newFilters.date_filter,
+            start_date: newFilters.start_date,
+            end_date: newFilters.end_date,
+          };
+
+    let apiParams = { ...filters, ...newFilters };
+
+    if (dateFilter.date_filter === "custom") {
+      if (dateFilter.start_date && dateFilter.end_date) {
+        apiParams = {
+          ...apiParams,
+          date_filter: "custom",
+          start_date: dateFilter.start_date,
+          end_date: dateFilter.end_date,
+        };
+      }
+    } else if (["today", "7days"].includes(dateFilter.date_filter)) {
+      apiParams = {
+        ...apiParams,
+        date_filter: dateFilter.date_filter,
+      };
+      delete apiParams.start_date;
+      delete apiParams.end_date;
+    }
+
+    // ✅ Reset distribution section when filters are applied
+    setSelectedPost(null);
+    setSelectedPostTitle(null);
+    setDistribution([]);
+
+    setFilters(apiParams);
     setShowFilterModal(false);
   };
+
+  // 🔹 Clear Filters
+  const handleClearFilters = () => {
+    console.log("🧹 Clearing all filters and reloading default report...");
+
+    // ✅ Hide any open distribution section
+    setSelectedPost(null);
+    setSelectedPostTitle(null);
+    setDistribution([]);
+
+    setFilters({});
+    setShowFilterModal(false);
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -282,6 +327,8 @@ export default function NewsReports() {
                   "username",
                 ]}
                 onChange={handleApplyFilters}
+                onClear={handleClearFilters} 
+                initialFilters={filters} 
               />
             </div>
 
@@ -292,13 +339,8 @@ export default function NewsReports() {
               >
                 Cancel
               </button>
-              <button
-                onClick={() => handleApplyFilters(filters)}
-                className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-all"
-              >
-                Apply Filters
-              </button>
             </div>
+
           </div>
         </div>
       )}

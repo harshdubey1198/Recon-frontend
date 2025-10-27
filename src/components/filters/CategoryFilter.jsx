@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchMasterCategories } from "../../../server";
 
-export default function CategoryFilter({ onChange }) {
+export default function CategoryFilter({ onChange, value = "" }) {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -13,6 +13,7 @@ export default function CategoryFilter({ onChange }) {
   return (
     <select
       className="border rounded-lg p-2 w-full"
+      value={value}
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="">All Categories</option>

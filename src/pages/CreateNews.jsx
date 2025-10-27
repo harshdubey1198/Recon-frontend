@@ -25,7 +25,7 @@ const NewsArticleForm = () => {
   const [aspect, setAspect] = useState(16 / 9);
   const [assignedCategories, setAssignedCategories] = useState([]);
   const [mappedPortals, setMappedPortals] = useState([]);
-  // console.log("mappedPortals : ", mappedPortals);
+  console.log("mappedPortals : ", mappedPortals);
   
   const [showPortalSection, setShowPortalSection] = useState(false);
   const [drafts, setDrafts] = useState([]);
