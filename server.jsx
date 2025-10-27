@@ -188,9 +188,10 @@ export async function fetchAllUsersListSimple() {
   return axiosInstance.get(`/account/all/users/list/`);
 }
 
-export async function fetchPortalStatusByUsername(username) {
-  return axiosInstance.get(`/account/check/username/?username=${username}`);
+export async function fetchPortalStatusByUsername(username, page = 1) {
+  return axiosInstance.get(`/account/check/username/?username=${username}&page=${page}`);
 }
+
 
 export async function mapPortalUser(username, user_id) {
   const formData = new FormData();
@@ -202,8 +203,8 @@ export async function mapPortalUser(username, user_id) {
   });
 }
 
-export async function fetchAssignmentsByUsername(username) {
-  return axiosInstance.get(`/account/assignments/list/?username=${username}`);
+export async function fetchAssignmentsByUsername(username,page=1) {
+  return axiosInstance.get(`/account/assignments/list/?username=${username}&page=${page}`);
 }
 
 export async function fetchMappedCategoriesById(id,page=1) {

@@ -37,47 +37,58 @@ const NewsArticleForm = () => {
   }, [formData.master_category]);
 
 
-  const handleCategorySelect = async (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      master_category: e.target.value,
-    }));
+const handleCategorySelect = async (e) => {
+  const categoryId = e.target.value;
+  setFormData((prev) => ({
+    ...prev,
+    master_category: categoryId,
+  }));
 
-    const categoryId = e.target.value;
-    // console.log("categoryId : ",categoryId);
-    if (categoryId) {
-      try {
-        const res = await fetchMappedCategoriesById(categoryId);
-        // console.log("data for fetchmapped ",res.data?.data)
-        if (res.data?.status && Array.isArray(res.data?.data)) {
-          const formatted = res.data.data.map((item) => ({
-            id: item.id,
-            portalId: item.portal_id,
-            portalName: item.portal_name,
-            categoryId: item.master_category,
-            categoryName: item.master_category_name,
-            portalCategoryName: item.portal_category_name,
-            selected: !drafts.excluded_portals?.includes(item.portal_id),
-          }));
-          setMappedPortals(formatted);
-          setShowPortalSection(true);
-        }
-      } catch (err) {
-        console.error("Error fetching mapped portals:", err);
-      }
+  if (!categoryId) {
+    setMappedPortals([]);
+    setShowPortalSection(false);
+    return;
+  }
+
+  try {
+    const res = await fetchMappedCategoriesById(categoryId);
+   const raw = res?.data?.data;
+    const mappings = raw?.mappings ?? [];
+    if (Array.isArray(mappings) && mappings.length > 0) {
+      const excluded = Array.isArray(drafts?.excluded_portals)
+        ? drafts.excluded_portals.map(Number)
+        : [];
+
+      const formatted = mappings.map((item) => ({
+        id: item.id,
+        portalId: Number(item.portal_id),
+        portalName: item.portal_name || "Unnamed Portal",
+        categoryId: item.master_category,
+        categoryName: item.master_category_name || "",
+        portalCategoryName: item.portal_category_name || "",
+        selected: !excluded.includes(Number(item.portal_id)),
+      }));
+
+     setMappedPortals(formatted);
+      setShowPortalSection(true);
+
+      setTimeout(() => {
+      }, 400);
     } else {
       setMappedPortals([]);
       setShowPortalSection(false);
     }
-  };
+  } catch (err) {
+    console.error("❌ Error fetching mapped portals:", err);
+  }
+};
 
-  const handleViewDrafts = async () => {
+const handleViewDrafts = async () => {
   try {
     const res = await fetchDraftNews();
     if (res.data?.status && Array.isArray(res.data.data)) {
       setDrafts(res.data.data);
       setShowDrafts(!showDrafts);
-      // console.log("🟢 Drafts fetched:", res.data.data);
     }
   } catch (err) {
     console.error("Error fetching drafts:", err);

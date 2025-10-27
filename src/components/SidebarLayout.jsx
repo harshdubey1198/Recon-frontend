@@ -219,7 +219,7 @@ const menuItems = [
                  <div className="absolute right-0 mt-2 w-30 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                         <button
                           onClick={logout}
-                          className="w-auto bg-black text-white flex items-center px-4 py-2 text-sm justify-center"
+                          className="w-auto bg-black text-white flex items-center px-4 py-2 text-md justify-center"
                         >
                           <LogOut className="w-4 h-4 mr-2" />
                           Logout
