@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { fetchAllUsersList, fetchAssignmentsByUsername } from "../../server";
 import { toast } from "react-toastify";
+import { flushSync } from "react-dom";
 
 export default function UserCategories() {
   const [username, setUsername] = useState("");
@@ -9,11 +10,17 @@ export default function UserCategories() {
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState({ username: "", user_id: null });
   const [assignments, setAssignments] = useState([]);
+  
+  // User list pagination
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
-
   const scrollRef = useRef(null);
+
+  // Assignments pagination
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const [assignmentPagination, setAssignmentPagination] = useState(null);
+  const [isAssignmentFetching, setIsAssignmentFetching] = useState(false);
 
   // 👉 Initial fetch
   useEffect(() => {
@@ -30,10 +37,12 @@ export default function UserCategories() {
         setPagination(res.data.pagination);
 
         // Append or prepend depending on scroll direction
-        if (pageNumber > (pagination?.current_page || page)) {
+        if (pageNumber > page) {
           setUsers((prev) => [...prev, ...res.data.data]); // next page → append
-        }  else {
-          setUsers(res.data.data);
+        } else if (pageNumber < page) {
+          setUsers((prev) => [...res.data.data, ...prev]); // previous page → prepend
+        } else {
+          setUsers(res.data.data); // initial load
         }
 
         setPage(pageNumber);
@@ -46,7 +55,7 @@ export default function UserCategories() {
     }
   };
 
-  // 👉 Scroll handler
+  // 👉 Scroll handler for users
   const handleScroll = () => {
     if (!scrollRef.current || !pagination) return;
 
@@ -69,7 +78,9 @@ export default function UserCategories() {
         fetchUsers(prevPage).then(() => {
           // Maintain visual position
           requestAnimationFrame(() => {
-            container.scrollTop = container.scrollHeight - currentScrollHeight;
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = scrollRef.current.scrollHeight - currentScrollHeight;
+            }
           });
         });
       }
@@ -83,27 +94,59 @@ export default function UserCategories() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [pagination, page, isFetching]);
 
-  // 👉 Fetch assignments for user
-  const handleCheckUsername = async (name = selectedUser.username) => {
+  // 👉 Fetch assignments for user (with pagination support)
+  const handleCheckUsername = async (name = selectedUser.username, pageNumber = 1) => {
     if (!name.trim()) {
       toast.warning("Please enter a username");
       return;
     }
-    setLoading(true);
+
+    if (pageNumber === 1) {
+      setLoading(true);
+      setAssignments([]);
+      setAssignmentPage(1);
+      setAssignmentPagination(null);
+    } else {
+      setIsAssignmentFetching(true);
+    }
+
     try {
-      const res = await fetchAssignmentsByUsername(name);
+      const res = await fetchAssignmentsByUsername(name, pageNumber);
+      console.log("Assignments API Response:", res.data); // Debug log
+      
       if (res.data?.status) {
-        setAssignments(res.data.data);
-        setShowModal(true);
+        setAssignmentPagination(res.data.pagination);
+
+        if (pageNumber === 1) {
+          setAssignments(res.data.data);
+        } else {
+          setAssignments((prev) => [...prev, ...res.data.data]); // Append for next pages
+        }
+
+        setAssignmentPage(pageNumber);
+        
+        if (pageNumber === 1) {
+          setShowModal(true);
+        }
       } else {
         toast.info("No assignments found for this username");
         setAssignments([]);
+        setAssignmentPagination(null);
       }
     } catch (err) {
       console.error("Error fetching assignments:", err);
-      toast.error(err.response?.data?.message);
+      toast.error(err.response?.data?.message || "Failed to fetch assignments");
     } finally {
       setLoading(false);
+      setIsAssignmentFetching(false);
+    }
+  };
+
+  // 🆕 Load More Handler for assignments
+  const handleLoadMoreAssignments = () => {
+    if (assignmentPagination && assignmentPagination.next && !isAssignmentFetching) {
+      const nextPage = assignmentPage + 1;
+      handleCheckUsername(selectedUser.username, nextPage);
     }
   };
 
@@ -122,12 +165,17 @@ export default function UserCategories() {
           <ul className="space-y-3">
             {users.map((u, i) => (
               <li
-                key={u.id}
+                key={`${u.id}-${i}`}
                 onClick={() => {
-                  setSelectedUser({ username: u.username, user_id: u.id });
-                  handleCheckUsername(u.username);
+                  flushSync(() => {
+                    setSelectedUser({ username: u.username, user_id: u.id });
+                    setAssignments([]);
+                    setAssignmentPage(1);
+                    setAssignmentPagination(null);
+                  });
+                  handleCheckUsername(u.username, 1);
                 }}
-                className="group relative p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-black hover:shadow-lg hover:-translate-y-1 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white"
+                className="group relative p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-black hover:shadow-lg bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white"
               >
                 <span className="text-lg font-semibold text-gray-800 group-hover:text-black transition-colors">
                   {u.username}
@@ -151,86 +199,136 @@ export default function UserCategories() {
             ))}
           </ul>
 
-          {/* Loading indicator */}
+          {/* Loading indicator for users */}
           {isFetching && (
-            <div className="text-center py-3 text-gray-500">Loading...</div>
+            <div className="text-center py-3 text-gray-500">Loading more users...</div>
           )}
         </div>
 
         {/* Modal for user details */}
-       {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-28 pl-72 z-50">
-                  <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative">
-                    {/* Title */}
-                    <h2 className="text-xl font-semibold mb-4">
-                      Details of categories assigned to:{" "}
-                      <span className="text-blue-700">{selectedUser.username}</span>
-                    </h2>
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-20 z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative mx-4">
+              {/* Title */}
+              <h2 className="text-xl font-semibold mb-4">
+                Details of categories assigned to:{" "}
+                <span className="text-blue-700">{selectedUser.username}</span>
+              </h2>
 
-                    {/* Close Button */}
-                    <button
-                      onClick={() => setShowModal(false)}
-                      className="absolute top-2 right-3 text-gray-600 hover:text-black"
-                    >
-                      ✖
-                    </button>
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setAssignments([]);
+                  setAssignmentPage(1);
+                  setAssignmentPagination(null);
+                }}
+                className="absolute top-2 right-3 text-gray-600 hover:text-black text-2xl font-bold"
+              >
+                ✖
+              </button>
 
-                    {/* Table layout (always visible) */}
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-                        <thead className="bg-black text-white">
-                          <tr>
-                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                              Master Category
-                            </th>
-                            <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                              Created At
-                            </th>
+              {/* Table layout */}
+              <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
+                  <thead className="bg-black text-white sticky top-0 z-10">
+                    <tr>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Master Category
+                      </th>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Created At
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-200">
+                    {/* 🔄 Loader state */}
+                    {loading && assignments.length === 0 ? (
+                      <tr>
+                        <td colSpan="2" className="py-10 text-center text-gray-600 font-medium">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+                            <p className="mt-3">Loading data...</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : assignments.length > 0 ? (
+                      <>
+                        {assignments.map((item, index) => (
+                          <tr
+                            key={`${item.id || index}`}
+                            className="hover:bg-gray-50 transition duration-150"
+                          >
+                            <td className="py-3 px-6 text-gray-700">
+                              {item.master_category?.name || "-"}
+                            </td>
+                            <td className="py-3 px-6 text-gray-500">
+                              {new Date(item.created_at).toLocaleString()}
+                            </td>
                           </tr>
-                        </thead>
+                        ))}
+                      </>
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="2"
+                          className="text-center text-gray-500 py-8 font-medium"
+                        >
+                          No assigned categories found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                        <tbody className="divide-y divide-gray-200">
-                          {/* 🔄 Loader state */}
-                          {loading ? (
-                            <tr>
-                              <td colSpan="2" className="py-10 text-center text-gray-600 font-medium">
-                                <div className="flex flex-col items-center justify-center">
-                                  <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
-                                  <p className="mt-3">Loading data...</p>
-                                </div>
-                              </td>
-                            </tr>
-                          ) : assignments.length > 0 ? (
-                            assignments.map((item, index) => (
-                              <tr
-                                key={index}
-                                className="hover:bg-gray-50 transition duration-150"
-                              >
-                                <td className="py-3 px-6 text-gray-700">
-                                  {item.master_category?.name || "-"}
-                                </td>
-                                <td className="py-3 px-6 text-gray-500">
-                                  {new Date(item.created_at).toLocaleString()}
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td
-                                colSpan="2"
-                                className="text-center text-gray-500 py-8 font-medium"
-                              >
-                                No assigned categories found.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+              {/* Pagination info and Load More Button */}
+              {assignmentPagination && assignments.length > 0 && (
+                <div className="mt-4 flex items-center justify-between border-t pt-4">
+                  <div className="text-sm text-gray-600">
+                    Page {assignmentPagination.page} of{" "}
+                    {assignmentPagination.total_pages} | Total:{" "}
+                    {assignmentPagination.count} assignments
                   </div>
+                  
+                  {/* Load More Button */}
+                  {assignmentPagination.next && (
+                    <button
+                      onClick={handleLoadMoreAssignments}
+                      disabled={isAssignmentFetching}
+                      className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isAssignmentFetching ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Loading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Load More</span>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
-
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
