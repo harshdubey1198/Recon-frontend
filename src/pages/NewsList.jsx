@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  FileText,
-  Eye,
-  Check,
-  Tag,
-  X,
-  Clock,
-  Calendar,
-} from "lucide-react";
+import { FileText, Eye, Check, Tag, X, Clock, Calendar } from "lucide-react";
 import { fetchNewsList, fetchNewsDetail } from "../../server"; // ✅ adjust path if needed
 import constant from "../../Constant";
 
@@ -140,6 +132,122 @@ const NewsList = () => {
 
           {/* Table */}
           <div className="p-6">
+            {/* 🔹 Filters Bar */}
+            <div className="bg-gray-100 p-4 mb-4 rounded-lg border border-gray-200">
+              <h2 className="text-md font-semibold text-gray-800 mb-3">
+                Filter News
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Search
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Search headline..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Status
+                  </label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                    <option value="">All</option>
+                    <option value="SUCCESS">Success</option>
+                    <option value="FAILED">Failed</option>
+                    <option value="PENDING">Pending</option>
+                  </select>
+                </div>
+
+                {/* Portal Name */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Portal Name
+                  </label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                    <option value="">All</option>
+                    <option value="Khaleej Times">Khaleej Times</option>
+                    <option value="Gulf News">Gulf News</option>
+                    <option value="The National">The National</option>
+                  </select>
+                </div>
+
+                {/* Portal Category */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Portal Category
+                  </label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                    <option value="">All</option>
+                    <option value="Business">Business</option>
+                    <option value="Politics">Politics</option>
+                    <option value="Technology">Technology</option>
+                  </select>
+                </div>
+                {/* Master Category */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Master Category
+                  </label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
+                    <option value="">All</option>
+                    <option value="Regional News">Regional News</option>
+                    <option value="Events & Exhibitions">
+                      Events & Exhibitions
+                    </option>
+                    <option value="Environment & Sustainability">
+                      Environment & Sustainability
+                    </option>
+                  </select>
+                </div>
+                {/* Start Date */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+                {/* End Date */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+
+                {/* Created By */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Created By
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter creator name..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end mt-4 space-x-2">
+                <button className="px-4 py-2 bg-black text-white text-sm rounded-lg hover:bg-gray-800 transition">
+                  Apply Filters
+                </button>
+                <button className="px-4 py-2 bg-gray-200 text-gray-800 text-sm rounded-lg hover:bg-gray-300 transition">
+                  Reset
+                </button>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full border border-gray-200 rounded-lg overflow-hidden">
                 <thead className="bg-gray-100 text-left">
@@ -256,7 +364,10 @@ const NewsList = () => {
                   ))}
                   {news.length === 0 && (
                     <tr>
-                      <td colSpan="8" className="text-center py-4 text-gray-500">
+                      <td
+                        colSpan="8"
+                        className="text-center py-4 text-gray-500"
+                      >
                         No news found.
                       </td>
                     </tr>
