@@ -14,7 +14,8 @@ export default function NewsReports() {
   const [distribution, setDistribution] = useState([]);
   const [distLoading, setDistLoading] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-
+  const [nextDistPage, setNextDistPage] = useState(null);
+  const [totalDistCount, setTotalDistCount] = useState(0);
   // 🔹 Fetch Report Data
   useEffect(() => {
     const loadReport = async () => {
@@ -32,30 +33,76 @@ export default function NewsReports() {
   }, [filters]);
 
   // 🔹 Fetch Distribution Data
-  const handleViewDistribution = async (post) => {
-    setSelectedPost(post.id);
-    setSelectedPostTitle(post.title || post.news_post_title || "Untitled");
+ const handleViewDistribution = async (post) => {
+  setSelectedPost(post.id);
+  setSelectedPostTitle(post.title || post.news_post_title || "Untitled");
+  setDistribution([]);
+  setNextDistPage(null);
+  setDistLoading(true);
+
+  try {
+    const res = await fetchDistributedNews({ news_post_id: post.id }, 1);
+    if (res.data?.status) {
+      setDistribution(res.data.data || []);
+
+      // ✅ handle pagination info
+      const pagination = res.data.pagination || {};
+      setTotalDistCount(pagination.count || 0);
+
+      const nextUrl = pagination.next;
+      if (nextUrl) {
+        const nextPageParam = new URL(nextUrl).searchParams.get("page");
+        setNextDistPage(Number(nextPageParam));
+      } else {
+        setNextDistPage(null);
+      }
+    } else {
+      setDistribution([]);
+      setTotalDistCount(0);
+    }
+  } catch (err) {
+    console.error("Failed to fetch distributed news:", err);
+  } finally {
+    setDistLoading(false);
+  }
+  };
+
+  // 🔹 Load More Distribution Pages
+  const handleLoadMoreDistributions = async () => {
+    if (!nextDistPage || !selectedPost) return;
     setDistLoading(true);
     try {
-      const res = await fetchDistributedNews({ news_post_id: post.id });
-      if (res.data?.status) setDistribution(res.data.data || []);
-      else setDistribution([]);
+      const res = await fetchDistributedNews({ news_post_id: selectedPost }, nextDistPage);
+      if (res.data?.status) {
+        const newData = res.data.data || [];
+        setDistribution((prev) => [...prev, ...newData]);
+
+        // ✅ update next page
+        const pagination = res.data.pagination || {};
+        const nextUrl = pagination.next;
+        if (nextUrl) {
+          const nextPageParam = new URL(nextUrl).searchParams.get("page");
+          setNextDistPage(Number(nextPageParam));
+        } else {
+          setNextDistPage(null);
+        }
+      }
     } catch (err) {
-      console.error("Failed to fetch distributed news:", err);
+      console.error("Failed to load more distributions:", err);
     } finally {
       setDistLoading(false);
     }
   };
 
- // 🔹 Handle Search
-const handleSearch = (query) => {
-  // ✅ Reset distribution panel when searching
-  setSelectedPost(null);
-  setSelectedPostTitle(null);
-  setDistribution([]);
+  // 🔹 Handle Search
+  const handleSearch = (query) => {
+    // ✅ Reset distribution panel when searching
+    setSelectedPost(null);
+    setSelectedPostTitle(null);
+    setDistribution([]);
 
-  setFilters((prev) => ({ ...prev, search: query }));
-};
+    setFilters((prev) => ({ ...prev, search: query }));
+  };
 
   // 🔹 Apply Filters
   const handleApplyFilters = (newFilters) => {
@@ -221,77 +268,99 @@ const handleSearch = (query) => {
                   <span className="text-gray-900">{selectedPostTitle}</span>
                 </h3>
 
-                {distLoading ? (
+                {/* ✅ Count summary */}
+                {totalDistCount > 0 && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    Showing {distribution.length} of {totalDistCount} distributions
+                  </p>
+                )}
+
+                {distLoading && distribution.length === 0 ? (
                   <div className="flex justify-center py-10 text-gray-600">
                     <Loader2 className="w-6 h-6 animate-spin" />
                   </div>
                 ) : distribution.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {distribution.map((dist) => (
-                      <div
-                        key={dist.id}
-                        className={`p-4 border rounded-lg transition-all ${
-                          dist.status === "FAILED"
-                            ? "border-red-300 bg-red-50"
-                            : "border-gray-200 hover:shadow"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                            <Globe className="w-4 h-4 text-gray-600" />
-                            {dist.portal_name}
-                          </h4>
-                          <span
-                            className={`text-xs font-medium px-2 py-1 rounded ${
-                              dist.status === "FAILED"
-                                ? "bg-red-200 text-red-800"
-                                : "bg-green-200 text-green-800"
-                            }`}
-                          >
-                            {dist.status}
-                          </span>
-                        </div>
-
-                        <img
-                          src={dist.news_post_image}
-                          alt="news"
-                          className="w-full h-36 object-cover rounded-lg border mb-3"
-                        />
-
-                        <p className="text-sm font-medium text-gray-800">
-                          {dist.news_post_title}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Category: {dist.master_category_name} →{" "}
-                          {dist.portal_category_name}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Author: {dist.news_post_created_by}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Sent: {new Date(dist.sent_at).toLocaleString()}
-                        </p>
-
-                        <div className="mt-3 flex justify-between items-center">
-                          <a
-                            href={dist.live_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs flex items-center gap-1 text-blue-600 hover:underline"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            View Live
-                          </a>
-                          {dist.retry_count > 0 && (
-                            <span className="text-xs text-gray-600 flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3 text-yellow-600" />
-                              Retries: {dist.retry_count}
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {distribution.map((dist) => (
+                        <div
+                          key={dist.id}
+                          className={`p-4 border rounded-lg transition-all ${
+                            dist.status === "FAILED"
+                              ? "border-red-300 bg-red-50"
+                              : "border-gray-200 hover:shadow"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                              <Globe className="w-4 h-4 text-gray-600" />
+                              {dist.portal_name}
+                            </h4>
+                            <span
+                              className={`text-xs font-medium px-2 py-1 rounded ${
+                                dist.status === "FAILED"
+                                  ? "bg-red-200 text-red-800"
+                                  : "bg-green-200 text-green-800"
+                              }`}
+                            >
+                              {dist.status}
                             </span>
-                          )}
+                          </div>
+
+                          <img
+                            src={dist.news_post_image}
+                            alt="news"
+                            className="w-full h-36 object-cover rounded-lg border mb-3"
+                          />
+
+                          <p className="text-sm font-medium text-gray-800">
+                            {dist.news_post_title}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Category: {dist.master_category_name} →{" "}
+                            {dist.portal_category_name}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Author: {dist.news_post_created_by}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Sent: {new Date(dist.sent_at).toLocaleString()}
+                          </p>
+
+                          <div className="mt-3 flex justify-between items-center">
+                            <a
+                              href={dist.live_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs flex items-center gap-1 text-blue-600 hover:underline"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              View Live
+                            </a>
+                            {dist.retry_count > 0 && (
+                              <span className="text-xs text-gray-600 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3 text-yellow-600" />
+                                Retries: {dist.retry_count}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                      ))}
+                    </div>
+
+                    {/* ✅ Load More Button */}
+                    {nextDistPage && (
+                      <div className="flex justify-center mt-6">
+                        <button
+                          onClick={handleLoadMoreDistributions}
+                          disabled={distLoading}
+                          className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all disabled:opacity-60"
+                        >
+                          {distLoading ? "Loading more..." : "↓ Load More Distributions"}
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 ) : (
                   <p className="text-gray-500 text-sm">
                     No distribution data found.

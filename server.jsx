@@ -92,9 +92,10 @@ export async function fetchNewsReport(filters = {}) {
 //     headers: { "Content-Type": "application/json" },
 //   });
 // }
-export async function fetchDistributedNews(filters = {}) {
-  const params = new URLSearchParams(filters).toString();
-  return axiosInstance.get(`/api/news/distributed/list/${params ? `?${params}` : ""}`, {
+
+export async function fetchDistributedNews(filters = {}, page = 1) {
+  const params = new URLSearchParams({ ...filters, page }).toString();
+  return axiosInstance.get(`/api/news/distributed/list/?${params}`, {
     headers: { "Content-Type": "application/json" },
   });
 }
