@@ -55,9 +55,9 @@ export async function createNewsArticle(formData) {
 }
 
 export async function publishNewsArticle(id, payload) {
-  if (!payload || !payload.master_category_id) {
-    throw new Error("Please provide valid payload with master_category_id.");
-  }
+  // if (!payload || !payload.master_category) {
+  //   throw new Error("Please provide valid payload with master_category.");
+  // }
 
   return axiosInstance.post(`/api/publish/news/${id}/`, payload, {
     headers: { "Content-Type": "application/json" },
@@ -67,11 +67,54 @@ export async function fetchDraftNews() {
   return axiosInstance.get(`/api/my/news/posts/?status=DRAFT`);
 }
 
-export async function updateDraftNews(id, status = "PUBLISHED") {
+export async function fetchNewsReport(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      params.append(key, value);
+    }
+  });
+
+  const queryString = params.toString();
+  const url = queryString ? `/api/news/report/?${queryString}` : `/api/news/report/`;
+
+  return axiosInstance.get(url, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// export async function fetchNewsReport(filters = {}) {
+//   const params = new URLSearchParams(filters).toString();
+//   return axiosInstance.get(`/api/news/report/?${params}`, {
+//     headers: { "Content-Type": "application/json" },
+//   });
+// }
+export async function fetchDistributedNews(filters = {}) {
+  const params = new URLSearchParams(filters).toString();
+  return axiosInstance.get(`/api/news/distributed/list/${params ? `?${params}` : ""}`, {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+
+export async function updateDraftNews(id, status = "PUBLISHED",payload) {
   if (!id) throw new Error("News ID is required to update draft.");
 
   const formData = new FormData();
   formData.append("status", status);
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) 
+      if (Array.isArray(value)) {
+        formData.append(key, JSON.stringify(value)); 
+      } else {
+        formData.append(key, value);
+      }
+
+  });
 
   return axiosInstance.put(`/api/news/update/${id}/`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -101,9 +144,11 @@ export async function fetchDomainDistribution() {
   return axiosInstance.get("/api/domain/distribution/");
 }
 
-export async function fetchMasterCategories() {
-  return axiosInstance.get("/api/master/category/");
+export async function fetchMasterCategories(page = 1, search = "") {
+  const query = search ? `&search=${encodeURIComponent(search)}` : "";
+  return axiosInstance.get(`/api/master/category/?page=${page}${query}`);
 }
+
 
 
 export async function fetchAssignedCategories() {
@@ -128,8 +173,8 @@ export async function assignMasterCategoriesToUser(data) {
 }
 
 
-export async function fetchPortals() {
-  return axiosInstance.get("/api/portals/list/");
+export async function fetchPortals(page = 1)  {
+  return axiosInstance.get(`/api/portals/list/?page=${page}`);
 }
 
 export async function fetchUnassignedUsers() {
@@ -139,10 +184,14 @@ export async function fetchUnassignedUsers() {
 export async function fetchAllUsersList(page = 1) {
   return axiosInstance.get(`/account/all/users/list/?page=${page}`);
 }
-
-export async function fetchPortalStatusByUsername(username) {
-  return axiosInstance.get(`/account/check/username/?username=${username}`);
+export async function fetchAllUsersListSimple() {
+  return axiosInstance.get(`/account/all/users/list/`);
 }
+
+export async function fetchPortalStatusByUsername(username, page = 1) {
+  return axiosInstance.get(`/account/check/username/?username=${username}&page=${page}`);
+}
+
 
 export async function mapPortalUser(username, user_id) {
   const formData = new FormData();
@@ -154,12 +203,12 @@ export async function mapPortalUser(username, user_id) {
   });
 }
 
-export async function fetchAssignmentsByUsername(username) {
-  return axiosInstance.get(`/account/assignments/list/?username=${username}`);
+export async function fetchAssignmentsByUsername(username,page=1) {
+  return axiosInstance.get(`/account/assignments/list/?username=${username}&page=${page}`);
 }
 
-export async function fetchMappedCategoriesById(id) {
-  return axiosInstance.get(`/api/master/categories/mapped/${id}/`);
+export async function fetchMappedCategoriesById(id,page=1) {
+  return axiosInstance.get(`/api/master/categories/mapped/${id}/?page=${page}`);
 }
 
 
@@ -167,8 +216,8 @@ export async function fetchMappedCategoriesById(id) {
  * Fetch categories for a given portal
  * @param {string} portalName - e.g., "newsableasia"
  */
-export async function fetchPortalCategories(portalName) {
-  return axiosInstance.get(`/api/portals/categories/list/${portalName}/`);
+export async function fetchPortalCategories(portalName,page=1) {
+  return axiosInstance.get(`/api/portals/categories/list/${portalName}/?page=${page}`);
 }
 
 export async function mapMasterCategory(data) {
@@ -188,13 +237,13 @@ export async function registerUser(data) {
   });
 }
 
-export const fetchCategoryMappings = () => {
-  return axiosInstance.get("/api/master/category/mapping/");
+export  async function fetchCategoryMappings(page = 1){
+  return axiosInstance.get(`/api/master/category/mapping/?page=${page}`);
 };
 
 
-export async function fetchUserDetails() {
-  return axiosInstance.get("/account/user/details/list/");
+export async function fetchUserDetails(page = 1) {
+  return axiosInstance.get(`/account/user/details/list/?page=${page}`);
 }
 // export async function fetchMasterCategories() {
 //   return axiosInstance.get("/api/master/category/");
@@ -205,8 +254,9 @@ export async function fetchAllTags() {
   return axiosInstance.get("/api/all/tags/");
 }
 
-export async function fetchMappedCategories(mapped = false) {
-  return axiosInstance.get(`/api/master/category/?mapped=${mapped}`);
+export async function fetchMappedCategories(mapped = false,page=1) {
+ return axiosInstance.get(`/api/master/category/?mapped=${mapped}&page=${page}`);
+
 }
 
 

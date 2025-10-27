@@ -4,11 +4,12 @@ import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
 import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews  } from "../../server";
 import constant from "../../Constant";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 
 const NewsArticleForm = () => {
-  const [formData, setFormData] = useState({ headline: "", master_category_id: "",  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
+  const [formData, setFormData] = useState({ headline: "",title:"", master_category: "",excluded_portals:[],  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
   // console.log("formData",formData);
+  const [originalDraft, setOriginalDraft] = useState(null);
   const [isCategoryloading, setIsCategoryloading]= useState(true);
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
@@ -24,68 +25,82 @@ const NewsArticleForm = () => {
   const [aspect, setAspect] = useState(16 / 9);
   const [assignedCategories, setAssignedCategories] = useState([]);
   const [mappedPortals, setMappedPortals] = useState([]);
+  console.log("mappedPortals : ", mappedPortals);
+  
   const [showPortalSection, setShowPortalSection] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [showDrafts, setShowDrafts] = useState(false);
   useEffect(() => {
-    if (!formData.master_category_id) {
+    if (!formData.master_category) {
       setShowPortalSection(false);
     }
-  }, [formData.master_category_id]);
+  }, [formData.master_category]);
 
 
-  const handleCategorySelect = async (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      master_category_id: e.target.value,
-    }));
+const handleCategorySelect = async (e) => {
+  const categoryId = e.target.value;
+  setFormData((prev) => ({
+    ...prev,
+    master_category: categoryId,
+  }));
 
-    const categoryId = e.target.value;
-    // console.log("categoryId : ",categoryId);
-    if (categoryId) {
-      try {
-        const res = await fetchMappedCategoriesById(categoryId);
-        // console.log("data for fetchmapped ",res.data?.data)
-        if (res.data?.status && Array.isArray(res.data?.data)) {
-          const formatted = res.data.data.map((item) => ({
-            id: item.id,
-            portalId: item.portal_id,
-            portalName: item.portal_name,
-            categoryId: item.master_category,
-            categoryName: item.master_category_name,
-            portalCategoryName: item.portal_category_name,
-            selected: true,
-          }));
-          setMappedPortals(formatted);
-          setShowPortalSection(true);
-        }
-      } catch (err) {
-        console.error("Error fetching mapped portals:", err);
-      }
+  if (!categoryId) {
+    setMappedPortals([]);
+    setShowPortalSection(false);
+    return;
+  }
+
+  try {
+    const res = await fetchMappedCategoriesById(categoryId);
+   const raw = res?.data?.data;
+    const mappings = raw?.mappings ?? [];
+    if (Array.isArray(mappings) && mappings.length > 0) {
+      const excluded = Array.isArray(drafts?.excluded_portals)
+        ? drafts.excluded_portals.map(Number)
+        : [];
+
+      const formatted = mappings.map((item) => ({
+        id: item.id,
+        portalId: Number(item.portal_id),
+        portalName: item.portal_name || "Unnamed Portal",
+        categoryId: item.master_category,
+        categoryName: item.master_category_name || "",
+        portalCategoryName: item.portal_category_name || "",
+        selected: !excluded.includes(Number(item.portal_id)),
+      }));
+
+     setMappedPortals(formatted);
+      setShowPortalSection(true);
+
+      setTimeout(() => {
+      }, 400);
     } else {
       setMappedPortals([]);
       setShowPortalSection(false);
     }
-  };
+  } catch (err) {
+    console.error("❌ Error fetching mapped portals:", err);
+  }
+};
 
-  const handleViewDrafts = async () => {
+const handleViewDrafts = async () => {
   try {
     const res = await fetchDraftNews();
     if (res.data?.status && Array.isArray(res.data.data)) {
       setDrafts(res.data.data);
       setShowDrafts(!showDrafts);
-      // console.log("🟢 Drafts fetched:", res.data.data);
     }
   } catch (err) {
     console.error("Error fetching drafts:", err);
   }
   };
 
-  const handleSelectDraft = (draft) => {
+  const handleSelectDraft = async (draft) => {
     setFormData({
       ...formData,
       id: draft?.id || "",
       headline: draft.title || "",
+      title: draft.title || "",
       shortDesc: draft.short_description || "",
       longDesc: draft.content || "",
       meta_title: draft.meta_title || "",
@@ -102,10 +117,49 @@ const NewsArticleForm = () => {
       eventEndDate: draft.Event_end_date || "",
       scheduleDate: draft.schedule_date || "",
       counter: draft.counter || 0,
+      excluded_portals:draft.excluded_portals || []
     });
+    console.log(draft.excluded_portals);
+    
+    setOriginalDraft(draft);
+
     setImagePreview(draft?.post_image ? `${constant.appBaseUrl}${draft.post_image}` : null);
     setShowDrafts(false);
     // toast.info(`Loaded draft: ${draft.title}`);
+    if (draft.master_category) {
+      setFormData(prev => ({ ...prev, master_category: draft.master_category }));
+      const res = await fetchMappedCategoriesById(draft.master_category);
+      if (res.data?.status && Array.isArray(res.data?.data)) {
+        const formatted = res.data.data.map((item) => ({
+          id: item.id,
+          portalId: item.portal_id,
+          portalName: item.portal_name,
+          categoryId: item.master_category,
+          categoryName: item.master_category_name,
+          portalCategoryName: item.portal_category_name,
+          selected: !(Array.isArray(draft.excluded_portals) && draft.excluded_portals.map(Number).includes(Number(item.portal_id))),
+
+        }));
+        setMappedPortals(formatted);
+        setShowPortalSection(true);
+      }
+    }
+  };
+
+  // const buildDraftDiff = (oldData, newData) => {
+  //   const diff = {};
+  //   Object.keys(newData).forEach((key) => {
+  //     if (newData[key] !== oldData[key]) diff[key] = newData[key];
+  //   });
+  //   return diff;
+  // };
+
+  const buildDraftDiff = (oldData, newData) => {
+    const diff = {};
+    Object.keys(newData).forEach((key) => {
+      if (newData[key] !== oldData[key]) diff[key] = newData[key];
+    });
+    return diff;
   };
 
   const generateSlug = (text) => {
@@ -344,7 +398,7 @@ const NewsArticleForm = () => {
       return;
     }
   
-    if (!valid_statuses.includes(formData.status)) {
+    if (!valid_statuses.includes(statusType)) {
      toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
       return;
     }
@@ -358,20 +412,21 @@ const NewsArticleForm = () => {
       toast.warning(" Short description must be less than 160 characters.");
       return;
     }
-    const categoryId = Number(formData.master_category_id);
+    const categoryId = Number(formData.master_category);
 
-    if (!categoryId) {
+    if (statusType === "PUBLISHED" && !categoryId && !formData.id) {
       toast.warning("Please select a category.");
       return;
     }
-    
+
+        
   
     setIsLoading(true);
   
     try {
       const formDataToSend = new FormData();
   
-      formDataToSend.append("title", formData.headline);
+      formDataToSend.append("title", formData.title || formData.headline);
       formDataToSend.append("short_description", formData.shortDesc);
       formDataToSend.append("content", formData.longDesc);
       formDataToSend.append("post_image", formData.image);
@@ -381,7 +436,7 @@ const NewsArticleForm = () => {
       formDataToSend.append("counter", formData.counter);
       formDataToSend.append("order", formData.order);
   
-      formDataToSend.append("master_category_id", categoryId);
+      formDataToSend.append("master_category", categoryId);
   
       if (formData.tags && formData.tags.length > 0) {
         const formattedTags = formData.tags
@@ -417,49 +472,71 @@ const NewsArticleForm = () => {
       }
       
       let createdArticle;
-      if (formData.status === "DRAFT" && formData.id) {
-        createdArticle = { id: formData.id }; 
-        await updateDraftNews(formData.id, "PUBLISHED");
-        toast.success("Draft published successfully!");
+      if (formData.id) {
+        const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+        const changedFields = originalDraft ? buildDraftDiff(originalDraft, formData) : formData;
+        if (changedFields.longDesc) {
+          changedFields.content = changedFields.longDesc;
+          delete changedFields.longDesc;
+        }
+        changedFields.title = changedFields.title || formData.headline;
+        changedFields.content = formData.longDesc || formData.content;
+        const excludedPortals = mappedPortals
+            .filter(p => !p.selected)
+            .map(p => Number(p.portalId));
+
+          changedFields.excluded_portals = excludedPortals;
+
+          console.log("🟢 Wrapped excluded_portals:", changedFields);
+
+        changedFields.master_category = Number(formData.master_category);
+        await updateDraftNews(formData.id, nextStatus, changedFields);
+
+        createdArticle = { id: formData.id };
+        if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
       } else {
-        // Create new article
+        const excludedPortals = mappedPortals.filter(p => !p.selected).map(p => p.portalId);
+        formDataToSend.append("excluded_portals", JSON.stringify( excludedPortals.map(Number) ));
+        formDataToSend.append("master_category", categoryId);
         const response = await createNewsArticle(formDataToSend);
         createdArticle = response.data.data;
+
       }
-      if (statusType === "DRAFT") {
-        toast.success("Draft saved successfully.");
+
+
+        if (statusType === "DRAFT") {
+        // toast.success("Draft saved successfully.");
         resetForm();
         setIsLoading(false);
         return;
       }
       
       if (createdArticle?.id) {
-        const categoryId = Number(formData.master_category_id);
-        if (!categoryId) {
-          toast.warning(" Please select a category before publishing.");
+        const categoryId = Number(formData.master_category);
+
+        // Only require category if publishing a brand-new article (not updating draft)
+        if (!categoryId && !formData.id) {
+          toast.warning("Please select a category before publishing.");
           setIsLoading(false);
           return;
         }
-      
+
         const excludedPortals = mappedPortals
           .filter((p) => !p.selected)
           .map((p) => p.portalId);
 
-        // console.log("🟡 Deselected portals for API:", excludedPortals);
-
         const payload = {
-          excluded_portals: excludedPortals,
-          master_category_id: Number(formData.master_category_id),
+          // excluded_portals: excludedPortals,
+          // master_category: categoryId || null,
         };
-        // console.log("payload",payload)
+
         if (statusType === "PUBLISHED") {
-          const res= await publishNewsArticle(createdArticle.id, payload);
-          // console.log(res?.data);
+          const res = await publishNewsArticle(createdArticle.id, payload);
           resetForm();
-          toast.success(res?.data?.message );
+          if (res?.data?.message) toast.success(res.data.message);
         }
-      
       }
+
       
   
       resetForm();
@@ -491,11 +568,13 @@ const NewsArticleForm = () => {
   const resetForm = () => {
     revokeIfBlob(imagePreview);
     setFormData({
+      title: "",
       headline: "",
       shortDesc: "",
       longDesc: "",
       image: null,
       tags: [],
+      content:"",
       latestNews: false,
       headlines: false,
       articles: false,
@@ -591,12 +670,13 @@ const NewsArticleForm = () => {
                       disabled={isLoading}
                       onClick={(e) => handleSubmit(e, "DRAFT")}
                       className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
-                    >
+                      >
                       <SaveAll className="w-4 h-4 mr-2" />
                       Save as Draft
                     </button>
                     <button
                       type="submit"
+                      onClick={(e) => handleSubmit(e, "PUBLISHED")}
                       disabled={isLoading}
                       className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-xs font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
                     >
@@ -639,25 +719,25 @@ const NewsArticleForm = () => {
               </label>
 
               <select
-                  name="master_category_id"
-                  value={formData.master_category_id ?? ""}
-                  onChange={handleCategorySelect}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
-                >
-                  {isCategoryloading ? (
-                    <option value="">Loading categories...</option>
-                  ) : (
-                    <>
-                      <option value="">-- Select Category --</option>
-                      {assignedCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
+                name="master_category"
+                value={formData.master_category ?? ""}
+                onChange={handleCategorySelect}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"
+              >
+                {isCategoryloading ? (
+                  <option value="">Loading categories...</option>
+                ) : (
+                  <>
+                    <option value="">-- Select Category --</option>
+                    {assignedCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+
 
 
                 {showPortalSection && (
@@ -670,6 +750,7 @@ const NewsArticleForm = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {mappedPortals.map((portal, i) => (
+                        
                         <label
                           key={i}
                           className={`flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
@@ -680,13 +761,15 @@ const NewsArticleForm = () => {
                           >
                           <input
                             type="checkbox"
-                            checked={portal.selected}
+                            checked={portal.selected === true}
                             onChange={() =>
                             setMappedPortals((prev) => {
+                              console.log(prev);
                               const updated = prev.map((p, idx) =>
                                 idx === i ? { ...p, selected: !p.selected } : p
                               );
-                              const excluded = updated.filter((p) => !p.selected).map((p) => p.portalId);
+                              
+                              // const excluded = updated.filter((p) => !p.selected).map((p) => p.portalId);
                               // console.log(`🟠 Excluded portals (${excluded.length}):`, excluded);
                               return updated;
                             })
@@ -1394,8 +1477,18 @@ const NewsArticleForm = () => {
                 Reset Form
               </button>
               <button
+                type="button"
+                disabled={isLoading}
+                onClick={(e) => handleSubmit(e, "DRAFT")}
+                className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
+                >
+                <SaveAll className="w-4 h-4 mr-2" />
+                Save as Draft
+              </button>
+              <button
                 type="submit"
                 disabled={isLoading}
+                onClick={(e) => handleSubmit(e, "PUBLISHED")}
                 className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-sm font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
               >
                 {isLoading ? (
