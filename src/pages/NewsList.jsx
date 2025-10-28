@@ -16,6 +16,7 @@ const NewsList = () => {
   const [expandedRow, setExpandedRow] = useState(null);
   const [distributedData, setDistributedData] = useState({});
   const [publishingId, setPublishingId] = useState(null);
+  const [distributionStatus, setDistributionStatus] = useState("");
 
   // 🔹 Filter States
   const [search, setSearch] = useState("");
@@ -109,8 +110,9 @@ const NewsList = () => {
       const res = await fetchMyNewsPosts({
         search: filters.search || "",
         status: filters.status || "",
+        distribution_status: filters.distribution_status || "",
         portal_name: filters.portal_id || "",
-        master_category_name: filters.master_category_id || "",
+        master_category: filters.master_category_id || "",
         created_by: filters.username || "",
         start_date: filters.date_filter?.start_date || "",
         end_date: filters.date_filter?.end_date || "",
@@ -148,6 +150,7 @@ const NewsList = () => {
     loadNewsWithFilters({
       search,
       status,
+      distribution_status:distributionStatus,
       portal_id: selectedPortal,
       master_category_id: selectedMasterCategory,
       username: createdBy,
@@ -211,6 +214,7 @@ const NewsList = () => {
   const handleReset = () => {
     setSearch("");
     setStatus("");
+    setDistributionStatus("");
     setSelectedPortal("");
     setSelectedPortalCategory("");
     setSelectedMasterCategory("");
@@ -282,6 +286,7 @@ const NewsList = () => {
                 visibleFilters={[
                   // "search",
                   "status",
+                  "distribution_status",
                   // "portal_id",
                   "master_category_id",
                   // "username",
@@ -291,6 +296,7 @@ const NewsList = () => {
                 initialFilters={{
                   search,
                   status,
+                  distribution_status: distributionStatus,
                   portal_id: selectedPortal,
                   master_category_id: selectedMasterCategory,
                   username: createdBy,
@@ -304,6 +310,7 @@ const NewsList = () => {
                   setCreatedBy(filters.username || "");
                   setStartDate(filters.date_filter?.start || "");
                   setEndDate(filters.date_filter?.end || "");
+                  setDistributionStatus(filters.distribution_status || "");
                   setPage(1);
 
                   // ✅ Call loadNews AFTER states update (using callback pattern)
