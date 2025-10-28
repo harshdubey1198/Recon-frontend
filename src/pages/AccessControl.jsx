@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { User, List, CheckCircle2, Plus, Loader2 } from "lucide-react";
 import { createMasterCategory, fetchMasterCategories, assignMasterCategoriesToUser, fetchAllUsersList } from "../../server";
 import { toast } from "react-toastify";
+import formatUsername from "../utils/formateName";
 
 const AccessControl = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -201,7 +202,7 @@ const AccessControl = () => {
                   <option value="">-- Select User --</option>
                   {unassignedUsers.map((u) => (
                     <option key={u.id} value={u.username}>
-                      {u.username} {u.email ? `(${u.email})` : ""}
+                       {formatUsername(u.username)} {u.email ? `(${u.email})` : ""}
                     </option>
                   ))}
                 </select>

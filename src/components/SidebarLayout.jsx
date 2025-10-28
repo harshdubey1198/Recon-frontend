@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import UserCategories from "../pages/UserCategories";
 import NewsReports from "../pages/NewsReports";
+import formatUsername from "../utils/formateName";
 
 
 
@@ -174,7 +175,7 @@ const menuItems = [
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm font-medium text-gray-900 truncate group-hover:text-blue-700 transition-colors duration-200">
-                {user?.username || "User Name"}
+                {formatUsername(user.username)}
               </p>
             </div>
             <button

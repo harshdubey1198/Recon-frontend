@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchAllUsersList, fetchAssignmentsByUsername } from "../../server";
+import { fetchAllUsersList, fetchAssignmentsByUsername, fetchMappedCategoriesById } from "../../server";
 import { toast } from "react-toastify";
 import { flushSync } from "react-dom";
+import formatUsername from "../utils/formateName";
 
 export default function UserCategories() {
   const [username, setUsername] = useState("");
@@ -22,12 +23,17 @@ export default function UserCategories() {
   const [assignmentPagination, setAssignmentPagination] = useState(null);
   const [isAssignmentFetching, setIsAssignmentFetching] = useState(false);
 
-  // 👉 Initial fetch
+  // Expanded category state (no separate modal)
+  const [expandedCategoryId, setExpandedCategoryId] = useState(null);
+  const [mappingData, setMappingData] = useState({});
+  const [mappingLoading, setMappingLoading] = useState({});
+
+  // Initial fetch
   useEffect(() => {
     fetchUsers(1);
   }, []);
 
-  // 👉 Fetch users (handles pagination)
+  // Fetch users (handles pagination)
   const fetchUsers = async (pageNumber) => {
     if (isFetching) return;
     setIsFetching(true);
@@ -36,13 +42,12 @@ export default function UserCategories() {
       if (res.data?.status) {
         setPagination(res.data.pagination);
 
-        // Append or prepend depending on scroll direction
         if (pageNumber > page) {
-          setUsers((prev) => [...prev, ...res.data.data]); // next page → append
+          setUsers((prev) => [...prev, ...res.data.data]);
         } else if (pageNumber < page) {
-          setUsers((prev) => [...res.data.data, ...prev]); // previous page → prepend
+          setUsers((prev) => [...res.data.data, ...prev]);
         } else {
-          setUsers(res.data.data); // initial load
+          setUsers(res.data.data);
         }
 
         setPage(pageNumber);
@@ -55,14 +60,13 @@ export default function UserCategories() {
     }
   };
 
-  // 👉 Scroll handler for users
+  // Scroll handler for users
   const handleScroll = () => {
     if (!scrollRef.current || !pagination) return;
 
     const container = scrollRef.current;
     const { scrollTop, scrollHeight, clientHeight } = container;
 
-    // When scrolled to bottom — fetch next page
     if (scrollTop + clientHeight >= scrollHeight - 10 && pagination.next && !isFetching) {
       const nextPage = page + 1;
       if (nextPage <= pagination.total_pages) {
@@ -70,13 +74,11 @@ export default function UserCategories() {
       }
     }
 
-    // When scrolled to top — fetch previous page
     if (scrollTop === 0 && pagination.previous && !isFetching) {
       const prevPage = page - 1;
       if (prevPage >= 1) {
         const currentScrollHeight = scrollHeight;
         fetchUsers(prevPage).then(() => {
-          // Maintain visual position
           requestAnimationFrame(() => {
             if (scrollRef.current) {
               scrollRef.current.scrollTop = scrollRef.current.scrollHeight - currentScrollHeight;
@@ -94,7 +96,7 @@ export default function UserCategories() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [pagination, page, isFetching]);
 
-  // 👉 Fetch assignments for user (with pagination support)
+  // Fetch assignments for user
   const handleCheckUsername = async (name = selectedUser.username, pageNumber = 1) => {
     if (!name.trim()) {
       toast.warning("Please enter a username");
@@ -112,7 +114,6 @@ export default function UserCategories() {
 
     try {
       const res = await fetchAssignmentsByUsername(name, pageNumber);
-      console.log("Assignments API Response:", res.data); // Debug log
       
       if (res.data?.status) {
         setAssignmentPagination(res.data.pagination);
@@ -120,7 +121,7 @@ export default function UserCategories() {
         if (pageNumber === 1) {
           setAssignments(res.data.data);
         } else {
-          setAssignments((prev) => [...prev, ...res.data.data]); // Append for next pages
+          setAssignments((prev) => [...prev, ...res.data.data]);
         }
 
         setAssignmentPage(pageNumber);
@@ -142,7 +143,7 @@ export default function UserCategories() {
     }
   };
 
-  // 🆕 Load More Handler for assignments
+  // Load More Handler for assignments
   const handleLoadMoreAssignments = () => {
     if (assignmentPagination && assignmentPagination.next && !isAssignmentFetching) {
       const nextPage = assignmentPage + 1;
@@ -150,186 +151,432 @@ export default function UserCategories() {
     }
   };
 
-  return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      <div className="max-w-3xl mx-auto bg-white shadow-2xl rounded-2xl p-8 border border-gray-200">
-        <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-black to-gray-700 bg-clip-text text-transparent">
-          List of Users
-        </h1>
+  // Fetch mapping details for a category
+  const handleCategoryClick = async (categoryId, categoryName) => {
+    if (!categoryId) return;
+    
+    // If clicking the same category, collapse it
+    if (expandedCategoryId === categoryId) {
+      setExpandedCategoryId(null);
+      return;
+    }
 
-        {/* Scrollable container */}
+    // Expand new category
+    setExpandedCategoryId(categoryId);
+    
+    // If data already loaded, don't fetch again
+    if (mappingData[categoryId]) {
+      return;
+    }
+    
+    setMappingLoading(prev => ({ ...prev, [categoryId]: true }));
+    
+    try {
+      const res = await fetchMappedCategoriesById(categoryId, 1);
+      console.log("Mapping API Response:", res.data);
+      
+      if (res.data?.status) {
+        setMappingData(prev => ({ ...prev, [categoryId]: res.data.data }));
+      } else {
+        toast.info("No mapping data found for this category");
+        setMappingData(prev => ({ ...prev, [categoryId]: null }));
+      }
+    } catch (err) {
+      console.error("Error fetching mapping data:", err);
+      toast.error(err.response?.data?.message || "Failed to fetch mapping data");
+      setMappingData(prev => ({ ...prev, [categoryId]: null }));
+    } finally {
+      setMappingLoading(prev => ({ ...prev, [categoryId]: false }));
+    }
+  };
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            User Category List
+          </h1>
+          <p className="text-gray-600">Explore user profiles and their assigned categories</p>
+        </div>
+
+        {/* User Cards Grid */}
         <div
           ref={scrollRef}
-          className="user-scroll-container max-h-[70vh] overflow-y-auto pr-2 rounded-lg"
+          className="max-h-[75vh] overflow-y-auto pr-2 space-y-4 custom-scrollbar"
         >
-          <ul className="space-y-3">
-            {users.map((u, i) => (
-              <li
-                key={`${u.id}-${i}`}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {users.map((user, i) => (
+              <div
+                key={`${user.id}-${i}`}
                 onClick={() => {
                   flushSync(() => {
-                    setSelectedUser({ username: u.username, user_id: u.id });
+                    setSelectedUser({ username: user.username, user_id: user.id });
                     setAssignments([]);
                     setAssignmentPage(1);
                     setAssignmentPagination(null);
                   });
-                  handleCheckUsername(u.username, 1);
+                  handleCheckUsername(user.username, 1);
                 }}
-                className="group relative p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-black hover:shadow-lg bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white"
+                className="group relative bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-gray-900"
               >
-                <span className="text-lg font-semibold text-gray-800 group-hover:text-black transition-colors">
-                  {u.username}
-                </span>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg
-                    className="w-5 h-5 text-black"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
+                <div className="relative z-10">
+                  {/* Avatar Circle */}
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
+                      <span className="text-white text-lg font-semibold">
+                        {user.username.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    {/* Status Badge */}
+                    <div className={`px-3 py-1 rounded-md text-xs font-medium ${
+                      user.is_active 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-gray-100 text-gray-700 border border-gray-200'
+                    }`}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </div>
+                  </div>
+
+                  {/* Username */}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-gray-700 transition-colors">
+                    {formatUsername(user.username)}
+                  </h3>
+
+                  {/* Email */}
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm text-gray-600 truncate">
+                      {user.email || 'No email provided'}
+                    </p>
+                  </div>
+
+                  {/* Joining Date */}
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm text-gray-500">
+                      Joined {formatDate(user.date_joined)}
+                    </p>
+                  </div>
+
+                  {/* Hover Arrow */}
+                  <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
 
           {/* Loading indicator for users */}
           {isFetching && (
-            <div className="text-center py-3 text-gray-500">Loading more users...</div>
+            <div className="flex items-center justify-center py-6">
+              <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                <span className="text-gray-600 font-medium">Loading more users...</span>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Modal for user details */}
+        {/* Modal for user category assignments */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-20 z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative mx-4">
-              {/* Title */}
-              <h2 className="text-xl font-semibold mb-4">
-                Details of categories assigned to:{" "}
-                <span className="text-blue-700">{selectedUser.username}</span>
-              </h2>
-
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setAssignments([]);
-                  setAssignmentPage(1);
-                  setAssignmentPagination(null);
-                }}
-                className="absolute top-2 right-3 text-gray-600 hover:text-black text-2xl font-bold"
-              >
-                ✖
-              </button>
-
-              {/* Table layout */}
-              <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-                <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-                  <thead className="bg-black text-white sticky top-0 z-10">
-                    <tr>
-                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                        Master Category
-                      </th>
-                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                        Created At
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-gray-200">
-                    {/* 🔄 Loader state */}
-                    {loading && assignments.length === 0 ? (
-                      <tr>
-                        <td colSpan="2" className="py-10 text-center text-gray-600 font-medium">
-                          <div className="flex flex-col items-center justify-center">
-                            <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
-                            <p className="mt-3">Loading data...</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : assignments.length > 0 ? (
-                      <>
-                        {assignments.map((item, index) => (
-                          <tr
-                            key={`${item.id || index}`}
-                            className="hover:bg-gray-50 transition duration-150"
-                          >
-                            <td className="py-3 px-6 text-gray-700">
-                              {item.master_category?.name || "-"}
-                            </td>
-                            <td className="py-3 px-6 text-gray-500">
-                              {new Date(item.created_at).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </>
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan="2"
-                          className="text-center text-gray-500 py-8 font-medium"
-                        >
-                          No assigned categories found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden animate-slideUp">
+              {/* Modal Header */}
+              <div className="bg-gray-900 p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1">Category Assignments</h2>
+                    <p className="text-gray-300">
+                      Viewing categories for <span className="font-semibold text-white">{selectedUser.username}</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      setAssignments([]);
+                      setAssignmentPage(1);
+                      setAssignmentPagination(null);
+                    }}
+                    className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors"
+                  >
+                    <span className="text-2xl">×</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Pagination info and Load More Button */}
-              {assignmentPagination && assignments.length > 0 && (
-                <div className="mt-4 flex items-center justify-between border-t pt-4">
-                  <div className="text-sm text-gray-600">
-                    Page {assignmentPagination.page} of{" "}
-                    {assignmentPagination.total_pages} | Total:{" "}
-                    {assignmentPagination.count} assignments
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)]">
+                {loading && assignments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <div className="w-14 h-14 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4"></div>
+                    <p className="text-gray-600 font-medium">Loading assignments...</p>
                   </div>
-                  
-                  {/* Load More Button */}
-                  {assignmentPagination.next && (
-                    <button
-                      onClick={handleLoadMoreAssignments}
-                      disabled={isAssignmentFetching}
-                      className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {isAssignmentFetching ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Loading...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Load More</span>
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                ) : assignments.length > 0 ? (
+                  <div className="space-y-3">
+                    {assignments.map((item, index) => {
+                      const isExpanded = expandedCategoryId === item.master_category?.id;
+                      const categoryData = mappingData[item.master_category?.id];
+                      const isLoading = mappingLoading[item.master_category?.id];
+                      
+                      return (
+                        <div key={`${item.id || index}`} className="border border-gray-200 rounded-lg overflow-hidden">
+                          {/* Category Card - Clickable */}
+                          <div
+                            onClick={() => handleCategoryClick(item.master_category?.id, item.master_category?.name)}
+                            className="bg-white p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </>
-                      )}
-                    </button>
-                  )}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">
+                                    {item.master_category?.name || "Unnamed Category"}
+                                  </h4>
+                                  <p className="text-sm text-gray-500">
+                                    {isExpanded ? "Click to collapse" : "Click to view mappings"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right flex items-center gap-3">
+                                <div>
+                                  <p className="text-sm text-gray-700 font-medium">
+                                    {formatDate(item.created_at)}
+                                  </p>
+                                  <p className="text-xs text-gray-500">Assigned date</p>
+                                </div>
+                                <svg 
+                                  className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded Details - Shows below category */}
+                          {isExpanded && (
+                            <div className="border-t border-gray-200 bg-gray-50 p-4 animate-slideDown">
+                              {isLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                                    <span className="text-gray-600 text-sm">Loading mapping details...</span>
+                                  </div>
+                                </div>
+                              ) : categoryData ? (
+                                <div className="space-y-4">
+                                  {/* Assigned Users */}
+                                  {/* {categoryData.assigned_users && categoryData.assigned_users.length > 0 && (
+                                    <div>
+                                      <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                        </svg>
+                                        Assigned Users ({categoryData.assigned_users.length})
+                                      </h5>
+                                      <div className="flex flex-wrap gap-2">
+                                        {categoryData.assigned_users.map((user) => (
+                                          <div key={user.id} className="bg-gray-200 rounded-full px-3 py-1.5 text-sm text-gray-700">
+                                            {formatUsername(user.username)} ({user.email || 'No email'})
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )} */}
+
+                                  {/* Portal Mappings */}
+                                  {categoryData.mappings && categoryData.mappings.length > 0 ? (
+                                    <div>
+                                      <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                        Portal Mappings ({categoryData.mappings.length})
+                                      </h5>
+                                      <div className="space-y-2">
+                                        {categoryData.mappings.map((mapping) => (
+                                          <div key={mapping.id} className="bg-white rounded-lg p-3 border border-gray-200">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                              </svg>
+                                              <span className="font-semibold text-gray-900 text-sm">{mapping.portal_name}</span>
+                                              <span className="text-gray-400">→</span>
+                                              <span className="text-sm text-gray-700">{mapping.portal_category_name}</span>
+                                            </div>
+                                            {/* <div className="flex items-center gap-2 ml-6">
+                                              {mapping.is_default && (
+                                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
+                                                  Default
+                                                </span>
+                                              )}
+                                              {mapping.use_default_content && (
+                                                <span className="px-2 py-0.5 bg-green-50 text-green-700 text-xs font-medium rounded border border-green-200">
+                                                  Uses Default Content
+                                                </span>
+                                              )}
+                                            </div> */}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center py-4 text-gray-500 text-sm">
+                                      No portal mappings found
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-gray-500 text-sm">
+                                  No mapping data available
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-500 font-medium">No categories assigned yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              {assignmentPagination && assignments.length > 0 && (
+                <div className="border-t border-gray-200 p-6 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      <span className="font-semibold text-gray-900">Page {assignmentPagination.page}</span> of {assignmentPagination.total_pages} 
+                      <span className="mx-2">•</span>
+                      <span className="font-semibold text-gray-900">{assignmentPagination.count}</span> total assignments
+                    </div>
+                    
+                    {assignmentPagination.next && (
+                      <button
+                        onClick={handleLoadMoreAssignments}
+                        disabled={isAssignmentFetching}
+                        className="px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium shadow-sm"
+                      >
+                        {isAssignmentFetching ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Loading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Load More</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
+
+        {/* Mapping Details Modal - REMOVED */}
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            max-height: 0;
+          }
+          to {
+            opacity: 1;
+            max-height: 500px;
+          }
+        }
+
+        .animate-slideDown {
+          animation: slideDown 0.3s ease-out;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+      `}</style>
     </div>
   );
 }
