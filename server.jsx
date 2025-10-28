@@ -273,6 +273,10 @@ export async function fetchMyNewsPosts(filters = {}) {
     },
   });
 }
+// delete mapped portal user
+export async function deleteMapping(mappingId) {
+  return axiosInstance.delete(`/api/master/category/mapping/${mappingId}/`);
+}
 
 
 

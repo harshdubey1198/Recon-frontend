@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { List, Info, Search, Folder, ArrowRight, Package, X, Users, Link2, Loader2 } from "lucide-react";
-import { fetchCategoryMappings, fetchMasterCategories, fetchMappedCategoriesById } from "../../server";
+import { fetchCategoryMappings, fetchMasterCategories, fetchMappedCategoriesById,deleteMapping } from "../../server";
 import CategoryMapping from "../pages/CategoryMapping";
 import formatUsername from "../utils/formateName";
-
+import { toast } from "react-toastify";
 const AllCategories = () => {
   const [categories, setCategories] = useState([]);
   const [categoriesCount, setCategoriesCount] = useState(0);
@@ -118,6 +118,30 @@ const AllCategories = () => {
       setLoadingMoreDetails(false);
     }
   };
+
+ const handleDeleteMapping = async (mappingId) => {
+  try {
+    const response = await deleteMapping(mappingId);
+    toast.success(response.data?.data || "Mapping deleted");
+
+    // Directly refresh mapping details after delete (fetch page 1)
+    if (selectedCategory?.id) {
+      const updatedRes = await fetchMappedCategoriesById(selectedCategory.id, 1);
+      if (updatedRes?.data?.data) {
+        setMappingDetails(updatedRes.data.data);
+        // reset modal pagination to first page after refresh
+      setDetailsPage(1);
+       setHasMoreDetails(updatedRes.data.pagination?.next !== null);
+     }
+    }
+  } catch (error) {
+    console.error("Failed to delete mapping:", error);
+    toast.error(error.response?.data?.message || "Failed to delete mapping");
+  }
+};
+
+
+
 
   const handleModalScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -387,27 +411,38 @@ const AllCategories = () => {
 
                     {mappingDetails?.mappings?.length > 0 ? (
                       <div className="space-y-3">
-                        {mappingDetails.mappings.map((mapping) => (
-                          <div
-                            key={mapping.id}
-                            className="p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:shadow-md transition-all"
-                          >
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className="px-3 py-1 bg-gray-900 text-white text-sm font-semibold rounded-lg">
-                                {mapping.portal_name}
-                              </span>
-                              <ArrowRight className="w-4 h-4 text-gray-400" />
-                              <span className="px-3 py-1 bg-gray-100 text-gray-900 text-sm font-semibold rounded-lg">
-                                {mapping.portal_category_name}
-                              </span>
-                              {mapping.is_default && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                       {mappingDetails.mappings.map((mapping) => (
+                              <div
+                                key={mapping.id}
+                                className="p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:shadow-md transition-all flex justify-between items-center"
+                              >
+                                {/* Left section with mapping details */}
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <span className="px-3 py-1 bg-gray-900 text-white text-sm font-semibold rounded-lg">
+                                    {mapping.portal_name}
+                                  </span>
+                                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                                  <span className="px-3 py-1 bg-gray-100 text-gray-900 text-sm font-semibold rounded-lg">
+                                    {mapping.portal_category_name}
+                                  </span>
+
+                                  {mapping.is_default && (
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                                      Default
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Right-aligned Delete button */}
+                                <button
+                                  onClick={() => handleDeleteMapping(mapping.id)}
+                                  className="px-3 py-1 text-sm font-semibold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ))}
+
                         
                         {loadingMoreDetails && (
                           <div className="flex justify-center py-4">
