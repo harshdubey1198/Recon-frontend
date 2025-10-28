@@ -39,7 +39,7 @@ const menuItems = [
     ? [ 
        { name: "Category Mapping", icon: Network },
        { name: "All Categories", icon: FolderTree },
-       { name: "Access Control", icon: ShieldCheck },
+       { name: "User Access Control", icon: ShieldCheck },
        { name: "User Access List", icon: Users2 },
        { name: "User Categories", icon: Layers },
        { name: "Portal Management", icon: Building2 },
@@ -309,7 +309,7 @@ const menuItems = [
             {activeItem === "Create News" && <CreateNews />}
             {activeItem === "News List" && <NewsList />}
             {activeItem === "Portal Management" && <PortalManagement />}
-            {activeItem === "Access Control" && <AccessControl />}
+            {activeItem === "User Access Control" && <AccessControl />}
             {activeItem === "User Access List" && <UserAccessList />}
             {activeItem === "Category Mapping" && <CategoryMapping />}
             {activeItem === "All Categories" && <AllCategories />}
