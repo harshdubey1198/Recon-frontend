@@ -207,9 +207,12 @@ const AccessControl = () => {
                 </select>
                 
                 {isUserFetching && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
-                  </div>
+                   <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
+                      <div className="flex items-center gap-2 text-black/80">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    </div>
                 )}
                
               </div>
@@ -255,11 +258,15 @@ const AccessControl = () => {
                     </option>
                   ))}
                 </select>
-                {isCategoryFetching && (
-                  <div className="absolute right-3 top-3">
-                    <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                  </div>
-                )}
+               {isCategoryFetching && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-lg">
+                      <div className="flex items-center gap-2 text-black/80">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Loading...</span>
+                      </div>
+                    </div>
+)}
+
               </div>
               {/* {categoryPagination && (
                 <p className="text-xs text-gray-500 flex items-center gap-2">

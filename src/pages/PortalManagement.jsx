@@ -27,7 +27,6 @@ export default function PortalManagement() {
   const [portalPage, setPortalPage] = useState(1);
   const [portalPagination, setPortalPagination] = useState(null);
   const [isPortalFetching, setIsPortalFetching] = useState(false);
-  const portalScrollRef = useRef(null);
 
   // 🆕 Fetch users with pagination on mount
   useEffect(() => {
@@ -127,6 +126,8 @@ export default function PortalManagement() {
 
     try {
       const res = await fetchPortalStatusByUsername(name, pageNumber);
+      console.log("API Response:", res.data); // Debug log
+      
       if (res.data?.status) {
         const mappedData = res.data.data.map((item) => {
           const user = users.find((u) => u.username === item.username);
@@ -159,56 +160,17 @@ export default function PortalManagement() {
     }
   };
 
-  // 🆕 Portal data scroll handler
-  const handlePortalScroll = () => {
-    if (!portalScrollRef.current || !portalPagination || isPortalFetching)
-      return;
-
-    const container = portalScrollRef.current;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-
-    // When scrolled to bottom — fetch next page
-    if (
-      scrollTop + clientHeight >= scrollHeight - 10 &&
-      portalPagination.next &&
-      !isPortalFetching
-    ) {
+  // 🆕 Load More Handler
+  const handleLoadMore = () => {
+    if (portalPagination && portalPagination.next && !isPortalFetching) {
       const nextPage = portalPage + 1;
-      if (nextPage <= portalPagination.total_pages) {
-        handleCheckUsername(selectedUser.username, nextPage);
-      }
+      handleCheckUsername(selectedUser.username, nextPage);
     }
   };
-
-  // 🆕 Attach portal scroll listener
-  useEffect(() => {
-    const container = portalScrollRef.current;
-    if (!container) return;
-    container.addEventListener("scroll", handlePortalScroll);
-    return () => container.removeEventListener("scroll", handlePortalScroll);
-  }, [portalPagination, portalPage, isPortalFetching, selectedUser.username]);
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="max-w-3xl mx-auto bg-white shadow-md rounded-lg p-6">
-        {/* Optional manual search (kept commented) */}
-        {/* <div className="flex gap-3 mb-6">
-          <input
-            type="text"
-            placeholder="Enter username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
-          />
-          <button
-            onClick={() => handleCheckUsername(username, 1)}
-            disabled={loading}
-            className="px-5 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition disabled:opacity-50"
-          >
-            {loading ? "Checking..." : "Check"}
-          </button>
-        </div> */}
-
         {/* 🧍‍♂️ User List with Infinite Scroll */}
         <div>
           <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-black to-gray-700 bg-clip-text text-transparent">
@@ -267,8 +229,8 @@ export default function PortalManagement() {
 
         {/* 🪟 Modal for portal data */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-28 pl-72 z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative">
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-20 z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative mx-4">
               {/* Close button */}
               <button
                 onClick={() => {
@@ -287,48 +249,47 @@ export default function PortalManagement() {
                 Portal Status: {selectedUser.username}
               </h2>
 
-              {/* Conditionally render: Show message if total_pages <= 1, otherwise enable scroll */}
-              {portalPagination && portalPagination.total_pages <= 1 ? (
-                // 📄 No scroll needed - display as normal table
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-                    <thead className="bg-black text-white">
-                      <tr>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Portal
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Found
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Username
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Message
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
+              {/* Table with data */}
+              <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
+                  <thead className="bg-black text-white sticky top-0 z-10">
+                    <tr>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Portal
+                      </th>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Found
+                      </th>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Username
+                      </th>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Message
+                      </th>
+                      <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
 
-                    <tbody className="divide-y divide-gray-200">
-                      {loading && portalData.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="py-10 text-center text-gray-600 font-medium"
-                          >
-                            <div className="flex flex-col items-center justify-center">
-                              <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
-                              <p className="mt-3">Loading data...</p>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : portalData.length > 0 ? (
-                        portalData.map((item, index) => (
+                  <tbody className="divide-y divide-gray-200">
+                    {loading && portalData.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="py-10 text-center text-gray-600 font-medium"
+                        >
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+                            <p className="mt-3">Loading data...</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : portalData.length > 0 ? (
+                      <>
+                        {portalData.map((item, index) => (
                           <tr
-                            key={index}
+                            key={`${item.portal}-${index}`}
                             className="hover:bg-gray-50 transition duration-150"
                           >
                             <td className="py-3 px-6 font-medium text-gray-900">
@@ -348,8 +309,10 @@ export default function PortalManagement() {
                             <td className="py-3 px-6 text-gray-700">
                               {item.username || "-"}
                             </td>
-                            <td className="py-3 px-6 text-gray-500">
-                              {item.message || "-"}
+                            <td className="py-3 px-6 text-gray-500 max-w-xs">
+                              <div className="truncate" title={item.message}>
+                                {item.message || "-"}
+                              </div>
                             </td>
                             <td className="py-3 px-6 text-right">
                               {!item.found && (
@@ -367,6 +330,7 @@ export default function PortalManagement() {
                                       );
                                     } catch (err) {
                                       console.error(err);
+                                      toast.error("Failed to retry");
                                     } finally {
                                       setLoading(false);
                                     }
@@ -378,152 +342,50 @@ export default function PortalManagement() {
                               )}
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="text-center text-gray-500 py-8 font-medium"
-                          >
-                            No data found for this user.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                // 📜 Multiple pages - enable infinite scroll
-                <div
-                  ref={portalScrollRef}
-                  className="overflow-x-auto max-h-[60vh] overflow-y-auto"
-                >
-                  <table className="min-w-full border border-gray-300 divide-y divide-gray-300 bg-white">
-                    <thead className="bg-black text-white sticky top-0 z-10">
+                        ))}
+                      </>
+                    ) : (
                       <tr>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Portal
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Found
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Username
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Message
-                        </th>
-                        <th className="py-3 px-6 text-left font-semibold uppercase tracking-wider">
-                          Actions
-                        </th>
+                        <td
+                          colSpan="5"
+                          className="text-center text-gray-500 py-8 font-medium"
+                        >
+                          No data found for this user.
+                        </td>
                       </tr>
-                    </thead>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                    <tbody className="divide-y divide-gray-200">
-                      {loading && portalData.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="py-10 text-center text-gray-600 font-medium"
-                          >
-                            <div className="flex flex-col items-center justify-center">
-                              <div className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
-                              <p className="mt-3">Loading data...</p>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : portalData.length > 0 ? (
+              {/* Pagination info and Load More Button */}
+              {portalPagination && portalData.length > 0 && (
+                <div className="mt-4 flex items-center justify-between border-t pt-4">
+                  <div className="text-sm text-gray-600">
+                    Page {portalPagination.page} of{" "}
+                    {portalPagination.total_pages} | Total:{" "}
+                    {portalPagination.count} portals
+                  </div>
+                  
+                  {portalPagination.next && (
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={isPortalFetching}
+                      className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isPortalFetching ? (
                         <>
-                          {portalData.map((item, index) => (
-                            <tr
-                              key={index}
-                              className="hover:bg-gray-50 transition duration-150"
-                            >
-                              <td className="py-3 px-6 font-medium text-gray-900">
-                                {item.portal}
-                              </td>
-                              <td className="py-3 px-6">
-                                {item.found ? (
-                                  <span className="text-green-600 font-semibold">
-                                    Found
-                                  </span>
-                                ) : (
-                                  <span className="text-red-600 font-semibold">
-                                    Not Found
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 px-6 text-gray-700">
-                                {item.username || "-"}
-                              </td>
-                              <td className="py-3 px-6 text-gray-500 max-w-xs truncate">
-                                {item.message || "-"}
-                              </td>
-                              <td className="py-3 px-6 text-right">
-                                {!item.found && (
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        setLoading(true);
-                                        await mapPortalUser(
-                                          selectedUser.username,
-                                          selectedUser.user_id
-                                        );
-                                        handleCheckUsername(
-                                          selectedUser.username,
-                                          1
-                                        );
-                                      } catch (err) {
-                                        console.error(err);
-                                      } finally {
-                                        setLoading(false);
-                                      }
-                                    }}
-                                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-                                  >
-                                    Retry
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-
-                          {/* 🕓 Loading indicator for next pages */}
-                          {isPortalFetching && (
-                            <tr>
-                              <td
-                                colSpan="5"
-                                className="text-center py-4 text-gray-500"
-                              >
-                                <div className="flex items-center justify-center">
-                                  <div className="w-6 h-6 border-3 border-gray-300 border-t-black rounded-full animate-spin mr-2"></div>
-                                  Loading more portals...
-                                </div>
-                              </td>
-                            </tr>
-                          )}
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Loading...</span>
                         </>
                       ) : (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="text-center text-gray-500 py-8 font-medium"
-                          >
-                            No data found for this user.
-                          </td>
-                        </tr>
+                        <>
+                          <span>Load More</span>
+                          
+                        </>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Pagination info */}
-              {portalPagination && portalData.length > 0 && (
-                <div className="mt-4 text-sm text-gray-600 text-center">
-                  Page {portalPagination.page} of{" "}
-                  {portalPagination.total_pages} | Total:{" "}
-                  {portalPagination.count} portals
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -533,7 +395,6 @@ export default function PortalManagement() {
     </div>
   );
 }
-
 // import React, { useEffect, useState } from "react";
 // import { fetchPortalStatusByUsername, fetchAllUsersList, mapPortalUser } from "../../server";
 // import { toast } from "react-toastify";

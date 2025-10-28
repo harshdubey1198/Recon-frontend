@@ -92,9 +92,10 @@ export async function fetchNewsReport(filters = {}) {
 //     headers: { "Content-Type": "application/json" },
 //   });
 // }
-export async function fetchDistributedNews(filters = {}) {
-  const params = new URLSearchParams(filters).toString();
-  return axiosInstance.get(`/api/news/distributed/list/${params ? `?${params}` : ""}`, {
+
+export async function fetchDistributedNews(filters = {}, page = 1) {
+  const params = new URLSearchParams({ ...filters, page }).toString();
+  return axiosInstance.get(`/api/news/distributed/list/?${params}`, {
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -151,9 +152,10 @@ export async function fetchMasterCategories(page = 1, search = "") {
 
 
 
-export async function fetchAssignedCategories() {
-  return axiosInstance.get("/account/my/assignments/list/");
+export async function fetchAssignedCategories(page = 1) {
+  return axiosInstance.get(`/account/my/assignments/list/?page=${page}`);
 }
+
 
 /**
  * Create a new master category

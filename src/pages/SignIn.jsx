@@ -117,6 +117,9 @@ export default function SignIn() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSubmit(e);
+                    }}
                   className="w-full h-12 px-4 pr-12 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 outline-none"
                   placeholder="Enter your password"
                 />

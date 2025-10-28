@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Globe, List, Plus, ChevronDown, Loader2 } from "lucide-react";
-import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory } from "../../server";
+import { Globe, List, Plus, ChevronDown, Loader2, Users } from "lucide-react";
+import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById } from "../../server";
 import { toast } from "react-toastify";
 
 const InfiniteScrollDropdown = ({ 
@@ -35,7 +35,6 @@ const InfiniteScrollDropdown = ({
     }
   };
 
-  // Load more on dropdown open if initial load hasn't happened
   useEffect(() => {
     if (isOpen && options.length === 0 && hasMore && !loading) {
       onLoadMore();
@@ -103,6 +102,7 @@ const InfiniteScrollDropdown = ({
 const CategoryMapping = () => {
   const [masterCategories, setMasterCategories] = useState([]);
   const [selectedMasterCategory, setSelectedMasterCategory] = useState("");
+  const [selectedMasterCategoryId, setSelectedMasterCategoryId] = useState(null);
   const [masterCategoriesPage, setMasterCategoriesPage] = useState(1);
   const [masterCategoriesHasMore, setMasterCategoriesHasMore] = useState(true);
   const [masterCategoriesLoading, setMasterCategoriesLoading] = useState(false);
@@ -126,12 +126,17 @@ const CategoryMapping = () => {
   const [newMasterCategoryName, setNewMasterCategoryName] = useState("");
   const [newMasterCategoryDescription, setNewMasterCategoryDescription] = useState("");
 
-  // Load initial master categories
+  // New state for mapped categories
+  const [mappedData, setMappedData] = useState(null);
+  const [mappedCategoriesPage, setMappedCategoriesPage] = useState(1);
+  const [mappedCategoriesHasMore, setMappedCategoriesHasMore] = useState(false);
+  const [mappedCategoriesLoading, setMappedCategoriesLoading] = useState(false);
+  const mappedScrollRef = useRef(null);
+
   useEffect(() => {
     loadMasterCategories(1);
   }, []);
 
-  // Load initial portals
   useEffect(() => {
     loadPortals(1);
   }, []);
@@ -208,7 +213,43 @@ const CategoryMapping = () => {
     }
   };
 
-  // Load portal categories when portal changes
+  // Load mapped categories
+  const loadMappedCategories = async (categoryId, page) => {
+    if (mappedCategoriesLoading) return;
+    
+    setMappedCategoriesLoading(true);
+    try {
+      const response = await fetchMappedCategoriesById(categoryId, page);
+      const { data, pagination } = response.data;
+      
+      if (page === 1) {
+        setMappedData(data);
+      } else {
+        setMappedData(prev => ({
+          ...data,
+          mappings: [...prev.mappings, ...data.mappings]
+        }));
+      }
+      
+      setMappedCategoriesPage(page);
+      setMappedCategoriesHasMore(pagination.page < pagination.total_pages);
+    } catch (error) {
+      console.error("Error fetching mapped categories:", error);
+      toast.error("Failed to load mapped categories");
+      setMappedData(null);
+    } finally {
+      setMappedCategoriesLoading(false);
+    }
+  };
+
+  // Handle mapped categories scroll
+  const handleMappedScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - scrollTop <= clientHeight * 1.2 && mappedCategoriesHasMore && !mappedCategoriesLoading && selectedMasterCategoryId) {
+      loadMappedCategories(selectedMasterCategoryId, mappedCategoriesPage + 1);
+    }
+  };
+
   useEffect(() => {
     if (!selectedPortal) {
       setPortalCategories([]);
@@ -218,6 +259,18 @@ const CategoryMapping = () => {
     }
     loadPortalCategories(selectedPortal.name, 1);
   }, [selectedPortal]);
+
+  // Load mapped categories when master category changes
+  useEffect(() => {
+    if (selectedMasterCategoryId) {
+      setMappedCategoriesPage(1);
+      loadMappedCategories(selectedMasterCategoryId, 1);
+    } else {
+      setMappedData(null);
+      setMappedCategoriesPage(1);
+      setMappedCategoriesHasMore(false);
+    }
+  }, [selectedMasterCategoryId]);
 
   const handleAddMapping = async () => {
     if (!selectedMasterCategory || !selectedPortal || !selectedPortalCategory) {
@@ -261,6 +314,11 @@ const CategoryMapping = () => {
       setMappings([...mappings, newMapping]);
       setSelectedPortalCategory("");
       toast.success(res.data.message);
+      
+      // Refresh mapped categories
+      if (selectedMasterCategoryId) {
+        loadMappedCategories(selectedMasterCategoryId, 1);
+      }
     } catch (err) {
       console.error("Failed to map category:", err);
       toast.error(err.response?.data?.message || "Failed to map category");
@@ -280,7 +338,6 @@ const CategoryMapping = () => {
       });
       toast.success("Master Category created successfully!");
 
-      // Refresh master categories
       loadMasterCategories(1);
 
       setIsModalOpen(false);
@@ -293,9 +350,9 @@ const CategoryMapping = () => {
   };
 
   return (
-    <div className=" bg-gradient-to-br from-gray-50 to-gray-100 py-8 Existing Mappings">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 py-8 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow-xl rounded-xl ">
+        <div className="bg-white shadow-xl rounded-xl">
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-6 py-5 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-white">Category Mapping</h1>
@@ -308,7 +365,7 @@ const CategoryMapping = () => {
           </div>
 
           {/* Form Content */}
-      <div className="p-6 space-y-6 h-auto">
+          <div className="p-6 space-y-6 h-auto">
             {/* Master Category */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -316,7 +373,10 @@ const CategoryMapping = () => {
               </label>
               <InfiniteScrollDropdown
                 value={selectedMasterCategory}
-                onChange={(cat) => setSelectedMasterCategory(cat.name)}
+                onChange={(cat) => {
+                  setSelectedMasterCategory(cat.name);
+                  setSelectedMasterCategoryId(cat.id);
+                }}
                 options={masterCategories}
                 placeholder="-- Select Master Category --"
                 loading={masterCategoriesLoading}
@@ -333,6 +393,91 @@ const CategoryMapping = () => {
                 )}
               />
             </div>
+
+            {/* Mapped Categories Display */}
+            {mappedData && (
+              <div className="bg-gray-50 to-indigo-50 border-2 border-black/80 rounded-lg p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-black/70 pb-3">
+                  <h3 className="font-bold text-lg text-gray-800">
+                    Existing Mappings for "{mappedData.master_category.name}"
+                  </h3>
+                  {mappedData.assigned_users.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Users className="w-4 h-4" />
+                      <span>{mappedData.assigned_users.length} assigned user(s)</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Assigned Users */}
+                {mappedData.assigned_users.length > 0 && (
+                  <div className="bg-white/70 rounded-lg p-3">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">Assigned Users:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {mappedData.assigned_users.map((user) => (
+                        <div
+                          key={user.id}
+                          className="px-3 py-1 bg-black/20 text- rounded-full text-xs font-medium"
+                        >
+                          {user.username} ({user.email})
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mapped Portal Categories with Infinite Scroll */}
+                <div>
+                  <div className="text-sm font-semibold text-gray-700 mb-2">
+                    Portal Mappings ({mappedData.mappings.length}):
+                  </div>
+                  <div 
+                    ref={mappedScrollRef}
+                    onScroll={handleMappedScroll}
+                    className="space-y-2 max-h-64 overflow-y-auto pr-2"
+                  >
+                    {mappedData.mappings.map((mapping) => (
+                      <div
+                        key={mapping.id}
+                        className="bg-white border border-black/80 px-4 py-3 rounded-lg shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm flex-1">
+                            <Globe className="w-4 h-4 text-black/80" />
+                            <span className="font-semibold text-gray-800">{mapping.portal_name}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="text-gray-700">{mapping.portal_category_name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {mapping.use_default_content && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                Default Content
+                              </span>
+                            )}
+                            {mapping.is_default && (
+                              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
+                                Default
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {mappedCategoriesLoading && (
+                      <div className="flex items-center justify-center gap-2 py-3 text-sm text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading more mappings...
+                      </div>
+                    )}
+                    {!mappedCategoriesHasMore && mappedData.mappings.length > 0 && (
+                      <div className="text-center text-xs text-gray-500 py-2">
+                        No more mappings
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Portal */}
             <div>
@@ -413,12 +558,12 @@ const CategoryMapping = () => {
             {/* Mapping List */}
             {mappings.length > 0 && (
               <div className="mt-8 border-t pt-6">
-                <h2 className="font-bold text-lg text-gray-800 mb-4">Mapped Categories</h2>
+                <h2 className="font-bold text-lg text-gray-800 mb-4">Recently Mapped Categories</h2>
                 <div className="space-y-3">
                   {mappings.map((m, idx) => (
                     <div
                       key={idx}
-                      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-black/80 px-4 py-3 rounded-lg shadow-sm"
+                      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 px-4 py-3 rounded-lg shadow-sm"
                     >
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-semibold text-gray-800">{m.masterCategory}</span>
