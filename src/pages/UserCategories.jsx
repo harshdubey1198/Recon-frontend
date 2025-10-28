@@ -12,6 +12,10 @@ export default function UserCategories() {
   const [selectedUser, setSelectedUser] = useState({ username: "", user_id: null });
   const [assignments, setAssignments] = useState([]);
   
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  
   // User list pagination
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
@@ -34,11 +38,13 @@ export default function UserCategories() {
   }, []);
 
   // Fetch users (handles pagination)
-  const fetchUsers = async (pageNumber) => {
+  const fetchUsers = async (pageNumber, search = "") => {
     if (isFetching) return;
     setIsFetching(true);
     try {
-      const res = await fetchAllUsersList(pageNumber);
+      const searchParam = search ? `&search=${search}` : "";
+      const res = await fetchAllUsersList(pageNumber, search);
+      
       if (res.data?.status) {
         setPagination(res.data.pagination);
 
@@ -57,6 +63,7 @@ export default function UserCategories() {
       toast.error("Failed to fetch users");
     } finally {
       setIsFetching(false);
+      setIsSearching(false);
     }
   };
 
@@ -70,7 +77,7 @@ export default function UserCategories() {
     if (scrollTop + clientHeight >= scrollHeight - 10 && pagination.next && !isFetching) {
       const nextPage = page + 1;
       if (nextPage <= pagination.total_pages) {
-        fetchUsers(nextPage);
+        fetchUsers(nextPage, searchQuery);
       }
     }
 
@@ -78,7 +85,7 @@ export default function UserCategories() {
       const prevPage = page - 1;
       if (prevPage >= 1) {
         const currentScrollHeight = scrollHeight;
-        fetchUsers(prevPage).then(() => {
+        fetchUsers(prevPage, searchQuery).then(() => {
           requestAnimationFrame(() => {
             if (scrollRef.current) {
               scrollRef.current.scrollTop = scrollRef.current.scrollHeight - currentScrollHeight;
@@ -87,6 +94,29 @@ export default function UserCategories() {
         });
       }
     }
+  };
+
+  // Handle search
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setIsSearching(true);
+    setPage(1);
+    
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      fetchUsers(1, value);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  };
+
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setIsSearching(true);
+    setPage(1);
+    fetchUsers(1, "");
   };
 
   useEffect(() => {
@@ -209,6 +239,40 @@ export default function UserCategories() {
             User Category List
           </h1>
           <p className="text-gray-600">Explore user profiles and their assigned categories</p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearch}
+              placeholder="Search users by username or email..."
+              className="w-full pl-12 pr-12 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-gray-900 placeholder-gray-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {isSearching && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+              <span>Searching...</span>
+            </div>
+          )}
         </div>
 
         {/* User Cards Grid */}
@@ -395,7 +459,7 @@ export default function UserCategories() {
                               ) : categoryData ? (
                                 <div className="space-y-4">
                                   {/* Assigned Users */}
-                                  {/* {categoryData.assigned_users && categoryData.assigned_users.length > 0 && (
+                                  {categoryData.assigned_users && categoryData.assigned_users.length > 0 && (
                                     <div>
                                       <h5 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,7 +475,7 @@ export default function UserCategories() {
                                         ))}
                                       </div>
                                     </div>
-                                  )} */}
+                                  )}
 
                                   {/* Portal Mappings */}
                                   {categoryData.mappings && categoryData.mappings.length > 0 ? (
@@ -433,7 +497,7 @@ export default function UserCategories() {
                                               <span className="text-gray-400">→</span>
                                               <span className="text-sm text-gray-700">{mapping.portal_category_name}</span>
                                             </div>
-                                            {/* <div className="flex items-center gap-2 ml-6">
+                                            <div className="flex items-center gap-2 ml-6">
                                               {mapping.is_default && (
                                                 <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
                                                   Default
@@ -444,7 +508,7 @@ export default function UserCategories() {
                                                   Uses Default Content
                                                 </span>
                                               )}
-                                            </div> */}
+                                            </div>
                                           </div>
                                         ))}
                                       </div>

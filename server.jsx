@@ -182,8 +182,9 @@ export async function fetchUnassignedUsers() {
   return axiosInstance.get("/account/unassigned/users/");
 }
 
-export async function fetchAllUsersList(page = 1) {
-  return axiosInstance.get(`/account/all/users/list/?page=${page}`);
+export async function fetchAllUsersList(page = 1, search = "") {
+  const searchParam = search ? `&search=${search}` : "";
+  return axiosInstance.get(`/account/all/users/list/?page=${page}${searchParam}`);
 }
 export async function fetchAllUsersListSimple() {
   return axiosInstance.get(`/account/all/users/list/`);
