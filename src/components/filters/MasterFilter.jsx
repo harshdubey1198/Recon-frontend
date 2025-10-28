@@ -6,6 +6,7 @@ import UserFilter from "./UserFilter";
 import StatusFilter from "./StatusFilter";
 import SearchFilter from "./SearchFilter";
 import ClearFilter from "./ClearFilter";
+import CustomDateFilter from "./CustomDateFilter";
 
 export default function MasterFilter({
   onChange,
@@ -40,6 +41,12 @@ export default function MasterFilter({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         {show("date_filter") && (
           <TimeRangeFilter
+            value={filters.date_filter}
+            onChange={(v) => updateFilter("date_filter", v)}
+          />
+        )}
+        {show("custom_date") && (
+          <CustomDateFilter
             value={filters.date_filter}
             onChange={(v) => updateFilter("date_filter", v)}
           />

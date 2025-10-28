@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { FileText, Eye, X, Clock } from "lucide-react";
+import { FileText, X, Clock } from "lucide-react";
 import { fetchMyNewsPosts,fetchDistributedNews,publishNewsArticle, fetchNewsDetail, fetchMasterCategories, fetchPortals, fetchPortalCategories, } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
+import MasterFilter from "../components/filters/MasterFilter";
+import SearchFilter from "../components/filters/SearchFilter";
 
 const NewsList = () => {
   const [selectedNewsIds, setSelectedNewsIds] = useState([]);
@@ -102,55 +104,58 @@ const NewsList = () => {
   }, [selectedPortal]);
 
   // 🔹 Load news list (using new API)
-  const loadNews = async () => {
-  try {
-    const res = await fetchMyNewsPosts({
-      search,
-      status,
-      portal_name: selectedPortal,
-      portal_category_name: selectedPortalCategory,
-      master_category_name: selectedMasterCategory,
-      start_date: startDate,
-      end_date: endDate,
-      created_by: createdBy,
-      page,
-    });
+  const loadNewsWithFilters = async (filters) => {
+    try {
+      const res = await fetchMyNewsPosts({
+        search: filters.search || "",
+        status: filters.status || "",
+        portal_name: filters.portal_id || "",
+        master_category_name: filters.master_category_id || "",
+        created_by: filters.username || "",
+        start_date: filters.date_filter?.start_date || "",
+        end_date: filters.date_filter?.end_date || "",
+        page: filters.page || page || 1,
+      });
 
-    console.log("Fetched response:", res);
-
-    // ✅ Your posts are in res.data.data, not res.data.data.data
-    if (res?.data?.status) {
-      const posts = res?.data?.data || [];
-
-      const mapped = posts.map((item) => ({        id: item.id,
-        category: item.master_category_name || "N/A",
-        headline: item.title || "Untitled",
-        shortDesc: item.short_description || "",
-        longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
-        author: "You",
-        live_url: "",
-        status: item.status || "N/A",
-        date: new Date(item.created_at).toLocaleDateString(),
-        image: item.post_image
-          ? `${constant?.appBaseUrl}/${item.post_image}`
-          : "https://via.placeholder.com/150",
-      }));
-
-      setNews(mapped);
-      console.log("mapped",mapped);
-      
-      // ✅ Pagination info lives under res.data.pagination
-      setTotalPages(res?.data?.pagination?.total_pages || 1);
+      if (res?.data?.status) {
+        const posts = res?.data?.data || [];
+        const mapped = posts.map((item) => ({
+          id: item.id,
+          category: item.master_category_name || "N/A",
+          headline: item.title || "Untitled",
+          shortDesc: item.short_description || "",
+          longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
+          author: "You",
+          live_url: "",
+          status: item.status || "N/A",
+          date: new Date(item.created_at).toLocaleDateString(),
+          image: item.post_image
+            ? `${constant?.appBaseUrl}/${item.post_image}`
+            : "https://via.placeholder.com/150",
+        }));
+        setNews(mapped);
+        setTotalPages(res?.data?.pagination?.total_pages || 1);
+      }
+    } catch (err) {
+      console.error("Failed to fetch filtered news:", err);
     }
-  } catch (err) {
-    console.error("Failed to fetch my news posts:", err);
-  }
-};
+  };
+
 
 
   useEffect(() => {
-    loadNews();
+    // load all data on first render or page change
+    loadNewsWithFilters({
+      search,
+      status,
+      portal_id: selectedPortal,
+      master_category_id: selectedMasterCategory,
+      username: createdBy,
+      date_filter: { start_date: startDate, end_date: endDate },
+      page,
+    });
   }, [page]);
+
 
   // 🔹 Selection
   const toggleSelect = (id) =>
@@ -212,7 +217,7 @@ const NewsList = () => {
     setStartDate("");
     setEndDate("");
     setCreatedBy("");
-    loadNews();
+    loadNewsWithFilters();
   };
 
   return (
@@ -221,6 +226,7 @@ const NewsList = () => {
         <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
           {/* Header */}
           <div className="bg-black px-6 py-4 flex items-center justify-between">
+            {/* Left Section */}
             <div className="flex items-center space-x-3">
               <div className="bg-white/10 p-2 rounded">
                 <FileText className="w-5 h-5 text-white" />
@@ -234,160 +240,82 @@ const NewsList = () => {
                 </p>
               </div>
             </div>
+
+            {/* Right Section - Create News Button */}
+            <button
+                onClick={() => {
+                  localStorage.setItem("activeTab", "Create News");
+                  window.location.reload(); 
+                }}
+                className="group relative flex items-center space-x-2 px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300"
+              >
+                  <span className="relative z-10 flex items-center">
+                    <FileText className="w-4 h-4 mr-2 group-hover:animate-pulse" />
+                    Create News
+                  </span>
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300"></div>
+            </button>
           </div>
+          
+        {/* 🔍 Standalone Search Bar */}
+        <div className="p-6 border-b border-gray-200 bg-gray-50">
+          <SearchFilter
+            onChange={(query) => {
+              setSearch(query);
+              const filters = {
+                search: query,
+                status,
+                portal_id: selectedPortal,
+                master_category_id: selectedMasterCategory,
+                username: createdBy,
+                date_filter: { start_date: startDate, end_date: endDate },
+              };
+              loadNewsWithFilters(filters);
+            }}
+          />
+        </div>
+
 
           {/* Filters */}
           <div className="p-6">
-            <div className="bg-gray-100 p-4 mb-4 rounded-lg border border-gray-200">
-              <h2 className="text-md font-semibold text-gray-800 mb-3">
-                Filter My News
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* Search */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Search
-                  </label>
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search headline..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  />
-                </div>
+            <MasterFilter
+                visibleFilters={[
+                  // "search",
+                  "status",
+                  "portal_id",
+                  "master_category_id",
+                  "username",
+                  "custom_date"
+                  // "date_filter",
+                ]}
+                initialFilters={{
+                  search,
+                  status,
+                  portal_id: selectedPortal,
+                  master_category_id: selectedMasterCategory,
+                  username: createdBy,
+                  date_filter: { start_date: startDate, end_date: endDate },
+                }}
+                onChange={(filters) => {
+                  setSearch(filters.search || "");
+                  setStatus(filters.status || "");
+                  setSelectedPortal(filters.portal_id || "");
+                  setSelectedMasterCategory(filters.master_category_id || "");
+                  setCreatedBy(filters.username || "");
+                  setStartDate(filters.date_filter?.start || "");
+                  setEndDate(filters.date_filter?.end || "");
+                  setPage(1);
 
-                {/* Status */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  >
-                    <option value="">All</option>
-                    <option value="SUCCESS">Success</option>
-                    <option value="FAILED">Failed</option>
-                    <option value="PENDING">Pending</option>
-                  </select>
-                </div>
+                  // ✅ Call loadNews AFTER states update (using callback pattern)
+                  setTimeout(() => {
+                    loadNewsWithFilters(filters);
+                  }, 0);
+                }}
 
-                {/* Portal Name */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Portal Name
-                  </label>
-                  <select
-                    value={selectedPortal}
-                    onChange={(e) => setSelectedPortal(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  >
-                    <option value="">All</option>
-                    {portals.map((p) => (
-                      <option key={p.id} value={p.name}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Portal Category */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Portal Category
-                  </label>
-                  <select
-                    value={selectedPortalCategory}
-                    onChange={(e) => setSelectedPortalCategory(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  >
-                    <option value="">All</option>
-                    {portalCategories.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.parent_name
-                          ? `${c.parent_name} → ${c.name}`
-                          : c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Master Category */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Master Category
-                  </label>
-                  <select
-                    value={selectedMasterCategory}
-                    onChange={(e) => setSelectedMasterCategory(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  >
-                    <option value="">All</option>
-                    {masterCategories.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Dates */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  />
-                </div>
-
-                {/* Created By */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Created By
-                  </label>
-                  <input
-                    type="text"
-                    value={createdBy}
-                    onChange={(e) => setCreatedBy(e.target.value)}
-                    placeholder="Enter creator name..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                  />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-end mt-4 space-x-2">
-                <button
-                  onClick={loadNews}
-                  className="px-4 py-2 bg-black text-white text-sm rounded-lg hover:bg-gray-800 transition"
-                >
-                  Apply Filters
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 text-sm rounded-lg hover:bg-gray-300 transition"
-                >
-                  Reset
-                </button>
-              </div>
-            </div>
+                onClear={() => {
+                  handleReset();
+                }}
+              />
 
             {/* Table */}
             <div className="overflow-x-auto">
