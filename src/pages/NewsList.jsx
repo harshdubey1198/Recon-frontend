@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { FileText, Eye, X, Clock } from "lucide-react";
-import {
-  fetchMyNewsPosts,
-  fetchNewsDetail,
-  fetchMasterCategories,
-  fetchPortals,
-  fetchPortalCategories,
-} from "../../server";
+import { fetchMyNewsPosts,fetchDistributedNews,publishNewsArticle, fetchNewsDetail, fetchMasterCategories, fetchPortals, fetchPortalCategories, } from "../../server";
 import constant from "../../Constant";
+import { toast } from "react-toastify";
 
 const NewsList = () => {
   const [selectedNewsIds, setSelectedNewsIds] = useState([]);
@@ -15,6 +10,10 @@ const NewsList = () => {
   const [selectedNews, setSelectedNews] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [distributedList, setDistributedList] = useState([]);
+  const [expandedRow, setExpandedRow] = useState(null);
+  const [distributedData, setDistributedData] = useState({});
+  const [publishingId, setPublishingId] = useState(null);
 
   // 🔹 Filter States
   const [search, setSearch] = useState("");
@@ -47,6 +46,43 @@ const NewsList = () => {
     };
     loadDropdowns();
   }, []);
+
+  const loadDistributedNews = async (newsPostId) => {
+    try {
+      const res = await fetchDistributedNews({ news_post_id: newsPostId });
+      if (res?.data?.status) {
+        setDistributedData((prev) => ({
+          ...prev,
+          [newsPostId]: res.data.data || [],
+        }));
+      } else {
+        setDistributedData((prev) => ({ ...prev, [newsPostId]: [] }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch distributed list:", err);
+      setDistributedData((prev) => ({ ...prev, [newsPostId]: [] }));
+    }
+  };
+
+  const handleRetryPublish = async (item) => {
+    try {
+      setPublishingId(item.id);
+      const res = await publishNewsArticle(item.id);
+      if (res?.data?.status) {
+        console.log("✅ Re-publish success:", res.data.message);
+        toast.success("Article republished successfully!");
+        loadDistributedNews(item.id); 
+      } else {
+        toast.error("Failed to republish the article.");
+      }
+    } catch (err) {
+      console.error("❌ Error while republishing:", err);
+      toast.error("Something went wrong while republishing.");
+    }finally {
+      setPublishingId(null);
+    }
+  };
+
 
   // 🔹 Load portal categories when portal changes
   useEffect(() => {
@@ -96,12 +132,13 @@ const NewsList = () => {
         status: item.status || "N/A",
         date: new Date(item.created_at).toLocaleDateString(),
         image: item.post_image
-          ? constant?.BASE_URL + item.post_image
+          ? `${constant?.appBaseUrl}/${item.post_image}`
           : "https://via.placeholder.com/150",
       }));
 
       setNews(mapped);
-
+      console.log("mapped",mapped);
+      
       // ✅ Pagination info lives under res.data.pagination
       setTotalPages(res?.data?.pagination?.total_pages || 1);
     }
@@ -395,80 +432,205 @@ const NewsList = () => {
                 <tbody>
                   {news.length > 0 ? (
                     news.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="border-t hover:bg-gray-50 transition-colors"
-                      >
-                        <td className="px-4 py-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-black"
-                            checked={selectedNewsIds.includes(item.id)}
-                            onChange={() => toggleSelect(item.id)}
-                          />
-                        </td>
-                        <td className="px-4 py-2">
-                          <img
-                            src={item.image}
-                            alt={item.headline}
-                            className="w-16 h-12 object-cover rounded border"
-                          />
-                        </td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                          {item.headline}
-                          <p className="text-xs text-gray-500">
-                            {item.shortDesc}
-                          </p>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-700">
-                          {item.category}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-700">
-                          {item.author}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
-                          {item.live_url}
-                        </td>
-                        <td className="px-4 py-2">
-                          <span
-                            className={`px-2 py-1 text-xs rounded ${
-                              item.status === "SUCCESS"
-                                ? "bg-green-100 text-green-700"
-                                : item.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-600">
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{item.date}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-sm">
-                          <button
-                            onClick={() => handleViewDetail(item)}
-                            className="p-1 text-gray-600 hover:text-black"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
+                      <React.Fragment key={item.id}>
+                        {/* MAIN ROW */}
+                        <tr
+                          onClick={() => {
+                            const isOpen = expandedRow === item.id;
+                            setExpandedRow(isOpen ? null : item.id);
+                            if (!isOpen && !distributedData[item.id]) {
+                              loadDistributedNews(item.id);
+                            }
+                          }}
+                          className={`border-t hover:bg-gray-50 cursor-pointer transition-colors ${
+                            expandedRow === item.id ? "bg-gray-50" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-2">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-black"
+                              checked={selectedNewsIds.includes(item.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => toggleSelect(item.id)}
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <img
+                              src={item.image}
+                              alt={item.headline}
+                              className="w-16 h-12 object-cover rounded border"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`transition-transform ${
+                                  expandedRow === item.id ? "rotate-90" : ""
+                                }`}
+                              >
+                                ▶
+                              </span>
+                              {item.headline}
+                            </div>
+                            <p className="text-xs text-gray-500">{item.shortDesc}</p>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.category}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700">{item.author}</td>
+                          <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
+                            {item.live_url}
+                          </td>
+                          <td className="px-4 py-2">
+                            <span
+                              className={`px-2 py-1 text-xs rounded ${
+                                item.status === "SUCCESS"
+                                  ? "bg-green-100 text-green-700"
+                                  : item.status === "PENDING"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {item.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600">
+                            <div className="flex items-center space-x-1">
+                              <Clock className="w-4 h-4" />
+                              <span>{item.date}</span>
+                            </div>
+                          </td>
+                          <td
+                              className="px-4 py-2 text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation(); // prevent row expand/collapse
+                                if (!publishingId) handleRetryPublish(item);
+                              }}
+                            >
+                              {publishingId === item.id ? (
+                                <div className="flex items-center gap-2 text-gray-600 text-sm">
+                                  <svg
+                                    className="w-4 h-4 animate-spin text-gray-600"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5a8 8 0 008 8v-4a4 4 0 01-4-4H6z"
+                                    ></path>
+                                  </svg>
+                                  <span>Publishing...</span>
+                                </div>
+                              ) : (
+                                <button
+                                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                  title="Retry Publish"
+                                >
+                                  Retry
+                                </button>
+                              )}
+                            </td>
+
+
+                        </tr>
+
+                        {/* COLLAPSIBLE DISTRIBUTED LIST */}
+                        {expandedRow === item.id && (
+                            <tr className="bg-white border-t border-gray-200">
+                              <td colSpan="9" className="p-0">
+                                {distributedData[item.id]?.length > 0 ? (
+                                  <table className="w-full text-sm bg-gray-50">
+                                    <tbody>
+                                      {distributedData[item.id].map((dist) => (
+                                        <tr
+                                          key={dist.id}
+                                          className="border-t border-gray-200 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <td className="w-[150px]"></td>
+                                          {/* 🔹 Portal Image */}
+                                          <td className="w-[60px] px-2 py-3">
+                                            <img
+                                              src={dist.news_post_image}
+                                              alt={dist.portal_name}
+                                              className="w-10 h-10 object-cover rounded-md border"
+                                            />
+                                          </td>
+                                          {/* 🔹 Headline + Short Description */}
+                                          <td className="px-2 py-3 max-w-[200px]">
+                                            <div className="flex flex-col">
+                                              <span className="text-sm font-semibold text-gray-900">
+                                                {dist.news_post_title}
+                                              </span>
+                                              <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                                                {dist.ai_short_description || "—"}
+                                              </span>
+                                            </div>
+                                          </td>
+
+                                          {/* 🔹 Live URL */}
+                                          <td className="px-2 py-3 text-gray-600 truncate max-w-[200px]">
+                                            <a
+                                              href={dist.live_url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-600 hover:underline"
+                                            >
+                                              {dist.live_url}
+                                            </a>
+                                              <br/>
+                                              <span className="px-2 py-3 font-medium text-gray-800">{dist.portal_name}</span>
+                                          </td>
+
+                                          {/* 🔹 Status Badge */}
+                                          <td className="px-1 py-3">
+                                            <span
+                                              className={`px-2 py-1 text-xs rounded ${
+                                                dist.status === "SUCCESS"
+                                                  ? "bg-green-100 text-green-700"
+                                                  : dist.status === "FAILED"
+                                                  ? "bg-red-100 text-red-700"
+                                                  : "bg-yellow-100 text-yellow-700"
+                                              }`}
+                                            >
+                                              {dist.status}
+                                            </span>
+                                          </td>
+
+                                          {/* 🔹 Date */}
+                                          <td className="px-1 py-3 text-gray-500 whitespace-nowrap">
+                                            {new Date(dist.sent_at).toLocaleDateString()}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <div className="text-center py-3 text-gray-500">
+                                    No distribution data found.
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+
+                      </React.Fragment>
                     ))
                   ) : (
                     <tr>
-                      <td
-                        colSpan="9"
-                        className="text-center py-4 text-gray-500"
-                      >
+                      <td colSpan="9" className="text-center py-4 text-gray-500">
                         No news found.
                       </td>
                     </tr>
                   )}
                 </tbody>
+
               </table>
               {totalPages > 1 && (
                 <div className="flex justify-center items-center space-x-2 mt-4">
@@ -539,11 +701,11 @@ const NewsList = () => {
             </div>
             <h3 className="text-lg font-semibold mb-2">Summary</h3>
             <p className="mb-6 text-gray-700">{selectedNews.shortDesc}</p>
-            ```jsx
             <h3 className="text-lg font-semibold mb-2">Full Article</h3>
             <p className="text-gray-700 whitespace-pre-line">
               {selectedNews.longDesc}
             </p>
+            
           </div>
         </div>
       )}

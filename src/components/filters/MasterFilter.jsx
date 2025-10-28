@@ -11,7 +11,7 @@ export default function MasterFilter({
   onChange,
   onClear,
   visibleFilters = [],
-  initialFilters = {}, // ✅ new prop for pre-filled filters
+  initialFilters = {}, 
 }) {
   const [filters, setFilters] = useState(initialFilters || {});
 
