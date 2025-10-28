@@ -260,6 +260,10 @@ export async function fetchMappedCategories(mapped = false,page=1) {
  return axiosInstance.get(`/api/master/category/?mapped=${mapped}&page=${page}`);
 
 }
+// delete mapped portal user
+export async function deleteMapping(mappingId) {
+  return axiosInstance.delete(`/api/master/category/mapping/${mappingId}/`);
+}
 
 
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Globe, List, Plus, ChevronDown, Loader2, Users } from "lucide-react";
-import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById } from "../../server";
+import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById,deleteMapping } from "../../server";
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 
@@ -43,6 +43,8 @@ const InfiniteScrollDropdown = ({
   }, [isOpen]);
 
   const selectedOption = options.find(opt => opt.id === value || opt.name === value);
+
+  
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -350,6 +352,22 @@ const CategoryMapping = () => {
     }
   };
 
+  const handleDeleteMapping = async (mappingId) => {
+  try {
+    const response = await deleteMapping(mappingId);
+    toast.success(response.data?.data || "Mapping deleted");
+
+    // Refresh the mapped categories list
+    if (selectedMasterCategoryId) {
+      loadMappedCategories(selectedMasterCategoryId, 1);
+    }
+  } catch (error) {
+    console.error("Failed to delete mapping:", error);
+    toast.error(error.response?.data?.message || "Failed to delete mapping");
+  }
+};
+
+
   return (
     <div className="bg-gradient-to-br from-gray-50 to-gray-100 py-8 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -449,7 +467,7 @@ const CategoryMapping = () => {
                             <span className="text-gray-400">→</span>
                             <span className="text-gray-700">{mapping.portal_category_name}</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                             {mapping.use_default_content && (
                               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
                                 Default Content
@@ -460,7 +478,16 @@ const CategoryMapping = () => {
                                 Default
                               </span>
                             )}
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => handleDeleteMapping(mapping.id)}
+                              className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-lg font-medium hover:bg-red-200 transition-colors"
+                            >
+                              Delete
+                            </button>
                           </div>
+
                         </div>
                       </div>
                     ))}
