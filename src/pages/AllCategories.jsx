@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { List, Info, Search, Folder, ArrowRight, Package, X, Users, Link2, Loader2 } from "lucide-react";
 import { fetchCategoryMappings, fetchMasterCategories, fetchMappedCategoriesById } from "../../server";
 import CategoryMapping from "../pages/CategoryMapping";
+import formatUsername from "../utils/formateName";
 
 const AllCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -359,7 +360,7 @@ const AllCategories = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-gray-900 truncate">
-                                {user.username}
+                                {formatUsername(user.username)}
                               </p>
                               <p className="text-xs text-gray-600 truncate">{user.email}</p>
                             </div>

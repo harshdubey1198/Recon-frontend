@@ -6,6 +6,7 @@ import {
   fetchNewsList,
 } from "../../server";
 import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2 } from "lucide-react";
+import formatUsername from "../utils/formateName";
 export default function Dashboard() {
   const [user, setUser] = useState(null);
 
@@ -200,7 +201,7 @@ export default function Dashboard() {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">
-                  {user ? user.username : "Guest"}
+                  {user ? formatUsername(user.username): "Guest"}
                 </p>
                 {/* <p className="text-xs text-gray-500">
                 {user?.email || "No email saved"}
