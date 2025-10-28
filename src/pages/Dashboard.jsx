@@ -20,6 +20,10 @@ export default function Dashboard() {
     activeUsers: 0,
     revenue: 0,
   });
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(15000); 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
  const loadNews = async (pageNumber = 1) => {
     if (isFetching) return;
     setIsFetching(true);
@@ -66,26 +70,26 @@ export default function Dashboard() {
       }
     }
   };
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const res = await fetchAdminStats();
-        console.log("Admin stats response:", res);
-        if (res?.data?.status) {
-          setStats({
-            totalPosts: res.data.data.total_posts,
-            totaltodayPosts: res.data.data.today_total_posts,
-            categories: res.data.data.total_master_categories,
-            domains: res.data.data.total_portals,
-            targets: res.data.data.news_distribution.total_distributions,
-            activeUsers: res.data.data.total_users,
-            revenue: res.data.data.news_distribution.successful_distributions, // फिलहाल revenue नहीं है तो example के लिए success counts
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch stats:", err);
+  
+  const loadStats = async () => {
+    try {
+      const res = await fetchAdminStats();
+      console.log("Admin stats response:", res);
+      if (res?.data?.status) {
+        setStats({
+          totalPosts: res.data.data.total_posts,
+          totaltodayPosts: res.data.data.today_total_posts,
+          categories: res.data.data.total_master_categories,
+          domains: res.data.data.total_portals,
+          targets: res.data.data.news_distribution.total_distributions,
+          activeUsers: res.data.data.total_users,
+          revenue: res.data.data.news_distribution.successful_distributions, // फिलहाल revenue नहीं है तो example के लिए success counts
+        });
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
+  };
 
   const loadDomains = async () => {
       try {
@@ -112,48 +116,49 @@ export default function Dashboard() {
 
             // Smart status logic
             status:
-              d.failed_distributions > 0
-                ? "Partial"
+            d.failed_distributions > 0
+            ? "Partial"
                 : d.successful_distributions > 0
                 ? "Active"
                 : "Idle",
-          }));
+              }));
 
-          setDomains(mapped);
+              setDomains(mapped);
         }
       } catch (err) {
         console.error("❌ Failed to fetch domains:", err);
       }
     };
 
-    const loadCategories = async () => {
-      try {
-        const res = await fetchMasterCategories();
-        if (res?.data?.status) {
-          // Map API -> UI
-          const mapped = res.data.data.map((cat, idx) => ({
-            name: cat.name,
-            posts: Math.floor(Math.random() * 500), // फिलहाल dummy posts count
-            color: [
-              "bg-blue-500",
-              "bg-purple-500",
-              "bg-green-500",
-              "bg-orange-500",
-              "bg-red-500",
-              "bg-indigo-500",
-            ][idx % 6], // रंग rotate करने के लिए
-          }));
-          setCategories(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to fetch categories:", err);
+  const loadCategories = async () => {
+    try {
+      const res = await fetchMasterCategories();
+      if (res?.data?.status) {
+        // Map API -> UI
+        const mapped = res.data.data.map((cat, idx) => ({
+          name: cat.name,
+          posts: Math.floor(Math.random() * 500), // फिलहाल dummy posts count
+          color: [
+            "bg-blue-500",
+            "bg-purple-500",
+            "bg-green-500",
+            "bg-orange-500",
+            "bg-red-500",
+            "bg-indigo-500",
+          ][idx % 6], // रंग rotate करने के लिए
+        }));
+        setCategories(mapped);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+    }
+  };
+  useEffect(() => {
 
    loadStats();
     loadDomains();
     loadCategories();
-    loadNews(1); // Load first page on mount
+    loadNews(1); 
   }, []);
   useEffect(() => {
     const savedUser = localStorage.getItem("auth_user");
@@ -167,11 +172,36 @@ export default function Dashboard() {
     }
   }, []);
 
-
+  
   const handleLogout = () => {
     console.log("Logout clicked");
   };
+  const refreshAllData = async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      loadStats(),
+      loadDomains(),
+      loadCategories(),
+      loadNews(1),
+    ]);
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
+    // ✅ Auto-refresh effect
+  useEffect(() => {
+    let intervalId;
+    if (autoRefresh) {
+      intervalId = setInterval(() => {
+        console.log(`🔁 Auto-refresh every ${refreshInterval / 1000}s`);
+        refreshAllData();
+      }, refreshInterval);
+    }
+    return () => clearInterval(intervalId);
+  }, [autoRefresh, refreshInterval]);
+
+  useEffect(() => {
+    refreshAllData();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50 ">
       {/* Header */}
@@ -223,11 +253,49 @@ export default function Dashboard() {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             {/* Welcome back, {user.username}! 👋 */}
           </h2>
-          <p className="text-gray-600">
+          <p className="flex flex-row items-center justify-between text-gray-600">
             Here's what's happening with your content today.
+          <div className="flex items-center space-x-3 m-2">
+            {isRefreshing && (
+              <span className="text-xs text-gray-500 animate-pulse ml-2">
+                🔄 Refreshing data…
+              </span>
+            )}
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="h-4 w-4 accent-blue-600 cursor-pointer"
+              />
+              <span className="text-sm font-medium text-gray-700">Auto-Refresh</span>
+            </label>
+
+            {/* <select
+              value={refreshInterval}
+              onChange={(e) => setRefreshInterval(Number(e.target.value))}
+              disabled={!autoRefresh}
+              className={`border rounded-md px-2 py-1 text-sm ${
+                autoRefresh ? "border-blue-400" : "border-gray-300 opacity-60"
+              }`}
+            >
+              <option value={15000}>15 sec</option>
+              <option value={30000}>30 sec</option>
+              <option value={60000}>60 sec</option>
+            </select> */}
+
+            {!autoRefresh && (
+              <button
+                onClick={refreshAllData}
+                className="ml-3 px-3 py-1 bg-gray-900 text-white text-sm rounded-md hover:bg-gray-800"
+              >
+                Refresh Stats
+              </button>
+            )}
+
+          </div>
           </p>
         </div>
-
         {/* Stats Grid */}
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
