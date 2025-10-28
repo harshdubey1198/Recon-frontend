@@ -41,7 +41,7 @@ const menuItems = [
        { name: "All Categories", icon: FolderTree },
        { name: "User Access Control", icon: ShieldCheck },
       { name: "User Categories", icon: Layers },
-        { name: "User Access List", icon: Users2 },
+        { name: "User Portal Access", icon: Users2 },
        { name: "Portal Management", icon: Building2 },
        
       ]
@@ -310,7 +310,7 @@ const menuItems = [
             {activeItem === "News List" && <NewsList />}
             {activeItem === "Portal Management" && <PortalManagement />}
             {activeItem === "User Access Control" && <AccessControl />}
-            {activeItem === "User Access List" && <UserAccessList />}
+            {activeItem === "User Portal Access" && <UserAccessList />}
             {activeItem === "Category Mapping" && <CategoryMapping />}
             {activeItem === "All Categories" && <AllCategories />}
             {activeItem === "User Categories" && <UserCategories />}
