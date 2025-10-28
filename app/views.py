@@ -850,7 +850,7 @@ class MasterNewsPostPublishAPIView(APIView):
 
                 api_url = f"{portal.base_url}/api/create-news/"
                 try:
-                    response = requests.post(api_url, data=payload, files=files, timeout=10)
+                    response = requests.post(api_url, data=payload, files=files, timeout=90)
                     success = response.status_code in [200, 201]
                     response_msg = response.text
                 except Exception as e:
@@ -1381,7 +1381,7 @@ class AllPortalsTagsLiveAPIView(APIView):
         for portal in portals:
             try:
                 api_url = f"{portal.base_url}/api/tags/"
-                response = requests.get(api_url, timeout=10)
+                response = requests.get(api_url, timeout=90)
                 if response.status_code == 200:
                     res_json = response.json()
                     # adapt to actual response structure
@@ -1437,23 +1437,41 @@ class NewsPostUpdateAPIView(APIView):
 
 class MyPostsListAPIView(APIView, PaginationMixin):
     """
-    GET /api/my-posts/?status=DRAFT
+    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED
     Returns all posts created by the logged-in user.
-    Optionally filters by status (DRAFT / PUBLISHED).
+    Optional filters:
+      - status: DRAFT / PUBLISHED
+      - distribution_status: SUCCESS / FAILED / PENDING
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         try:
             user = request.user
             status_filter = request.query_params.get("status")
+            distribution_status = request.query_params.get("distribution_status")
 
             queryset = MasterNewsPost.objects.filter(created_by=user).order_by("-created_at")
 
-            # Optional filter by status
+            # Optional filter by post status (DRAFT / PUBLISHED)
             if status_filter:
                 queryset = queryset.filter(status__iexact=status_filter)
 
+            # Optional filter by news distribution status (SUCCESS / FAILED)
+            if distribution_status:
+                valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() not in valid_statuses:
+                    return Response(
+                        error_response("Invalid distribution_status. Use SUCCESS or FAILED or PENDING."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                queryset = queryset.filter(
+                    news_distribution__status__iexact=distribution_status
+                ).distinct()
+
+            # Paginate and serialize
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
             serializer = MasterNewsPostSerializer(paginated_qs, many=True)
 
@@ -1463,8 +1481,10 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             )
 
         except Exception as e:
-            return Response(error_response(str(e)), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class NewsReportAPIView(APIView, PaginationMixin):
     """

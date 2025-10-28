@@ -117,7 +117,7 @@ class CheckUsernameAcrossPortalsAPIView(APIView, PaginationMixin):
         for portal in Portal.objects.all():
             try:
                 url = f"{portal.base_url}/api/check-username/"
-                r = requests.get(url, params={"username": username}, timeout=5)
+                r = requests.get(url, params={"username": username}, timeout=60)
 
                 if r.status_code == 200 and r.json().get("status"):
                     user_data = r.json().get("data", {})
