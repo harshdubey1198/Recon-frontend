@@ -1549,7 +1549,7 @@ class NewsReportAPIView(APIView, PaginationMixin):
             today = timezone.now().date()
             start_dt, end_dt = None, None
 
-            # Handle date filters
+            # --- Handle date filters ---
             if date_filter == "today":
                 start_dt = today
                 end_dt = today
@@ -1563,32 +1563,34 @@ class NewsReportAPIView(APIView, PaginationMixin):
                 start_dt = today
                 end_dt = today
 
-            # Base querysets
+            # --- Base querysets ---
             master_posts = MasterNewsPost.objects.all()
             distributions = NewsDistribution.objects.select_related(
                 "news_post", "portal", "master_category", "news_post__created_by"
             )
 
-            # Date filters
+            # --- Apply date filters ---
             if start_dt and end_dt:
                 master_posts = master_posts.filter(created_at__date__range=[start_dt, end_dt])
                 distributions = distributions.filter(sent_at__date__range=[start_dt, end_dt])
 
-            # Portal filter
+            # --- Portal filter ---
             if portal_id:
+                # Only include master posts that have been distributed to this portal
                 distributions = distributions.filter(portal_id=portal_id)
+                master_posts = master_posts.filter(news_distribution__portal_id=portal_id).distinct()
 
-            # Master Category filter
+            # --- Master Category filter ---
             if master_category_id:
                 master_posts = master_posts.filter(master_category_id=master_category_id)
                 distributions = distributions.filter(master_category_id=master_category_id)
 
-            # Username filter
+            # --- Username filter ---
             if username:
                 master_posts = master_posts.filter(created_by__username__icontains=username)
                 distributions = distributions.filter(news_post__created_by__username__icontains=username)
 
-            # Search filter
+            # --- Search filter ---
             if search:
                 search_q = (
                     Q(title__icontains=search) |
@@ -1602,7 +1604,7 @@ class NewsReportAPIView(APIView, PaginationMixin):
             total_master_posts = master_posts.count()
             total_distributions = distributions.count()
 
-            # Group by user
+            # --- Group by user ---
             user_stats = (
                 master_posts.values("created_by", "created_by__username")
                 .annotate(master_posts_count=Count("id"))
@@ -1631,13 +1633,13 @@ class NewsReportAPIView(APIView, PaginationMixin):
                             "status": p.status,
                             "master_category": p.master_category.name if p.master_category else None,
                             "excluded_portals": p.excluded_portals,
-                            "created_at": p.created_at
+                            "created_at": p.created_at,
                         }
                         for p in user_posts
-                    ]
+                    ],
                 })
 
-            # Apply pagination on the data list
+            # --- Paginate final data ---
             paginated_data = self.paginate_queryset(data, request, view=self)
 
             return self.get_paginated_response(
