@@ -17,7 +17,8 @@ export default function PortalManagement() {
     username: "",
     user_id: null,
   });
-
+ const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   // User list pagination states
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
@@ -34,30 +35,56 @@ export default function PortalManagement() {
     fetchUsers(1);
   }, []);
 
-  const fetchUsers = async (pageNumber) => {
-    if (isFetching) return;
-    setIsFetching(true);
-    try {
-      const res = await fetchAllUsersList(pageNumber);
-      if (res.data?.status) {
-        setPagination(res.data.pagination);
+  const fetchUsers = async (pageNumber, search = "") => {
+     if (isFetching) return;
+     setIsFetching(true);
+     try {
+       const searchParam = search ? `&search=${search}` : "";
+       const res = await fetchAllUsersList(pageNumber, search);
+       
+       if (res.data?.status) {
+         setPagination(res.data.pagination);
+ 
+         if (pageNumber > page) {
+           setUsers((prev) => [...prev, ...res.data.data]);
+         } else if (pageNumber < page) {
+           setUsers((prev) => [...res.data.data, ...prev]);
+         } else {
+           setUsers(res.data.data);
+         }
+ 
+         setPage(pageNumber);
+       }
+     } catch (err) {
+       console.error("Error fetching users:", err);
+       toast.error("Failed to fetch users");
+     } finally {
+       setIsFetching(false);
+       setIsSearching(false);
+     }
+   };
 
-        if (pageNumber > page) {
-          setUsers((prev) => [...prev, ...res.data.data]);
-        } else if (pageNumber < page) {
-          setUsers((prev) => [...res.data.data, ...prev]);
-        } else {
-          setUsers(res.data.data);
-        }
+   // Handle search
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setIsSearching(true);
+    setPage(1);
+    
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      fetchUsers(1, value);
+    }, 500);
 
-        setPage(pageNumber);
-      }
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      toast.error("Failed to fetch users");
-    } finally {
-      setIsFetching(false);
-    }
+    return () => clearTimeout(timeoutId);
+  };
+
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setIsSearching(true);
+    setPage(1);
+    fetchUsers(1, "");
   };
 
   // User list scroll handler for infinite scroll
@@ -184,6 +211,38 @@ export default function PortalManagement() {
             Portal Management
           </h1>
           <p className="text-gray-600">Manage user portal access and status</p>
+        </div>
+         <div className="mb-6">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearch}
+              placeholder="Search users by username or email..."
+              className="w-full pl-12 pr-12 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-gray-900 placeholder-gray-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {isSearching && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+              <span>Searching...</span>
+            </div>
+          )}
         </div>
 
         {/* User Cards Grid */}
