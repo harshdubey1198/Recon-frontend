@@ -1437,11 +1437,14 @@ class NewsPostUpdateAPIView(APIView):
 
 class MyPostsListAPIView(APIView, PaginationMixin):
     """
-    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED
+    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&search=abc&master_category=3
     Returns all posts created by the logged-in user.
-    Optional filters:
+
+    Optional query params:
       - status: DRAFT / PUBLISHED
       - distribution_status: SUCCESS / FAILED / PENDING
+      - search: string (matches title, slug, or master category name)
+      - master_category: integer (filters by master category ID)
     """
 
     permission_classes = [IsAuthenticated]
@@ -1451,6 +1454,8 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             user = request.user
             status_filter = request.query_params.get("status")
             distribution_status = request.query_params.get("distribution_status")
+            search = request.query_params.get("search")
+            master_category_id = request.query_params.get("master_category")
 
             queryset = MasterNewsPost.objects.filter(created_by=user).order_by("-created_at")
 
@@ -1458,18 +1463,28 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             if status_filter:
                 queryset = queryset.filter(status__iexact=status_filter)
 
-            # Optional filter by news distribution status (SUCCESS / FAILED)
+            # Optional filter by news distribution status (SUCCESS / FAILED / PENDING)
             if distribution_status:
                 valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
                 if distribution_status.upper() not in valid_statuses:
                     return Response(
-                        error_response("Invalid distribution_status. Use SUCCESS or FAILED or PENDING."),
+                        error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
                         status=status.HTTP_400_BAD_REQUEST
                     )
-
                 queryset = queryset.filter(
                     news_distribution__status__iexact=distribution_status
                 ).distinct()
+
+            # 🔍 Search by title, slug, or master category name
+            if search:
+                queryset = queryset.filter(
+                    Q(title__icontains=search) |
+                    Q(slug__icontains=search) |
+                    Q(master_category__name__icontains=search)
+                ).distinct()
+
+            if master_category_id:
+                queryset = queryset.filter(master_category=master_category_id)
 
             # Paginate and serialize
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
@@ -1485,6 +1500,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 class NewsReportAPIView(APIView, PaginationMixin):
     """
