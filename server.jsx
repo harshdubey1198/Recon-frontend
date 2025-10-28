@@ -277,8 +277,15 @@ export async function fetchMyNewsPosts(filters = {}) {
 export async function deleteMapping(mappingId) {
   return axiosInstance.delete(`/api/master/category/mapping/${mappingId}/`);
 }
-
-
+// Update this function in your server.js file
+export async function removeUserAssignment(data) {
+  return axiosInstance.delete(`/account/remove/user/assignment/`, {
+    data: {
+      user_id: data.user_id,
+      master_category_id: data.master_category_id
+    }
+  });
+}
 
 
 

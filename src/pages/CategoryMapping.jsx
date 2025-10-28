@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Globe, List, Plus, ChevronDown, Loader2, Users } from "lucide-react";
-import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById,deleteMapping } from "../../server";
+import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById, deleteMapping } from "../../server";
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 
@@ -16,6 +16,7 @@ const InfiniteScrollDropdown = ({
   renderOption 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState('bottom');
   const dropdownRef = useRef(null);
   const listRef = useRef(null);
 
@@ -28,6 +29,21 @@ const InfiniteScrollDropdown = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const dropdownHeight = 288; // max-h-72 = 18rem = 288px
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setDropdownPosition('top');
+      } else {
+        setDropdownPosition('bottom');
+      }
+    }
+  }, [isOpen]);
 
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -43,8 +59,6 @@ const InfiniteScrollDropdown = ({
   }, [isOpen]);
 
   const selectedOption = options.find(opt => opt.id === value || opt.name === value);
-
-  
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -63,7 +77,10 @@ const InfiniteScrollDropdown = ({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-black/80 rounded-lg shadow-xl max-h-72 overflow-y-auto"
+        <div 
+          className={`absolute z-50 w-full bg-white border-2 border-black/80 rounded-lg shadow-xl max-h-72 overflow-y-auto ${
+            dropdownPosition === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+          }`}
           ref={listRef}
           onScroll={handleScroll}
         >
@@ -315,6 +332,8 @@ const CategoryMapping = () => {
       });
 
       setMappings([...mappings, newMapping]);
+      setSelectedMasterCategory("");
+      setSelectedPortal("");
       setSelectedPortalCategory("");
       toast.success(res.data.message);
       
@@ -353,20 +372,19 @@ const CategoryMapping = () => {
   };
 
   const handleDeleteMapping = async (mappingId) => {
-  try {
-    const response = await deleteMapping(mappingId);
-    toast.success(response.data?.data || "Mapping deleted");
+    try {
+      const response = await deleteMapping(mappingId);
+      toast.success(response.data?.data || "Mapping deleted");
 
-    // Refresh the mapped categories list
-    if (selectedMasterCategoryId) {
-      loadMappedCategories(selectedMasterCategoryId, 1);
+      // Refresh the mapped categories list
+      if (selectedMasterCategoryId) {
+        loadMappedCategories(selectedMasterCategoryId, 1);
+      }
+    } catch (error) {
+      console.error("Failed to delete mapping:", error);
+      toast.error(error.response?.data?.message || "Failed to delete mapping");
     }
-  } catch (error) {
-    console.error("Failed to delete mapping:", error);
-    toast.error(error.response?.data?.message || "Failed to delete mapping");
-  }
-};
-
+  };
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-gray-100 py-8 min-h-screen">
@@ -552,23 +570,18 @@ const CategoryMapping = () => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <List className="w-4 h-4 text-gray-600" /> Portal Category
                   </label>
-                  <InfiniteScrollDropdown
-                    value={selectedPortalCategory}
-                    onChange={(cat) => setSelectedPortalCategory(cat.id)}
-                    options={portalCategories}
-                    placeholder="-- Select Portal Category --"
-                    loading={portalCategoriesLoading}
-                    hasMore={portalCategoriesHasMore}
-                    onLoadMore={() => loadPortalCategories(selectedPortal.name, portalCategoriesPage + 1)}
-                    icon={List}
-                    renderOption={(cat) => (
-                      <div className="text-sm">
-                        <span className="text-gray-600">{cat.parent_name}</span>
-                        <span className="mx-2 text-gray-400">→</span>
-                        <span className="font-medium text-gray-900">{cat.name}</span>
-                      </div>
-                    )}
-                  />
+                 <InfiniteScrollDropdown 
+                 value={selectedPortalCategory} 
+                 onChange={(cat) => setSelectedPortalCategory(cat.id)}
+                  options={portalCategories}
+                   placeholder="-- Select Portal Category --" loading={portalCategoriesLoading}
+                    hasMore={portalCategoriesHasMore} 
+                    onLoadMore={() => loadPortalCategories(selectedPortal.name, portalCategoriesPage + 1)} 
+                    icon={List} renderOption={(cat) => ( <div className="text-sm"> 
+                    <span className="text-gray-600">{cat.parent_name}</span>
+                     <span className="mx-2 text-gray-400">→</span> 
+                     <span className="font-medium text-gray-900">{cat.name}</span>
+                      </div> )} />
                 </div>
               </>
             )}
