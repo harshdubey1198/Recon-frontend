@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Globe, List, Plus, ChevronDown, Loader2, Users } from "lucide-react";
 import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById } from "../../server";
 import { toast } from "react-toastify";
+import formatUsername from "../utils/formateName";
 
 const InfiniteScrollDropdown = ({ 
   value, 
@@ -419,7 +420,7 @@ const CategoryMapping = () => {
                           key={user.id}
                           className="px-3 py-1 bg-black/20 text- rounded-full text-xs font-medium"
                         >
-                          {user.username} ({user.email})
+                           {formatUsername(user.username)} ({user.email})
                         </div>
                       ))}
                     </div>

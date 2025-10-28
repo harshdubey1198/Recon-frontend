@@ -6,6 +6,7 @@ import {
 } from "../../server";
 import { toast } from "react-toastify";
 import { flushSync } from "react-dom";
+import formatUsername from "../utils/formateName";
 
 export default function PortalManagement() {
   const [portalData, setPortalData] = useState([]);
@@ -17,18 +18,18 @@ export default function PortalManagement() {
     user_id: null,
   });
 
-  // 🆕 User list pagination states
+  // User list pagination states
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
   const scrollRef = useRef(null);
 
-  // 🆕 Portal data pagination states
+  // Portal data pagination states
   const [portalPage, setPortalPage] = useState(1);
   const [portalPagination, setPortalPagination] = useState(null);
   const [isPortalFetching, setIsPortalFetching] = useState(false);
 
-  // 🆕 Fetch users with pagination on mount
+  // Fetch users with pagination on mount
   useEffect(() => {
     fetchUsers(1);
   }, []);
@@ -41,13 +42,12 @@ export default function PortalManagement() {
       if (res.data?.status) {
         setPagination(res.data.pagination);
 
-        // Append or replace depending on page direction
         if (pageNumber > page) {
-          setUsers((prev) => [...prev, ...res.data.data]); // next page → append
+          setUsers((prev) => [...prev, ...res.data.data]);
         } else if (pageNumber < page) {
-          setUsers((prev) => [...res.data.data, ...prev]); // previous page → prepend
+          setUsers((prev) => [...res.data.data, ...prev]);
         } else {
-          setUsers(res.data.data); // initial load
+          setUsers(res.data.data);
         }
 
         setPage(pageNumber);
@@ -60,14 +60,13 @@ export default function PortalManagement() {
     }
   };
 
-  // 🆕 User list scroll handler for infinite scroll
+  // User list scroll handler for infinite scroll
   const handleScroll = () => {
     if (!scrollRef.current || !pagination) return;
 
     const container = scrollRef.current;
     const { scrollTop, scrollHeight, clientHeight } = container;
 
-    // When scrolled to bottom — fetch next page
     if (
       scrollTop + clientHeight >= scrollHeight - 10 &&
       pagination.next &&
@@ -79,13 +78,11 @@ export default function PortalManagement() {
       }
     }
 
-    // When scrolled to top — fetch previous page
     if (scrollTop === 0 && pagination.previous && !isFetching) {
       const prevPage = page - 1;
       if (prevPage >= 1) {
         const currentScrollHeight = scrollHeight;
         fetchUsers(prevPage).then(() => {
-          // Maintain visual position after prepending
           requestAnimationFrame(() => {
             if (scrollRef.current) {
               scrollRef.current.scrollTop =
@@ -97,7 +94,7 @@ export default function PortalManagement() {
     }
   };
 
-  // 🆕 Attach user list scroll listener
+  // Attach user list scroll listener
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -105,7 +102,7 @@ export default function PortalManagement() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, [pagination, page, isFetching]);
 
-  // 👉 Fetch portal status for a user (with pagination support)
+  // Fetch portal status for a user (with pagination support)
   const handleCheckUsername = async (
     name = selectedUser.username,
     pageNumber = 1
@@ -117,7 +114,7 @@ export default function PortalManagement() {
 
     if (pageNumber === 1) {
       setLoading(true);
-      setPortalData([]); // Clear existing data for new search
+      setPortalData([]);
       setPortalPage(1);
       setPortalPagination(null);
     } else {
@@ -126,7 +123,7 @@ export default function PortalManagement() {
 
     try {
       const res = await fetchPortalStatusByUsername(name, pageNumber);
-      console.log("API Response:", res.data); // Debug log
+      console.log("API Response:", res.data);
       
       if (res.data?.status) {
         const mappedData = res.data.data.map((item) => {
@@ -139,7 +136,7 @@ export default function PortalManagement() {
         if (pageNumber === 1) {
           setPortalData(mappedData);
         } else {
-          setPortalData((prev) => [...prev, ...mappedData]); // Append for next pages
+          setPortalData((prev) => [...prev, ...mappedData]);
         }
 
         setPortalPage(pageNumber);
@@ -160,7 +157,7 @@ export default function PortalManagement() {
     }
   };
 
-  // 🆕 Load More Handler
+  // Load More Handler
   const handleLoadMore = () => {
     if (portalPagination && portalPagination.next && !isPortalFetching) {
       const nextPage = portalPage + 1;
@@ -168,66 +165,117 @@ export default function PortalManagement() {
     }
   };
 
-  return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-3xl mx-auto bg-white shadow-md rounded-lg p-6">
-        {/* 🧍‍♂️ User List with Infinite Scroll */}
-        <div>
-          <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-black to-gray-700 bg-clip-text text-transparent">
-            List of Users
-          </h1>
-          <div
-            ref={scrollRef}
-            className="user-scroll-container max-h-[70vh] overflow-y-auto pr-2 rounded-lg"
-          >
-            <ul className="space-y-3">
-              {users.map((u, i) => (
-                <li
-                  key={`${u.id}-${i}`}
-                  onClick={() => {
-                    flushSync(() => {
-                      setSelectedUser({ username: u.username, user_id: u.id });
-                      setShowModal(true);
-                      setPortalData([]);
-                      setPortalPage(1);
-                      setPortalPagination(null);
-                    });
-                    handleCheckUsername(u.username, 1);
-                  }}
-                  className="group relative p-4 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-300 hover:border-black hover:shadow-lg hover:-translate-y-1 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white"
-                >
-                  <span className="text-lg font-semibold text-gray-800 group-hover:text-black transition-colors">
-                    {u.username}
-                  </span>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg
-                      className="w-5 h-5 text-black"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </li>
-              ))}
-            </ul>
+  // Format date helper
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
 
-            {/* 🕓 Loading indicator for user list */}
-            {isFetching && (
-              <div className="text-center py-3 text-gray-500">
-                Loading more users...
-              </div>
-            )}
-          </div>
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Portal Management
+          </h1>
+          <p className="text-gray-600">Manage user portal access and status</p>
         </div>
 
-        {/* 🪟 Modal for portal data */}
+        {/* User Cards Grid */}
+        <div
+          ref={scrollRef}
+          className="max-h-[75vh] overflow-y-auto pr-2 space-y-4 custom-scrollbar"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {users.map((user, i) => (
+              <div
+                key={`${user.id}-${i}`}
+                onClick={() => {
+                  flushSync(() => {
+                    setSelectedUser({ username: user.username, user_id: user.id });
+                    setShowModal(true);
+                    setPortalData([]);
+                    setPortalPage(1);
+                    setPortalPagination(null);
+                  });
+                  handleCheckUsername(user.username, 1);
+                }}
+                className="group relative bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-gray-900"
+              >
+                <div className="relative z-10">
+                  {/* Avatar Circle */}
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
+                      <span className="text-white text-lg font-semibold">
+                        {user.username.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    {/* Status Badge */}
+                    <div className={`px-3 py-1 rounded-md text-xs font-medium ${
+                      user.is_active 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-gray-100 text-gray-700 border border-gray-200'
+                    }`}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </div>
+                  </div>
+
+                  {/* Username */}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-gray-700 transition-colors">
+                    {formatUsername(user.username)}
+                  </h3>
+
+                  {/* Email */}
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm text-gray-600 truncate">
+                      {user.email || 'No email provided'}
+                    </p>
+                  </div>
+
+                  {/* Joining Date */}
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm text-gray-500">
+                      Joined {formatDate(user.date_joined)}
+                    </p>
+                  </div>
+
+                  {/* Hover Arrow */}
+                  <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Loading indicator for users */}
+          {isFetching && (
+            <div className="flex items-center justify-center py-6">
+              <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-lg shadow-sm border border-gray-200">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                <span className="text-gray-600 font-medium">Loading more users...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal for portal data */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-20 z-50">
             <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full relative mx-4">
@@ -307,7 +355,7 @@ export default function PortalManagement() {
                               )}
                             </td>
                             <td className="py-3 px-6 text-gray-700">
-                              {item.username || "-"}
+                              {formatUsername(item.username) || "-"}
                             </td>
                             <td className="py-3 px-6 text-gray-500 max-w-xs">
                               <div className="truncate" title={item.message}>
@@ -381,7 +429,9 @@ export default function PortalManagement() {
                       ) : (
                         <>
                           <span>Load More</span>
-                          
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
                         </>
                       )}
                     </button>
@@ -392,6 +442,26 @@ export default function PortalManagement() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+      `}</style>
     </div>
   );
 }

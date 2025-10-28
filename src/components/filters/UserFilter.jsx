@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchAllUsersList } from "../../../server";
 import { useAuth } from "../../context/AuthContext";
+import formatUsername from "../../utils/formateName";
 
 export default function UserFilter({ onChange, value = "" }) {
   const [users, setUsers] = useState([]);
@@ -60,7 +61,7 @@ export default function UserFilter({ onChange, value = "" }) {
 
       {users.map((u) => (
         <option key={u.id} value={u.username}>
-          {u.username}
+         {formatUsername(u.username)}
         </option>
       ))}
       {nextPage && (
