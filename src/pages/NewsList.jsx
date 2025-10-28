@@ -282,7 +282,7 @@ const NewsList = () => {
                 visibleFilters={[
                   // "search",
                   "status",
-                  "portal_id",
+                  // "portal_id",
                   "master_category_id",
                   "username",
                   "custom_date"

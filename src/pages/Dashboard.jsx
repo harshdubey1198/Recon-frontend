@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  fetchAdminStats,
-  fetchDomainDistribution,
-  fetchMasterCategories,
-  fetchNewsList,
-} from "../../server";
+import { fetchAdminStats, fetchDomainDistribution, fetchMasterCategories, fetchNewsList, } from "../../server";
 import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2 } from "lucide-react";
 import formatUsername from "../utils/formateName";
 export default function Dashboard() {
   const [user, setUser] = useState(null);
-
   const [domains, setDomains] = useState([]);
   const [categories, setCategories] = useState([]);
   const [recentPosts, setRecentPosts] = useState([]);
