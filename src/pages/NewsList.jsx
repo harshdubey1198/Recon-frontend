@@ -247,7 +247,7 @@ const NewsList = () => {
                   localStorage.setItem("activeTab", "Create News");
                   window.location.reload(); 
                 }}
-                className="group relative flex items-center space-x-2 px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:scale-[1.03] transition-all duration-300"
+                className="group relative p-3 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
               >
                   <span className="relative z-10 flex items-center">
                     <FileText className="w-4 h-4 mr-2 group-hover:animate-pulse" />
@@ -284,7 +284,7 @@ const NewsList = () => {
                   "status",
                   // "portal_id",
                   "master_category_id",
-                  "username",
+                  // "username",
                   "custom_date"
                   // "date_filter",
                 ]}
