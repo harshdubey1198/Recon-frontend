@@ -546,17 +546,29 @@ class MyAssignmentListAPIView(APIView, PaginationMixin):
 
 class AllUsersAPIView(APIView, PaginationMixin):
     """
-    GET /api/users/all/
+    GET /api/users/all/?search=john&page=1&page_size=10
     Returns all users in the system (no exclusions), paginated.
+    Supports optional search by username, email, or full name.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         try:
-            users = User.objects.all().order_by("-date_joined")
+            search = request.query_params.get("search")
 
-            paginated_qs = self.paginate_queryset(users, request, view=self)
+            queryset = User.objects.all().order_by("-date_joined")
+
+            # Optional search filter
+            if search:
+                queryset = queryset.filter(
+                    Q(username__icontains=search)
+                    | Q(email__icontains=search)
+                    | Q(first_name__icontains=search)
+                    | Q(last_name__icontains=search)
+                ).distinct()
+
+            paginated_qs = self.paginate_queryset(queryset, request, view=self)
             serializer = UserSerializer(paginated_qs, many=True)
 
             return self.get_paginated_response(
