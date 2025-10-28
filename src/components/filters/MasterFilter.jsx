@@ -7,6 +7,7 @@ import StatusFilter from "./StatusFilter";
 import SearchFilter from "./SearchFilter";
 import ClearFilter from "./ClearFilter";
 import CustomDateFilter from "./CustomDateFilter";
+import DistributionStatusFilter from "./DistributionStatusFilter";
 
 export default function MasterFilter({
   onChange,
@@ -73,6 +74,12 @@ export default function MasterFilter({
           <StatusFilter
             value={filters.status}
             onChange={(v) => updateFilter("status", v)}
+          />
+        )}
+        {show("distribution_status") && (
+          <DistributionStatusFilter
+            value={filters.distribution_status}
+            onChange={(v) => updateFilter("distribution_status", v)}
           />
         )}
         {show("search") && (

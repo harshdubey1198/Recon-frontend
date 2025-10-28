@@ -1,7 +1,7 @@
 import React from "react";
 
-export default function StatusFilter({ onChange, value = "" }) {
-  const statuses = ["Draft","Published"];
+export default function DistributionStatusFilter({ onChange, value = "" }) {
+  const statuses = ["SUCCESS", "PENDING", "FAILED"];
 
   return (
     <select
@@ -9,7 +9,7 @@ export default function StatusFilter({ onChange, value = "" }) {
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">All Statuses</option>
+      <option value="">Distribution Statuses</option>
       {statuses.map((status) => (
         <option key={status} value={status.toUpperCase()}>
           {status}
