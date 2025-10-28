@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { User, List, CheckCircle2, Plus, Loader2, X, Trash2 } from "lucide-react";
-import { createMasterCategory, fetchMasterCategories, assignMasterCategoriesToUser, fetchAllUsersList, fetchAssignmentsByUsername, removeUserAssignment } from "../../server";
+import { createMasterCategory, fetchMasterCategories, assignMasterCategoriesToUser, fetchAllUsersList,registerUser, fetchAssignmentsByUsername, removeUserAssignment } from "../../server";
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 
@@ -12,7 +12,7 @@ const AccessControl = () => {
   const [selectedMasterCategories, setSelectedMasterCategories] = useState([]);
   const [unassignedUsers, setUnassignedUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
-
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   // Pagination states for users
   const [userPage, setUserPage] = useState(1);
   const [userPagination, setUserPagination] = useState(null);
@@ -34,6 +34,13 @@ const AccessControl = () => {
   const [isLoadingMoreAssignments, setIsLoadingMoreAssignments] = useState(false);
   const assignmentScrollRef = useRef(null);
  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [newUser, setNewUser] = useState({
+     username: "",
+     email: "",
+     password: "",
+   });
+   const [isLoading, setIsLoading] = useState(false);
+   
   // Load Users with pagination
   const loadUsers = async (page = 1, append = false) => {
     if (isUserFetching) return;
@@ -259,6 +266,39 @@ const AccessControl = () => {
     }
   };
 
+   const handleAddUser = async (e) => {
+      e.preventDefault();
+      if (!newUser.username || !newUser.email || !newUser.password) return;
+  
+      setIsLoading(true);
+  
+      try {
+      const res =  await registerUser({
+          username: newUser.username,
+          email: newUser.email,
+          password: newUser.password,
+        });
+        // toast.success(res.data.message);
+        // console.log("successMeaage",res.data.message);
+        
+     loadUsers();
+  
+        setNewUser({ username: "", email: "", password: "" });
+       setIsAddUserModalOpen(false);
+      } catch (err) {
+        toast.error(err.message?.username?.[0]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    const closeModal = () => {
+      if (!isLoading) {
+        setIsAddUserModalOpen(false);
+        setNewUser({ username: "", email: "", password: "" });
+      }
+    };
+
   // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -285,12 +325,21 @@ const AccessControl = () => {
                 </h1>
                 <p className="text-gray-300 text-sm mt-1">Manage user permissions and master categories</p>
               </div>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all shadow-md font-medium"
-              >
-                <Plus className="w-4 h-4" /> Add Category
-              </button>
+               <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all shadow-md text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" /> Add Category
+                  </button>
+
+                  <button
+                    onClick={() => setIsAddUserModalOpen(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all shadow-md text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" /> Add User
+                  </button>
+                </div>
             </div>
           </div>
 
@@ -542,6 +591,93 @@ const AccessControl = () => {
           </div>
         </div>
       )}
+       {isAddUserModalOpen && (
+              <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100">
+                  <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-t-2xl px-8 py-6 flex justify-between items-center">
+                    <div>
+                      <h2 className="text-2xl font-bold">Add New User</h2>
+                      <p className="text-gray-300 text-sm mt-1">
+                        Fill in the details to create a new user account
+                      </p>
+                    </div>
+                    <button
+                      onClick={closeModal}
+                      disabled={isLoading}
+                      className="p-2 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition disabled:opacity-50"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+      
+                  <form onSubmit={handleAddUser} className="p-8 space-y-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter username"
+                        value={newUser.username}
+                        onChange={(e) =>
+                          setNewUser({ ...newUser, username: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-100 focus:border-gray-500 transition-all duration-200 placeholder-gray-400"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="user@example.com"
+                        value={newUser.email}
+                        onChange={(e) =>
+                          setNewUser({ ...newUser, email: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-100 focus:border-gray-500 transition-all duration-200 placeholder-gray-400"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Enter password"
+                        value={newUser.password}
+                        onChange={(e) =>
+                          setNewUser({ ...newUser, password: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-gray-100 focus:border-gray-500 transition-all duration-200 placeholder-gray-400"
+                        disabled={isLoading}
+                      />
+                    </div>
+      
+                    <div className="flex justify-end gap-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={closeModal}
+                        disabled={isLoading}
+                        className="px-5 py-2.5 rounded-xl border border-gray-300 bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
+                      >
+                        {isLoading ? "Adding..." : "Add User"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
     </div>
   );
 };

@@ -40,8 +40,8 @@ const menuItems = [
        { name: "Category Mapping", icon: Network },
        { name: "All Categories", icon: FolderTree },
        { name: "User Access Control", icon: ShieldCheck },
-       { name: "User Access List", icon: Users2 },
-       { name: "User Categories", icon: Layers },
+      { name: "User Categories", icon: Layers },
+        { name: "User Access List", icon: Users2 },
        { name: "Portal Management", icon: Building2 },
        
       ]
