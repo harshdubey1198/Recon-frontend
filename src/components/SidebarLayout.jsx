@@ -37,12 +37,13 @@ const menuItems = [
   { name: "News Reports", icon: BarChart3 },
   ...(isMaster
     ? [ 
-        { name: "Access Control", icon: ShieldCheck },
-        { name: "User Access List", icon: Users2 },
-        { name: "All Categories", icon: FolderTree },
-        { name: "Category Mapping", icon: Network },
-        { name: "Portal Management", icon: Building2 },
-        { name: "User Categories", icon: Layers },
+       { name: "Category Mapping", icon: Network },
+       { name: "All Categories", icon: FolderTree },
+       { name: "Access Control", icon: ShieldCheck },
+       { name: "User Access List", icon: Users2 },
+       { name: "User Categories", icon: Layers },
+       { name: "Portal Management", icon: Building2 },
+       
       ]
     : []),
 ];
