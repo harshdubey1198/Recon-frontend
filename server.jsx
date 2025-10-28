@@ -256,8 +256,21 @@ export async function fetchAllTags() {
 
 export async function fetchMappedCategories(mapped = false,page=1) {
  return axiosInstance.get(`/api/master/category/?mapped=${mapped}&page=${page}`);
-
 }
+
+/**
+ * Fetch all my news posts (authenticated)
+ */
+export async function fetchMyNewsPosts(filters = {}) {
+  const params = new URLSearchParams(filters).toString();
+  const url = `/api/my/news/posts/${params ? `?${params}` : ""}`;
+  return axiosInstance.get(url, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
 
 
 
