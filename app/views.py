@@ -1273,10 +1273,22 @@ class AdminStatsAPIView(APIView):
         pending_distributions = queryset.filter(status="PENDING").count()
         retry_counts = queryset.aggregate(total=Sum("retry_count"))["total"] or 0
 
-        # Today’s stats
-        today_distributions = queryset.filter(created_at__date=today).count()
-        today_successful = queryset.filter(status="SUCCESS", created_at__date=today).count()
-        today_failed = queryset.filter(status="FAILED", created_at__date=today).count()
+        # Exclude distributions with time_taken = 0
+        valid_time_qs = queryset.filter(time_taken__gt=0)
+        total_avg_time = (
+            valid_time_qs.aggregate(avg=Avg("time_taken"))["avg"] or 0.0
+        )
+
+        today_qs = queryset.filter(created_at__date=today)
+        today_distributions = today_qs.count()
+        today_successful = today_qs.filter(status="SUCCESS").count()
+        today_failed = today_qs.filter(status="FAILED").count()
+
+        # Today's average time taken
+        today_valid_time_qs = today_qs.filter(time_taken__gt=0)
+        today_avg_time = (
+            today_valid_time_qs.aggregate(avg=Avg("time_taken"))["avg"] or 0.0
+        )
 
         return {
             "news_distribution": {
@@ -1285,6 +1297,8 @@ class AdminStatsAPIView(APIView):
                 "failed_distributions": failed_distributions,
                 "pending_distributions": pending_distributions,
                 "retry_counts": retry_counts,
+                "average_time_taken": round(total_avg_time, 2),
+                "today_average_time_taken": round(today_avg_time, 2),
                 "today": {
                     "total": today_distributions,
                     "successful": today_successful,
@@ -1316,26 +1330,45 @@ class DomainDistributionStatsAPIView(APIView):
                     valid_times = distributions.filter(time_taken__gt=0)
                     today_valid_times = today_distributions.filter(time_taken__gt=0)
 
+                    total_distributions = distributions.count()
+                    successful_distributions = distributions.filter(status="SUCCESS").count()
+                    today_total_distributions = today_distributions.count()
+                    today_successful_distributions = today_distributions.filter(status="SUCCESS").count()
+
+                    # Calculate success percentages
+                    success_percentage = (
+                        round((successful_distributions / total_distributions) * 100, 2)
+                        if total_distributions > 0 else 0.0
+                    )
+                    today_success_percentage = (
+                        round((today_successful_distributions / today_total_distributions) * 100, 2)
+                        if today_total_distributions > 0 else 0.0
+                    )
+
                     domain_stats = {
                         "portal_id": domain.id,
                         "portal_name": domain.name,
 
                         # --- Overall Counts ---
-                        "total_distributions": distributions.count(),
-                        "successful_distributions": distributions.filter(status="SUCCESS").count(),
+                        "total_distributions": total_distributions,
+                        "successful_distributions": successful_distributions,
                         "failed_distributions": distributions.filter(status="FAILED").count(),
                         "pending_distributions": distributions.filter(status="PENDING").count(),
                         "retry_counts": distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
 
+                        # --- Overall Metrics ---
+                        "success_percentage": success_percentage,
+                        "average_time_taken": round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
+
                         # --- Today's Counts ---
-                        "today_total_distributions": today_distributions.count(),
-                        "today_successful_distributions": today_distributions.filter(status="SUCCESS").count(),
+                        "today_total_distributions": today_total_distributions,
+                        "today_successful_distributions": today_successful_distributions,
                         "today_failed_distributions": today_distributions.filter(status="FAILED").count(),
                         "today_pending_distributions": today_distributions.filter(status="PENDING").count(),
                         "today_retry_counts": today_distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
 
-                        # --- Timing Metrics ---
-                        "average_time_taken": round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
+                        # --- Today's Metrics ---
+                        "today_success_percentage": today_success_percentage,
                         "today_average_time_taken": round(today_valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
                     }
 
@@ -1360,26 +1393,44 @@ class DomainDistributionStatsAPIView(APIView):
                     valid_times = distributions.filter(time_taken__gt=0)
                     today_valid_times = today_distributions.filter(time_taken__gt=0)
 
+                    total_distributions = distributions.count()
+                    successful_distributions = distributions.filter(status="SUCCESS").count()
+                    today_total_distributions = today_distributions.count()
+                    today_successful_distributions = today_distributions.filter(status="SUCCESS").count()
+
+                    success_percentage = (
+                        round((successful_distributions / total_distributions) * 100, 2)
+                        if total_distributions > 0 else 0.0
+                    )
+                    today_success_percentage = (
+                        round((today_successful_distributions / today_total_distributions) * 100, 2)
+                        if today_total_distributions > 0 else 0.0
+                    )
+
                     domain_stats = {
                         "portal_id": domain.id,
                         "portal_name": domain.name,
 
                         # --- Overall Counts ---
-                        "total_distributions": distributions.count(),
-                        "successful_distributions": distributions.filter(status="SUCCESS").count(),
+                        "total_distributions": total_distributions,
+                        "successful_distributions": successful_distributions,
                         "failed_distributions": distributions.filter(status="FAILED").count(),
                         "pending_distributions": distributions.filter(status="PENDING").count(),
                         "retry_counts": distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
 
+                        # --- Overall Metrics ---
+                        "success_percentage": success_percentage,
+                        "average_time_taken": round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
+
                         # --- Today's Counts ---
-                        "today_total_distributions": today_distributions.count(),
-                        "today_successful_distributions": today_distributions.filter(status="SUCCESS").count(),
+                        "today_total_distributions": today_total_distributions,
+                        "today_successful_distributions": today_successful_distributions,
                         "today_failed_distributions": today_distributions.filter(status="FAILED").count(),
                         "today_pending_distributions": today_distributions.filter(status="PENDING").count(),
                         "today_retry_counts": today_distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
 
-                        # --- Timing Metrics ---
-                        "average_time_taken": round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
+                        # --- Today's Metrics ---
+                        "today_success_percentage": today_success_percentage,
                         "today_average_time_taken": round(today_valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
                     }
 
@@ -1391,7 +1442,7 @@ class DomainDistributionStatsAPIView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # --- Sort (Leaderboard) by Total Posts ---
+            # --- Sort (Leaderboard) by Total Distributions ---
             stats = sorted(stats, key=lambda x: x["total_distributions"], reverse=True)
 
             # --- Assign Ranks ---
@@ -1408,6 +1459,7 @@ class DomainDistributionStatsAPIView(APIView):
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 
 class AllPortalsTagsLiveAPIView(APIView):
     permission_classes = [IsAuthenticated]
