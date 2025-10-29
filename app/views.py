@@ -1273,10 +1273,22 @@ class AdminStatsAPIView(APIView):
         pending_distributions = queryset.filter(status="PENDING").count()
         retry_counts = queryset.aggregate(total=Sum("retry_count"))["total"] or 0
 
-        # Today’s stats
-        today_distributions = queryset.filter(created_at__date=today).count()
-        today_successful = queryset.filter(status="SUCCESS", created_at__date=today).count()
-        today_failed = queryset.filter(status="FAILED", created_at__date=today).count()
+        # Exclude distributions with time_taken = 0
+        valid_time_qs = queryset.filter(time_taken__gt=0)
+        total_avg_time = (
+            valid_time_qs.aggregate(avg=Avg("time_taken"))["avg"] or 0.0
+        )
+
+        today_qs = queryset.filter(created_at__date=today)
+        today_distributions = today_qs.count()
+        today_successful = today_qs.filter(status="SUCCESS").count()
+        today_failed = today_qs.filter(status="FAILED").count()
+
+        # Today's average time taken
+        today_valid_time_qs = today_qs.filter(time_taken__gt=0)
+        today_avg_time = (
+            today_valid_time_qs.aggregate(avg=Avg("time_taken"))["avg"] or 0.0
+        )
 
         return {
             "news_distribution": {
@@ -1285,6 +1297,8 @@ class AdminStatsAPIView(APIView):
                 "failed_distributions": failed_distributions,
                 "pending_distributions": pending_distributions,
                 "retry_counts": retry_counts,
+                "average_time_taken": round(total_avg_time, 2),
+                "today_average_time_taken": round(today_avg_time, 2),
                 "today": {
                     "total": today_distributions,
                     "successful": today_successful,
