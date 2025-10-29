@@ -10,7 +10,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -1437,16 +1437,23 @@ class NewsPostUpdateAPIView(APIView):
 
 class MyPostsListAPIView(APIView, PaginationMixin):
     """
-    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&search=abc&master_category=3&start_date=2025-10-01&end_date=2025-10-05
-    Returns all posts created by the logged-in user.
+    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&search=abc&master_category=3
+        &start_date=2025-10-01&end_date=2025-10-05&sort=publish_date_desc
 
-    Optional query params:
+    Returns posts created by the logged-in user.
+
+    Supported query params:
       - status: DRAFT / PUBLISHED
       - distribution_status: SUCCESS / FAILED / PENDING
       - search: string (matches title, slug, or master category name)
       - master_category: integer (filters by master category ID)
       - start_date: filter posts created on or after this date (YYYY-MM-DD)
       - end_date: filter posts created on or before this date (YYYY-MM-DD)
+      - sort:
+          • publish_date_desc → Newest to Oldest (default)
+          • publish_date_asc → Oldest to Newest
+          • status → Sort by Distribution Status (SUCCESS → FAILED → PENDING)
+          • category → Sort alphabetically by master category name
     """
 
     permission_classes = [IsAuthenticated]
@@ -1454,20 +1461,22 @@ class MyPostsListAPIView(APIView, PaginationMixin):
     def get(self, request, *args, **kwargs):
         try:
             user = request.user
-            status_filter = request.query_params.get("status")
-            distribution_status = request.query_params.get("distribution_status")
-            search = request.query_params.get("search")
-            master_category_id = request.query_params.get("master_category")
-            start_date = request.query_params.get("start_date")
-            end_date = request.query_params.get("end_date")
+            params = request.query_params
+
+            status_filter = params.get("status")
+            distribution_status = params.get("distribution_status")
+            search = params.get("search")
+            master_category_id = params.get("master_category")
+            start_date = params.get("start_date")
+            end_date = params.get("end_date")
+            sort_option = params.get("sort", "publish_date_desc")
 
             queryset = MasterNewsPost.objects.filter(created_by=user).order_by("-created_at")
 
-            # Filter by post status
+            # ----- Filters -----
             if status_filter:
                 queryset = queryset.filter(status__iexact=status_filter)
 
-            # Filter by news distribution status
             if distribution_status:
                 valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
                 if distribution_status.upper() not in valid_statuses:
@@ -1477,7 +1486,6 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                     )
                 queryset = queryset.filter(news_distribution__status__iexact=distribution_status).distinct()
 
-            # Search by title, slug, or master category name
             if search:
                 queryset = queryset.filter(
                     Q(title__icontains=search) |
@@ -1485,11 +1493,9 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                     Q(master_category__name__icontains=search)
                 ).distinct()
 
-            # Filter by master category ID
             if master_category_id:
                 queryset = queryset.filter(master_category_id=master_category_id)
 
-            # Date range filter
             if start_date:
                 parsed_start = parse_date(start_date)
                 if parsed_start:
@@ -1500,13 +1506,24 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                 if parsed_end:
                     queryset = queryset.filter(created_at__date__lte=parsed_end)
 
-            # Paginate and serialize
+            # ----- Sorting -----
+            if sort_option == "publish_date_asc":
+                queryset = queryset.order_by("created_at")
+            elif sort_option == "publish_date_desc":
+                queryset = queryset.order_by("-created_at")
+            elif sort_option == "category":
+                    queryset = queryset.order_by(
+                        F("master_category__name").asc(nulls_last=True),
+                        "-created_at"
+                    )
+
+            # Paginate & Serialize
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
             serializer = MasterNewsPostSerializer(paginated_qs, many=True)
 
             return self.get_paginated_response(
                 serializer.data,
-                message=f"Posts fetched for user {user.username}"
+                message=f"Posts fetched successfully for user {user.username}"
             )
 
         except Exception as e:
