@@ -1437,7 +1437,7 @@ class NewsPostUpdateAPIView(APIView):
 
 class MyPostsListAPIView(APIView, PaginationMixin):
     """
-    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&search=abc&master_category=3
+    GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&portal=1&search=abc&master_category=3
         &start_date=2025-10-01&end_date=2025-10-05&sort=publish_date_desc
 
     Returns posts created by the logged-in user.
@@ -1445,6 +1445,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
     Supported query params:
       - status: DRAFT / PUBLISHED
       - distribution_status: SUCCESS / FAILED / PENDING
+      - portal: integer (filter posts distributed to a specific portal)
       - search: string (matches title, slug, or master category name)
       - master_category: integer (filters by master category ID)
       - start_date: filter posts created on or after this date (YYYY-MM-DD)
@@ -1453,7 +1454,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
           • publish_date_desc → Newest to Oldest (default)
           • publish_date_asc → Oldest to Newest
           • status → Sort by Distribution Status (SUCCESS → FAILED → PENDING)
-          • category → Sort alphabetically by master category name
+          • category → Sort alphabetically by master category name (non-null first)
     """
 
     permission_classes = [IsAuthenticated]
@@ -1465,6 +1466,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
 
             status_filter = params.get("status")
             distribution_status = params.get("distribution_status")
+            portal_id = params.get("portal")
             search = params.get("search")
             master_category_id = params.get("master_category")
             start_date = params.get("start_date")
@@ -1477,15 +1479,36 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             if status_filter:
                 queryset = queryset.filter(status__iexact=status_filter)
 
-            if distribution_status:
-                valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
-                if distribution_status.upper() not in valid_statuses:
-                    return Response(
-                        error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                queryset = queryset.filter(news_distribution__status__iexact=distribution_status).distinct()
+            # Portal filter logic (combined with distribution status if given)
+            if portal_id:
+                queryset = queryset.filter(news_distribution__portal_id=portal_id)
 
+                if distribution_status:
+                    valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                    if distribution_status.upper() not in valid_statuses:
+                        return Response(
+                            error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    queryset = queryset.filter(
+                        news_distribution__portal_id=portal_id,
+                        news_distribution__status__iexact=distribution_status
+                    ).distinct()
+
+            else:
+                # distribution_status alone (no portal filter)
+                if distribution_status:
+                    valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                    if distribution_status.upper() not in valid_statuses:
+                        return Response(
+                            error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    queryset = queryset.filter(
+                        news_distribution__status__iexact=distribution_status
+                    ).distinct()
+
+            # Search by title, slug, or master category name
             if search:
                 queryset = queryset.filter(
                     Q(title__icontains=search) |
@@ -1493,9 +1516,11 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                     Q(master_category__name__icontains=search)
                 ).distinct()
 
+            # Filter by master category
             if master_category_id:
                 queryset = queryset.filter(master_category_id=master_category_id)
 
+            # Date range filters
             if start_date:
                 parsed_start = parse_date(start_date)
                 if parsed_start:
@@ -1509,13 +1534,15 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             # ----- Sorting -----
             if sort_option == "publish_date_asc":
                 queryset = queryset.order_by("created_at")
+
             elif sort_option == "publish_date_desc":
                 queryset = queryset.order_by("-created_at")
+
             elif sort_option == "category":
-                    queryset = queryset.order_by(
-                        F("master_category__name").asc(nulls_last=True),
-                        "-created_at"
-                    )
+                queryset = queryset.order_by(
+                    F("master_category__name").asc(nulls_last=True),
+                    "-created_at"
+                )
 
             # Paginate & Serialize
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
@@ -1531,7 +1558,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
+            
 
 class NewsReportAPIView(APIView, PaginationMixin):
     """
