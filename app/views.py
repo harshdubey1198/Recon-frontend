@@ -1529,6 +1529,8 @@ class NewsReportAPIView(APIView, PaginationMixin):
     - master_category_id
     - username
     - search (title, slug, ai_title, ai_slug)
+    - post_status: DRAFT | PUBLISHED
+    - distribution_status: SUCCESS | FAILED | PENDING
     - page
     - page_size
     """
@@ -1545,11 +1547,13 @@ class NewsReportAPIView(APIView, PaginationMixin):
             master_category_id = params.get("master_category_id")
             username = params.get("username")
             search = params.get("search")
+            post_status = params.get("post_status")
+            distribution_status = params.get("distribution_status")
 
             today = timezone.now().date()
             start_dt, end_dt = None, None
 
-            # Handle date filters
+            # --- Handle date filters ---
             if date_filter == "today":
                 start_dt = today
                 end_dt = today
@@ -1563,32 +1567,60 @@ class NewsReportAPIView(APIView, PaginationMixin):
                 start_dt = today
                 end_dt = today
 
-            # Base querysets
+            # --- Base querysets ---
             master_posts = MasterNewsPost.objects.all()
             distributions = NewsDistribution.objects.select_related(
                 "news_post", "portal", "master_category", "news_post__created_by"
             )
 
-            # Date filters
+            # --- Apply date filters ---
             if start_dt and end_dt:
                 master_posts = master_posts.filter(created_at__date__range=[start_dt, end_dt])
                 distributions = distributions.filter(sent_at__date__range=[start_dt, end_dt])
 
-            # Portal filter
-            if portal_id:
-                distributions = distributions.filter(portal_id=portal_id)
+            # --- Filter: Master Post Status ---
+            if post_status:
+                valid_post_statuses = ["DRAFT", "PUBLISHED"]
+                if post_status.upper() not in valid_post_statuses:
+                    return Response(
+                        error_response("Invalid post_status. Use DRAFT or PUBLISHED."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                master_posts = master_posts.filter(status__iexact=post_status)
 
-            # Master Category filter
+            # --- Filter: Distribution Status ---
+            if distribution_status:
+                valid_dist_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() not in valid_dist_statuses:
+                    return Response(
+                        error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Only include master posts that have at least one distribution with this status
+                master_posts = master_posts.filter(
+                    news_distribution__status__iexact=distribution_status
+                ).distinct()
+
+                distributions = distributions.filter(status__iexact=distribution_status)
+
+            # --- Filter: Portal ---
+            if portal_id:
+                # Only include master posts that have been distributed to this portal
+                distributions = distributions.filter(portal_id=portal_id)
+                master_posts = master_posts.filter(news_distribution__portal_id=portal_id).distinct()
+
+            # --- Filter: Master Category ---
             if master_category_id:
                 master_posts = master_posts.filter(master_category_id=master_category_id)
                 distributions = distributions.filter(master_category_id=master_category_id)
 
-            # Username filter
+            # --- Filter: Username ---
             if username:
                 master_posts = master_posts.filter(created_by__username__icontains=username)
                 distributions = distributions.filter(news_post__created_by__username__icontains=username)
 
-            # Search filter
+            # --- Filter: Search ---
             if search:
                 search_q = (
                     Q(title__icontains=search) |
@@ -1602,7 +1634,7 @@ class NewsReportAPIView(APIView, PaginationMixin):
             total_master_posts = master_posts.count()
             total_distributions = distributions.count()
 
-            # Group by user
+            # --- Group by user ---
             user_stats = (
                 master_posts.values("created_by", "created_by__username")
                 .annotate(master_posts_count=Count("id"))
@@ -1631,13 +1663,13 @@ class NewsReportAPIView(APIView, PaginationMixin):
                             "status": p.status,
                             "master_category": p.master_category.name if p.master_category else None,
                             "excluded_portals": p.excluded_portals,
-                            "created_at": p.created_at
+                            "created_at": p.created_at,
                         }
                         for p in user_posts
-                    ]
+                    ],
                 })
 
-            # Apply pagination on the data list
+            # --- Paginate final data ---
             paginated_data = self.paginate_queryset(data, request, view=self)
 
             return self.get_paginated_response(
