@@ -103,6 +103,7 @@ class GroupListSerializer(serializers.ModelSerializer):
 
 class MasterNewsPostSerializer(serializers.ModelSerializer):
     post_image = serializers.ImageField(required=False, allow_null=True, use_url=True)
+    master_category_name = serializers.CharField(source='master_category.name', read_only=True)
 
     class Meta:
         model = MasterNewsPost
