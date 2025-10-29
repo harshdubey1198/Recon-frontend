@@ -13,10 +13,10 @@ export default function KPIOverview({ data = {} }) {
   
   const formatTime = (time) => {
     if (!time || time === 0) return "0s";
-    const hours = Math.floor(time / 60);
-    const minutes = Math.round(time % 60);
-    return `${hours > 0 ? `${hours}h ` : ""}${minutes}m`;
+    const seconds = Math.round(time);
+    return `${seconds}s`;
   };
+
 
   const calcGrowth = (total, today) => {
   if (!total || total === 0) return { percent: 0, text: "0%", color: "text-gray-500" };
