@@ -146,7 +146,6 @@ const NewsList = () => {
 
 
   useEffect(() => {
-    // load all data on first render or page change
     loadNewsWithFilters({
       search,
       status,
@@ -327,7 +326,7 @@ const NewsList = () => {
             {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full border border-gray-200 rounded-lg overflow-hidden">
-                <thead className="bg-gray-100 text-left">
+                <thead className="bg-gray-100 text-center">
                   <tr>
                     <th className="px-4 py-2">
                       <input
@@ -346,12 +345,12 @@ const NewsList = () => {
                     <th className="px-4 py-2 text-xs font-semibold text-gray-700">
                       Category
                     </th>
-                    <th className="px-4 py-2 text-xs font-semibold text-gray-700">
+                    {/*<th className="px-4 py-2 text-xs font-semibold text-gray-700">
                       Portal
-                    </th>
-                    <th className="px-4 py-2 text-xs font-semibold text-gray-700">
+                    </th>*/}
+                    {/* <th className="px-4 py-2 text-xs font-semibold text-gray-700">
                       Live URL
-                    </th>
+                    </th> */}
                     <th className="px-4 py-2 text-xs font-semibold text-gray-700">
                       Status
                     </th>
@@ -411,10 +410,10 @@ const NewsList = () => {
                             <p className="text-xs text-gray-500">{item.shortDesc}</p>
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-700">{item.category}</td>
-                          <td className="px-4 py-2 text-sm text-gray-700">{item.author}</td>
-                          <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
+                          {/* <td className="px-4 py-2 text-sm text-gray-700">{item.author}</td> */}
+                          {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
                             {item.live_url}
-                          </td>
+                          </td> */}
                           <td className="px-4 py-2">
                             <span
                               className={`px-2 py-1 text-xs rounded ${
