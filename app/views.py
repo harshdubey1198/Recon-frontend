@@ -1180,9 +1180,8 @@ class AdminStatsAPIView(APIView):
                 total_posts = posts_qs.count()
                 total_draft_posts = posts_qs.filter(status="DRAFT").count()
                 total_published_posts = posts_qs.filter(status="PUBLISHED").count()
-                
-                today_posts_qs = MasterNewsPost.objects.filter(created_at__date=today)
 
+                today_posts_qs = MasterNewsPost.objects.filter(created_at__date=today)
                 today_total_posts = today_posts_qs.count()
                 today_draft_posts = today_posts_qs.filter(status="DRAFT").count()
 
@@ -1213,11 +1212,10 @@ class AdminStatsAPIView(APIView):
                 total_posts = posts_qs.count()
                 total_draft_posts = posts_qs.filter(status="DRAFT").count()
                 total_published_posts = posts_qs.filter(status="PUBLISHED").count()
-                
-                today_posts_qs =MasterNewsPost.objects.filter(
+
+                today_posts_qs = MasterNewsPost.objects.filter(
                     created_by=user, created_at__date=today
                 )
-
                 today_total_posts = today_posts_qs.count()
                 today_total_drafts = today_posts_qs.filter(status="DRAFT").count()
 
@@ -1265,7 +1263,7 @@ class AdminStatsAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    # --- Helper function ---
+    # --- Helper Function ---
     def _get_distribution_stats(self, queryset, today):
         total_distributions = queryset.count()
         successful_distributions = queryset.filter(status="SUCCESS").count()
@@ -1273,22 +1271,26 @@ class AdminStatsAPIView(APIView):
         pending_distributions = queryset.filter(status="PENDING").count()
         retry_counts = queryset.aggregate(total=Sum("retry_count"))["total"] or 0
 
-        # Exclude distributions with time_taken = 0
-        valid_time_qs = queryset.filter(time_taken__gt=0)
-        total_avg_time = (
-            valid_time_qs.aggregate(avg=Avg("time_taken"))["avg"] or 0.0
-        )
+        # --- Today’s stats ---
+        today_distributions = queryset.filter(created_at__date=today)
+        today_total = today_distributions.count()
+        today_successful = today_distributions.filter(status="SUCCESS").count()
+        today_failed = today_distributions.filter(status="FAILED").count()
 
-        today_qs = queryset.filter(created_at__date=today)
-        today_distributions = today_qs.count()
-        today_successful = today_qs.filter(status="SUCCESS").count()
-        today_failed = today_qs.filter(status="FAILED").count()
+        # --- Average Time Taken ---
+        valid_times = queryset.filter(time_taken__gt=0)
+        today_valid_times = today_distributions.filter(time_taken__gt=0)
+        avg_time = round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2)
+        today_avg_time = round(today_valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2)
 
-        # Today's average time taken
-        today_valid_time_qs = today_qs.filter(time_taken__gt=0)
-        today_avg_time = (
-            today_valid_time_qs.aggregate(avg=Avg("time_taken"))["avg"] or 0.0
-        )
+        # --- Throughput per Hour (Average) ---
+        throughput_per_hour = 0
+        if total_distributions > 0:
+            earliest = queryset.order_by("created_at").first().created_at
+            latest = queryset.order_by("-created_at").first().created_at
+            total_hours = (latest - earliest).total_seconds() / 3600
+            if total_hours > 0:
+                throughput_per_hour = round(total_distributions / total_hours, 2)
 
         return {
             "news_distribution": {
@@ -1297,16 +1299,18 @@ class AdminStatsAPIView(APIView):
                 "failed_distributions": failed_distributions,
                 "pending_distributions": pending_distributions,
                 "retry_counts": retry_counts,
-                "average_time_taken": round(total_avg_time, 2),
-                "today_average_time_taken": round(today_avg_time, 2),
+                "average_time_taken": avg_time,
+                "today_average_time_taken": today_avg_time,
+                "throughput_per_hour": throughput_per_hour,
                 "today": {
-                    "total": today_distributions,
+                    "total": today_total,
                     "successful": today_successful,
                     "failed": today_failed,
                 },
             }
         }
-        
+
+      
         
 class DomainDistributionStatsAPIView(APIView):
     permission_classes = [IsAuthenticated]
