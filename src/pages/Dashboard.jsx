@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { fetchAdminStats, fetchDomainDistribution, fetchMasterCategories, fetchNewsList, } from "../../server";
 import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2 } from "lucide-react";
 import formatUsername from "../utils/formateName";
+import KPIOverview from "../components/dashboard/KpiOverview";
+import StatusOverview from "../components/dashboard/StatusOverview";
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [domains, setDomains] = useState([]);
@@ -74,7 +76,7 @@ export default function Dashboard() {
   const loadStats = async () => {
     try {
       const res = await fetchAdminStats();
-      console.log("Admin stats response:", res);
+      // console.log("Admin stats response:", res);
       if (res?.data?.status) {
         setStats({
           totalPosts: res.data.data.total_posts,
