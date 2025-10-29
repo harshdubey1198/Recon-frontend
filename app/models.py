@@ -199,6 +199,9 @@ class NewsDistribution(BaseModel):
     response_message = models.TextField(null=True, blank=True)
     sent_at = models.DateTimeField(auto_now_add=True)
     retry_count = models.PositiveIntegerField(default=0)
+    time_taken = models.FloatField(default=0.0, help_text="Time taken in seconds to publish on this portal")
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         unique_together = ("news_post", "portal")
