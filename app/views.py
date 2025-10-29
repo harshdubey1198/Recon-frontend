@@ -1,5 +1,6 @@
 import requests
 import json
+from collections import defaultdict
 from datetime import date
 from urllib.parse import urljoin
 from datetime import timedelta
@@ -17,6 +18,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
+
 
 
 from .models import (
@@ -1816,5 +1818,172 @@ class NewsKPIAPIView(APIView):
         except Exception as e:
             return Response(
                 error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+            
+
+class PortalStatsAPIView(APIView):
+    """
+    GET /api/portal-stats/?portal_id=1
+
+    Returns:
+    - Top Performing Categories (MasterCategory-wise post counts)
+    - Weekly Performance (Success/Failed counts for each day)
+    - Top Contributors (User-wise distribution count in this portal)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            portal_id = request.query_params.get("portal_id")
+            if not portal_id:
+                return Response(
+                    {"success": False, "error": "portal_id is required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            today = timezone.now().date()
+            last_week = today - timedelta(days=6)
+
+            # --- Base Queryset ---
+            distributions = NewsDistribution.objects.filter(portal_id=portal_id)
+
+            # --- 1️⃣ Top Performing Categories ---
+            top_categories = (
+                distributions.filter(master_category__isnull=False)
+                .values("master_category__id", "master_category__name")
+                .annotate(total_posts=Count("news_post", distinct=True))
+                .order_by("-total_posts")[:10]
+            )
+
+            # --- 2️⃣ Weekly Performance (last 7 days success/fail per day) ---
+            weekly_data = (
+                distributions.filter(sent_at__date__range=[last_week, today])
+                .values("sent_at__date", "status")
+                .annotate(count=Count("id"))
+            )
+
+            # Build structured weekly response
+            week_stats = defaultdict(lambda: {"SUCCESS": 0, "FAILED": 0})
+            for entry in weekly_data:
+                date = entry["sent_at__date"]
+                status_val = entry["status"]
+                count = entry["count"]
+                if status_val in ["SUCCESS", "FAILED"]:
+                    week_stats[date][status_val] = count
+
+            weekly_performance = []
+            for i in range(7):
+                date = today - timedelta(days=i)
+                weekly_performance.append({
+                    "day": date.strftime("%a"),
+                    "date": date,
+                    "success": week_stats[date]["SUCCESS"],
+                    "failed": week_stats[date]["FAILED"],
+                })
+            weekly_performance.reverse()
+
+            # --- 3️⃣ Top Contributors (users who distributed most in this portal) ---
+            top_contributors = (
+                distributions
+                .values("news_post__created_by__id", "news_post__created_by__username")
+                .annotate(total_distributions=Count("id"))
+                .order_by("-total_distributions")[:10]
+            )
+
+            response_data = {
+                "portal_id": portal_id,
+                "top_performing_categories": top_categories,
+                "weekly_performance": weekly_performance,
+                "top_contributors": top_contributors,
+            }
+
+            return Response(
+                {"success": True, "message": "Portal stats fetched successfully", "data": response_data},
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                {"success": False, "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class GlobalStatsAPIView(APIView):
+    """
+    GET /api/global-stats/
+
+    Returns:
+    - Top Performing Categories (MasterCategory-wise post counts)
+    - Weekly Performance (Success/Failed counts for each day, last 7 days)
+    - Top Contributors (User-wise total distributions across all portals)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            today = timezone.now().date()
+            last_week = today - timedelta(days=6)
+
+            # --- Base Queryset ---
+            distributions = NewsDistribution.objects.select_related("portal", "master_category", "news_post")
+
+            # --- 1️⃣ Top Performing Categories ---
+            top_categories = (
+                distributions.filter(master_category__isnull=False)
+                .values("master_category__id", "master_category__name")
+                .annotate(total_posts=Count("news_post", distinct=True))
+                .order_by("-total_posts")[:10]
+            )
+
+            # --- 2️⃣ Weekly Performance (SUCCESS / FAILED for last 7 days) ---
+            weekly_data = (
+                distributions.filter(sent_at__date__range=[last_week, today])
+                .values("sent_at__date", "status")
+                .annotate(count=Count("id"))
+            )
+
+            week_stats = defaultdict(lambda: {"SUCCESS": 0, "FAILED": 0})
+            for entry in weekly_data:
+                date = entry["sent_at__date"]
+                status_val = entry["status"]
+                count = entry["count"]
+                if status_val in ["SUCCESS", "FAILED"]:
+                    week_stats[date][status_val] = count
+
+            weekly_performance = []
+            for i in range(7):
+                date = today - timedelta(days=i)
+                weekly_performance.append({
+                    "day": date.strftime("%a"),
+                    "date": date,
+                    "success": week_stats[date]["SUCCESS"],
+                    "failed": week_stats[date]["FAILED"],
+                })
+            weekly_performance.reverse()
+
+            # --- 3️⃣ Top Contributors (Global distribution counts) ---
+            top_contributors = (
+                distributions
+                .values("news_post__created_by__id", "news_post__created_by__username")
+                .annotate(total_distributions=Count("id"))
+                .order_by("-total_distributions")[:10]
+            )
+
+            response_data = {
+                "top_performing_categories": top_categories,
+                "weekly_performance": weekly_performance,
+                "top_contributors": top_contributors,
+            }
+
+            return Response(
+                {"success": True, "message": "Global stats fetched successfully", "data": response_data},
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                {"success": False, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
