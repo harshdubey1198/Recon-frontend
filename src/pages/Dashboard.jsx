@@ -425,8 +425,7 @@ export default function Dashboard() {
         {/* Portal Leaderboard Component */}
 
         <PortalLeaderboard ref={portalLeaderboardRef} />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Recent Posts */}
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
             <div className="p-6 border-b border-blue-100/50 bg-black">
               <div className="flex items-center space-x-3">
@@ -510,7 +509,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Categories Overview */}
           <div className="bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-lg border border-black/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
             <div className="p-6 border-b border-purple-100/50 bg-black">
               <div className="flex items-center space-x-3">
@@ -551,7 +549,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
