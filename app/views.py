@@ -1138,59 +1138,78 @@ class AdminStatsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        """
+        GET /api/admin/stats/?today=true
+        GET /api/admin/stats/?start_date=2025-10-01&end_date=2025-10-05
+
+        Returns admin/user-specific KPIs for posts and news distributions.
+
+        - MASTER role: shows all posts and distributions.
+        - USER role: shows only user's own posts and distributions.
+        """
         try:
             user = request.user
             role = getattr(user.role, "role", None)
 
-            # --- Date Filtering ---
             today_param = request.query_params.get("today")
             start_date = request.query_params.get("start_date")
             end_date = request.query_params.get("end_date")
 
             date_filter = {}
+            today = timezone.now().date()
 
-            # Today filter (?today=true)
+            # --- Date Filtering ---
             if today_param and today_param.lower() == "true":
-                today = timezone.now().date()
                 date_filter["created_at__date"] = today
-
-            # Custom date range
             elif start_date and end_date:
                 date_filter["created_at__date__range"] = [start_date, end_date]
 
-            # Calculate today’s date for extra stats
-            today = timezone.now().date()
-
             # --- MASTER ADMIN STATS ---
             if role and role.name.upper() == "MASTER":
-                total_posts = MasterNewsPost.objects.filter(**date_filter).count()
-                today_total_posts = MasterNewsPost.objects.filter(created_at__date=today).count()
+                posts_qs = MasterNewsPost.objects.filter(**date_filter)
+                total_posts = posts_qs.count()
+                total_draft_posts = posts_qs.filter(status="DRAFT").count()
+                total_published_posts = posts_qs.filter(status="PUBLISHED").count()
+                
+                today_posts_qs = MasterNewsPost.objects.filter(created_at__date=today)
+
+                today_total_posts = today_posts_qs.count()
+                today_draft_posts = today_posts_qs.filter(status="DRAFT").count()
 
                 total_users = (
                     User.objects.filter(**date_filter).count()
-                    if "created_at__date" in date_filter or "created_at__date__range" in date_filter
-                    else User.objects.count()
+                    if date_filter else User.objects.count()
                 )
                 total_portals = Portal.objects.filter(**date_filter).count()
                 total_master_categories = MasterCategory.objects.filter(**date_filter).count()
 
+                distributions = NewsDistribution.objects.filter(**date_filter)
+
                 stats = {
                     "total_posts": total_posts,
+                    "draft_posts": total_draft_posts,
+                    "published_posts": total_published_posts,
                     "today_total_posts": today_total_posts,
+                    "today_draft_posts": today_draft_posts,
                     "total_users": total_users,
                     "total_portals": total_portals,
                     "total_master_categories": total_master_categories,
                 }
-
-                distributions = NewsDistribution.objects.filter(**date_filter)
                 stats.update(self._get_distribution_stats(distributions, today))
 
             # --- USER STATS ---
             elif role and role.name.upper() == "USER":
-                user_posts = MasterNewsPost.objects.filter(created_by=user, **date_filter)
-                today_total_posts = MasterNewsPost.objects.filter(
+                posts_qs = MasterNewsPost.objects.filter(created_by=user, **date_filter)
+                total_posts = posts_qs.count()
+                total_draft_posts = posts_qs.filter(status="DRAFT").count()
+                total_published_posts = posts_qs.filter(status="PUBLISHED").count()
+                
+                today_posts_qs =MasterNewsPost.objects.filter(
                     created_by=user, created_at__date=today
-                ).count()
+                )
+
+                today_total_posts = today_posts_qs.count()
+                today_total_drafts = today_posts_qs.filter(status="DRAFT").count()
 
                 assignments = UserCategoryGroupAssignment.objects.filter(user=user)
                 portals = set()
@@ -1209,8 +1228,11 @@ class AdminStatsAPIView(APIView):
                 )
 
                 stats = {
-                    "total_posts": user_posts.count(),
+                    "total_posts": total_posts,
+                    "draft_posts": total_draft_posts,
+                    "published_posts": total_published_posts,
                     "today_total_posts": today_total_posts,
+                    "today_total_drafts": today_total_drafts,
                     "total_portals": len(portals),
                     "total_master_categories": len(master_categories),
                 }
@@ -1219,18 +1241,18 @@ class AdminStatsAPIView(APIView):
             else:
                 return Response(
                     error_response("Role not recognized or not assigned"),
-                    status=status.HTTP_403_FORBIDDEN
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
             return Response(
                 success_response(stats, "Stats fetched successfully"),
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
 
         except Exception as e:
             return Response(
                 error_response(str(e)),
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     # --- Helper function ---
@@ -1241,31 +1263,10 @@ class AdminStatsAPIView(APIView):
         pending_distributions = queryset.filter(status="PENDING").count()
         retry_counts = queryset.aggregate(total=Sum("retry_count"))["total"] or 0
 
-        # Portal distribution (total)
-        portal_distribution = (
-            queryset.values("portal__name")
-            .annotate(total=Count("id"))
-            .order_by("portal__name")
-        )
-
-        # Today distribution (per portal)
-        today_portal_distribution = (
-            queryset.filter(created_at__date=today)
-            .values("portal__name")
-            .annotate(today_total=Count("id"))
-        )
-
-        # Merge both
-        portal_distribution_dict = {
-            item["portal__name"]: {
-                "total": item["total"],
-                "today_total": next(
-                    (t["today_total"] for t in today_portal_distribution if t["portal__name"] == item["portal__name"]),
-                    0,
-                ),
-            }
-            for item in portal_distribution
-        }
+        # Today’s stats
+        today_distributions = queryset.filter(created_at__date=today).count()
+        today_successful = queryset.filter(status="SUCCESS", created_at__date=today).count()
+        today_failed = queryset.filter(status="FAILED", created_at__date=today).count()
 
         return {
             "news_distribution": {
@@ -1274,10 +1275,15 @@ class AdminStatsAPIView(APIView):
                 "failed_distributions": failed_distributions,
                 "pending_distributions": pending_distributions,
                 "retry_counts": retry_counts,
-                "portal_distribution_counts": portal_distribution_dict,
+                "today": {
+                    "total": today_distributions,
+                    "successful": today_successful,
+                    "failed": today_failed,
+                },
             }
         }
-
+        
+        
 class DomainDistributionStatsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
