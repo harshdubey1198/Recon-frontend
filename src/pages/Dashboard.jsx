@@ -21,6 +21,26 @@ export default function Dashboard() {
     targets: 0,
     activeUsers: 0,
     revenue: 0,
+
+    total_posts: 0,
+    draft_posts: 0,
+    published_posts: 0,
+    today_total_posts: 0,
+    today_total_drafts: 0,
+    total_portals: 0,
+    total_master_categories: 0,
+    news_distribution: {
+        total_distributions: 0,
+        successful_distributions: 0,
+        failed_distributions: 0,
+        pending_distributions: 0,
+        retry_counts: 0,
+        today: {
+            total: 0,
+            successful: 0,
+            failed: 0
+        }
+       }
   });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(15000); 
@@ -85,8 +105,17 @@ export default function Dashboard() {
           domains: res.data.data.total_portals,
           targets: res.data.data.news_distribution.total_distributions,
           activeUsers: res.data.data.total_users,
-          revenue: res.data.data.news_distribution.successful_distributions, // फिलहाल revenue नहीं है तो example के लिए success counts
-        });
+          revenue: res.data.data.news_distribution.successful_distributions, 
+          
+          total_posts: res.data.data.total_posts,
+          draft_posts: res.data.data.draft_posts,
+          published_posts: res.data.data.published_posts,
+          today_total_posts: res.data.data.today_total_posts,
+          today_total_drafts: res.data.data.today_total_drafts,
+          total_portals: res.data.data.total_portals,
+          total_master_categories: res.data.data.total_master_categories,
+          news_distribution: res.data.data.news_distribution
+          });
       }
     } catch (err) {
       console.error("Failed to fetch stats:", err);
@@ -455,7 +484,7 @@ export default function Dashboard() {
           </div>
         </div>
       <KPIOverview data={stats} />
-      <StatusOverview />
+      <StatusOverview data={stats} />
         {/* Domain Access Table */}
         <div className="border-b rounded-xl text-white border-blue-100/50 bg-black mb-8">
           <div className="p-6 border-b border-gray-100">
