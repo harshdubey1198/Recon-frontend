@@ -1529,6 +1529,8 @@ class NewsReportAPIView(APIView, PaginationMixin):
     - master_category_id
     - username
     - search (title, slug, ai_title, ai_slug)
+    - post_status: DRAFT | PUBLISHED
+    - distribution_status: SUCCESS | FAILED | PENDING
     - page
     - page_size
     """
@@ -1545,6 +1547,8 @@ class NewsReportAPIView(APIView, PaginationMixin):
             master_category_id = params.get("master_category_id")
             username = params.get("username")
             search = params.get("search")
+            post_status = params.get("post_status")
+            distribution_status = params.get("distribution_status")
 
             today = timezone.now().date()
             start_dt, end_dt = None, None
@@ -1574,23 +1578,49 @@ class NewsReportAPIView(APIView, PaginationMixin):
                 master_posts = master_posts.filter(created_at__date__range=[start_dt, end_dt])
                 distributions = distributions.filter(sent_at__date__range=[start_dt, end_dt])
 
-            # --- Portal filter ---
+            # --- Filter: Master Post Status ---
+            if post_status:
+                valid_post_statuses = ["DRAFT", "PUBLISHED"]
+                if post_status.upper() not in valid_post_statuses:
+                    return Response(
+                        error_response("Invalid post_status. Use DRAFT or PUBLISHED."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                master_posts = master_posts.filter(status__iexact=post_status)
+
+            # --- Filter: Distribution Status ---
+            if distribution_status:
+                valid_dist_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() not in valid_dist_statuses:
+                    return Response(
+                        error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Only include master posts that have at least one distribution with this status
+                master_posts = master_posts.filter(
+                    news_distribution__status__iexact=distribution_status
+                ).distinct()
+
+                distributions = distributions.filter(status__iexact=distribution_status)
+
+            # --- Filter: Portal ---
             if portal_id:
                 # Only include master posts that have been distributed to this portal
                 distributions = distributions.filter(portal_id=portal_id)
                 master_posts = master_posts.filter(news_distribution__portal_id=portal_id).distinct()
 
-            # --- Master Category filter ---
+            # --- Filter: Master Category ---
             if master_category_id:
                 master_posts = master_posts.filter(master_category_id=master_category_id)
                 distributions = distributions.filter(master_category_id=master_category_id)
 
-            # --- Username filter ---
+            # --- Filter: Username ---
             if username:
                 master_posts = master_posts.filter(created_by__username__icontains=username)
                 distributions = distributions.filter(news_post__created_by__username__icontains=username)
 
-            # --- Search filter ---
+            # --- Filter: Search ---
             if search:
                 search_q = (
                     Q(title__icontains=search) |
