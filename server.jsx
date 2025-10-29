@@ -287,6 +287,18 @@ export async function removeUserAssignment(data) {
   });
 }
 
+// weakly performance data global
+export async function fetchWeeklyPerformanceData() {
+  return axiosInstance.get("/api/global/stats/");
+}
+// portal stats
+export async function fetchPortalStats(portalId) {
+  return axiosInstance.get("/api/portal/stats/", {
+    params: { portal_id: portalId },
+  });
+}
+
+
 
 
 export default axiosInstance;
