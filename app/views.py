@@ -1,5 +1,6 @@
 import requests
 import json
+import time
 from collections import defaultdict
 from datetime import date
 from urllib.parse import urljoin
@@ -785,7 +786,7 @@ class MasterNewsPostPublishAPIView(APIView):
                     existing_dist.retry_count += 1
                     existing_dist.save(update_fields=["retry_count"])
 
-                # Rewriting logic same as before ↓
+                start_time = time.perf_counter()
                 if mapping.use_default_content:
                     rewritten_title = news_post.title
                     rewritten_short = news_post.short_description
@@ -859,6 +860,9 @@ class MasterNewsPostPublishAPIView(APIView):
                 except Exception as e:
                     success = False
                     response_msg = str(e)
+                    
+                end_time = time.perf_counter()  # End timer
+                elapsed_time = round(end_time - start_time, 2) 
 
                 NewsDistribution.objects.update_or_create(
                     news_post=news_post,
@@ -873,6 +877,9 @@ class MasterNewsPostPublishAPIView(APIView):
                         "ai_content": rewritten_content,
                         "ai_meta_title": rewritten_meta,
                         "ai_slug": rewritten_slug,
+                        "time_taken": elapsed_time,
+                        "started_at": timezone.now() - timezone.timedelta(seconds=elapsed_time),
+                        "completed_at": timezone.now(),
                     },
                 )
 
@@ -881,6 +888,7 @@ class MasterNewsPostPublishAPIView(APIView):
                     "category": portal_category.name,
                     "success": success,
                     "response": response_msg,
+                    "time_taken": elapsed_time,
                 })
 
             return Response(success_response(results, "News published successfully."))
