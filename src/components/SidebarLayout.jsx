@@ -149,24 +149,7 @@ const menuItems = [
               })}
             </ul>
           </nav>
-
-          {/* Quick Actions */}
-           <div className="mt-6 sm:mt-8 px-3 sm:px-4 pb-4 sm:pb-6">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">
-              Quick Actions
-            </h3>
-            <div className="space-y-1.5 sm:space-y-2">
-              <button className="w-full flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
-                <span className="truncate">Create New</span>
-              </button>
-              <button className="w-full flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                <div className="w-2 h-2 bg-orange-400 rounded-full flex-shrink-0"></div>
-                <span className="truncate">Import Data</span>
-              </button>
-            </div>
-          </div>
-        </div>
+     </div>
 
         {/* User section at bottom - Fixed */}
        <div className="p-3 sm:p-4 border-t border-gray-100 bg-white flex-shrink-0">
