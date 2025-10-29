@@ -13,7 +13,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q, Count, Sum, F
+from django.db.models import Q, Count, Sum, F, Avg, FloatField
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -1300,17 +1300,21 @@ class DomainDistributionStatsAPIView(APIView):
     def get(self, request, *args, **kwargs):
         try:
             user = request.user
-            role = getattr(user.role, "role", None)
+            role = getattr(getattr(user, "role", None), "role", None)
             today = timezone.now().date()
             stats = []
 
-            # --- MASTER ADMIN: All portals ---
+            # ---------------- MASTER ROLE ----------------
             if role and role.name.upper() == "MASTER":
                 domains = Portal.objects.all().order_by("name")
 
                 for domain in domains:
                     distributions = NewsDistribution.objects.filter(portal=domain)
                     today_distributions = distributions.filter(created_at__date=today)
+
+                    # Filter out time_taken = 0 for average calculations
+                    valid_times = distributions.filter(time_taken__gt=0)
+                    today_valid_times = today_distributions.filter(time_taken__gt=0)
 
                     domain_stats = {
                         "portal_id": domain.id,
@@ -1323,21 +1327,25 @@ class DomainDistributionStatsAPIView(APIView):
                         "pending_distributions": distributions.filter(status="PENDING").count(),
                         "retry_counts": distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
 
-                        # --- Today's Counts (flat fields) ---
+                        # --- Today's Counts ---
                         "today_total_distributions": today_distributions.count(),
                         "today_successful_distributions": today_distributions.filter(status="SUCCESS").count(),
                         "today_failed_distributions": today_distributions.filter(status="FAILED").count(),
                         "today_pending_distributions": today_distributions.filter(status="PENDING").count(),
                         "today_retry_counts": today_distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
+
+                        # --- Timing Metrics ---
+                        "average_time_taken": round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
+                        "today_average_time_taken": round(today_valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
                     }
+
                     stats.append(domain_stats)
 
-            # --- USER: Only assigned portals + user's posts ---
+            # ---------------- USER ROLE ----------------
             elif role and role.name.upper() == "USER":
                 assignments = UserCategoryGroupAssignment.objects.filter(user=user)
-
-                # Collect unique portals from assignments
                 assigned_portals = set()
+
                 for assignment in assignments:
                     for portal, _ in get_portals_from_assignment(assignment):
                         assigned_portals.add(portal)
@@ -1349,6 +1357,9 @@ class DomainDistributionStatsAPIView(APIView):
                     )
                     today_distributions = distributions.filter(created_at__date=today)
 
+                    valid_times = distributions.filter(time_taken__gt=0)
+                    today_valid_times = today_distributions.filter(time_taken__gt=0)
+
                     domain_stats = {
                         "portal_id": domain.id,
                         "portal_name": domain.name,
@@ -1360,13 +1371,18 @@ class DomainDistributionStatsAPIView(APIView):
                         "pending_distributions": distributions.filter(status="PENDING").count(),
                         "retry_counts": distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
 
-                        # --- Today's Counts (flat fields) ---
+                        # --- Today's Counts ---
                         "today_total_distributions": today_distributions.count(),
                         "today_successful_distributions": today_distributions.filter(status="SUCCESS").count(),
                         "today_failed_distributions": today_distributions.filter(status="FAILED").count(),
                         "today_pending_distributions": today_distributions.filter(status="PENDING").count(),
                         "today_retry_counts": today_distributions.aggregate(total=Sum("retry_count"))["total"] or 0,
+
+                        # --- Timing Metrics ---
+                        "average_time_taken": round(valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
+                        "today_average_time_taken": round(today_valid_times.aggregate(avg=Avg("time_taken"))["avg"] or 0, 2),
                     }
+
                     stats.append(domain_stats)
 
             else:
@@ -1375,8 +1391,15 @@ class DomainDistributionStatsAPIView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
+            # --- Sort (Leaderboard) by Total Posts ---
+            stats = sorted(stats, key=lambda x: x["total_distributions"], reverse=True)
+
+            # --- Assign Ranks ---
+            for rank, item in enumerate(stats, start=1):
+                item["rank"] = rank
+
             return Response(
-                success_response(stats, "Domain-wise distribution stats fetched successfully"),
+                success_response(stats, "Domain leaderboard & distribution stats fetched successfully"),
                 status=status.HTTP_200_OK,
             )
 
@@ -1385,7 +1408,6 @@ class DomainDistributionStatsAPIView(APIView):
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
 
 class AllPortalsTagsLiveAPIView(APIView):
     permission_classes = [IsAuthenticated]
