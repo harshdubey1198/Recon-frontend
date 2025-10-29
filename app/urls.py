@@ -5,7 +5,7 @@ from .views import (
     GroupCreateListAPIView, GroupRetrieveUpdateDeleteAPIView, GroupCategoriesListAPIView, MasterNewsPostPublishAPIView,
     NewsPostCreateAPIView, PortalCreateAPIView, UserPostsListAPIView, AllNewsPostsAPIView, NewsDistributionListAPIView,
     NewsDistributionDetailAPIView, AdminStatsAPIView, DomainDistributionStatsAPIView, AllPortalsTagsLiveAPIView, 
-    NewsPostUpdateAPIView, MyPostsListAPIView, NewsReportAPIView
+    NewsPostUpdateAPIView, MyPostsListAPIView, NewsReportAPIView, NewsKPIAPIView
 )
 
 urlpatterns = [
@@ -46,4 +46,5 @@ urlpatterns = [
     path('admin/stats/', AdminStatsAPIView.as_view()),
     path('domain/distribution/', DomainDistributionStatsAPIView.as_view()),
     path('news/report/', NewsReportAPIView.as_view()),
+    path('news/kpi/', NewsKPIAPIView.as_view()),
 ]

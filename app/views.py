@@ -1,5 +1,6 @@
 import requests
 import json
+from datetime import date
 from urllib.parse import urljoin
 from datetime import timedelta
 from rest_framework.views import APIView
@@ -1729,3 +1730,85 @@ class NewsReportAPIView(APIView, PaginationMixin):
 
         except Exception as e:
             return Response(error_response(str(e)), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class NewsKPIAPIView(APIView):
+    """
+    GET /api/news/kpi/
+
+    Returns KPI statistics for master news posts and their distributions.
+
+    - If user role = 'user' → show only their own posts.
+    - If user role = 'master' → show overall stats.
+
+    Example Response:
+    ```
+    {
+        "status": true,
+        "message": "KPI fetched successfully",
+        "data": {
+            "total_posts": 245,
+            "total_distributed": 780,
+            "success": 600,
+            "failed": 120,
+            "today": {
+                "posts": 5,
+                "distributed": 20,
+                "success": 18,
+                "failed": 2
+            }
+        }
+    }
+    ```
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            profile = request.user
+            today_date = date.today()
+
+            # Base queryset depending on user role
+            if profile.role.role.name.lower() in ["master", "admin"]:
+                master_posts_qs = MasterNewsPost.objects.all()
+                distribution_qs = NewsDistribution.objects.all()
+            else:
+                master_posts_qs = MasterNewsPost.objects.filter(created_by=profile)
+                distribution_qs = NewsDistribution.objects.filter(news_post__created_by=profile)
+
+            # --- TOTALS ---
+            total_posts = master_posts_qs.count()
+            total_distributed = distribution_qs.count()
+            success = distribution_qs.filter(status="SUCCESS").count()
+            failed = distribution_qs.filter(status="FAILED").count()
+
+            # --- TODAY'S STATS ---
+            today_posts = master_posts_qs.filter(created_at__date=today_date).count()
+            today_distributed = distribution_qs.filter(sent_at__date=today_date).count()
+            today_success = distribution_qs.filter(status="SUCCESS", sent_at__date=today_date).count()
+            today_failed = distribution_qs.filter(status="FAILED", sent_at__date=today_date).count()
+
+            data = {
+                "total_posts": total_posts,
+                "total_distributed": total_distributed,
+                "success": success,
+                "failed": failed,
+                "today": {
+                    "posts": today_posts,
+                    "distributed": today_distributed,
+                    "success": today_success,
+                    "failed": today_failed,
+                },
+            }
+
+            return Response(
+                success_response(data=data, message="KPI fetched successfully"),
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
