@@ -12,7 +12,7 @@ export default function KPIOverview({ data = {} }) {
   console.log(user?.role);
   
   const formatTime = (time) => {
-    if (!time || time === 0) return "0m";
+    if (!time || time === 0) return "0s";
     const hours = Math.floor(time / 60);
     const minutes = Math.round(time % 60);
     return `${hours > 0 ? `${hours}h ` : ""}${minutes}m`;
