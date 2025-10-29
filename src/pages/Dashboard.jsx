@@ -451,8 +451,9 @@ export default function Dashboard() {
               All operational
             </div>
           </div>
-   </div>
-
+        </div>
+      <KPIOverview data={stats} />
+      <StatusOverview />
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Recent Posts */}
          <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
