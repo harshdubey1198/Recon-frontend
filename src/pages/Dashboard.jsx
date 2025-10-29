@@ -456,6 +456,109 @@ export default function Dashboard() {
         </div>
       <KPIOverview data={stats} />
       <StatusOverview />
+        {/* Domain Access Table */}
+        <div className="border-b rounded-xl text-white border-blue-100/50 bg-black mb-8">
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-white">
+              Domain Distribution
+            </h3>
+            <p className="text-sm text-gray-300">
+              Overview of all active domains and their performance
+            </p>
+          </div>
+
+          <div className="overflow-x-auto bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Domain
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Success
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Failed
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Pending
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Retry
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Today (T/S/F/R)
+                  </th>
+                  {/* <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th> */}
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-gray-200">
+                {domains.map((domain, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                      {domain.name}
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">{domain.total}</td>
+                    <td className="px-6 py-4 text-green-600">
+                      {domain.success}
+                    </td>
+                    <td className="px-6 py-4 text-red-600">{domain.failed}</td>
+                    <td className="px-6 py-4 text-yellow-600">
+                      {domain.pending}
+                    </td>
+                    <td className="px-6 py-4 text-purple-600">
+                      {domain.retry}
+                    </td>
+                   <td className="px-6 py-4">
+                    <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
+                      <span className="text-gray-900 bg-gray-100 px-2 py-1 rounded-md">Total: {domain.todayTotal}</span>
+                      <span className="text-green-700 bg-green-50 px-2 py-1 rounded-md">Success: {domain.todaySuccess}</span><br/>
+                      <span className="text-red-700 bg-red-50 px-2 py-1 rounded-md">Failed: {domain.todayFailed}</span>
+                      {/* <span className="text-yellow-700 bg-yellow-50 px-2 py-1 rounded-md">Pending: {domain.todayPending}</span> */}
+                      <span className="text-purple-700 bg-purple-50 px-2 py-1 rounded-md">Retry: {domain.todayRetry}</span>
+                    </div>
+                  </td>
+
+
+                    {/* <td className="px-6 py-4">
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          domain.status === "Active"
+                            ? "bg-green-100 text-green-800"
+                            : domain.status === "Partial"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {domain.status}
+                      </span>
+                    </td> */}
+                    {/* <td className="px-6 py-4 whitespace-nowrap font-medium">
+                      <button className="text-blue-600 hover:text-blue-800 mr-3">
+                        View
+                      </button>
+                      <button className="text-gray-600 hover:text-gray-900 mr-3">
+                        Edit
+                      </button>
+                      <button className="text-red-600 hover:text-red-900">
+                        Delete
+                      </button>
+                    </td> */}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Recent Posts */}
          <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
@@ -584,102 +687,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Domain Access Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Domain Access
-            </h3>
-            <p className="text-sm text-gray-500">
-              Overview of all active domains and their performance
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Domain
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Success
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Failed
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Pending
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Retry
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Today (T/F/P/R)
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-200">
-                {domains.map((domain, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                      {domain.name}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">{domain.total}</td>
-                    <td className="px-6 py-4 text-green-600">
-                      {domain.success}
-                    </td>
-                    <td className="px-6 py-4 text-red-600">{domain.failed}</td>
-                    <td className="px-6 py-4 text-yellow-600">
-                      {domain.pending}
-                    </td>
-                    <td className="px-6 py-4 text-purple-600">
-                      {domain.retry}
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {domain.todayTotal}/{domain.todayFailed}/
-                      {domain.todayPending}/{domain.todayRetry}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          domain.status === "Active"
-                            ? "bg-green-100 text-green-800"
-                            : domain.status === "Partial"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {domain.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
-                      <button className="text-blue-600 hover:text-blue-800 mr-3">
-                        View
-                      </button>
-                      <button className="text-gray-600 hover:text-gray-900 mr-3">
-                        Edit
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      
 
         {/* Quick Actions */}
         {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

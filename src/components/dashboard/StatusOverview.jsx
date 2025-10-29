@@ -14,26 +14,26 @@ const statuses = [
         changeColor: "text-green-600",
         drillPath: "/dashboard/status/published",
     },
-    {
-        id: "scheduled",
-        title: "Scheduled",
-        value: "12",
-        color: "bg-blue-100 text-blue-600",
-        icon: <CalendarClock className="w-5 h-5" />,
-        change: "Upcoming publications",
-        changeColor: "text-blue-600",
-        drillPath: "/dashboard/status/scheduled",
-    },
-    {
-      id: "pending",
-      title: "Pending",
-      value: "9",
-      color: "bg-amber-100 text-amber-600",
-      icon: <Clock className="w-5 h-5" />,
-      change: "Awaiting approval",
-      changeColor: "text-amber-600",
-      drillPath: "/dashboard/status/pending",
-    },
+    // {
+    //     id: "scheduled",
+    //     title: "Scheduled",
+    //     value: "12",
+    //     color: "bg-blue-100 text-blue-600",
+    //     icon: <CalendarClock className="w-5 h-5" />,
+    //     change: "Upcoming publications",
+    //     changeColor: "text-blue-600",
+    //     drillPath: "/dashboard/status/scheduled",
+    // },
+    // {
+    //   id: "pending",
+    //   title: "Pending",
+    //   value: "9",
+    //   color: "bg-amber-100 text-amber-600",
+    //   icon: <Clock className="w-5 h-5" />,
+    //   change: "Awaiting approval",
+    //   changeColor: "text-amber-600",
+    //   drillPath: "/dashboard/status/pending",
+    // },
     {
       id: "draft",
       title: "Draft",
@@ -60,7 +60,7 @@ export default function StatusOverview({ data = {} }) {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       {statuses.map((status) => (
         <div
           key={status.id}

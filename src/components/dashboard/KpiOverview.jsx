@@ -24,16 +24,16 @@ const metrics = [
     changeColor: "text-green-600",
     drillPath: "/dashboard/throughput",
   },
-  {
-    id: "activePortals",
-    title: "Active Portals",
-    value: "12",
-    color: "bg-indigo-100 text-indigo-600",
-    icon: <BarChart3 className="w-5 h-5" />,
-    change: "All operational",
-    changeColor: "text-green-600",
-    drillPath: "/dashboard/portals",
-  },
+//   {
+//     id: "activePortals",
+//     title: "Active Portals",
+//     value: "12",
+//     color: "bg-indigo-100 text-indigo-600",
+//     icon: <BarChart3 className="w-5 h-5" />,
+//     change: "All operational",
+//     changeColor: "text-green-600",
+//     drillPath: "/dashboard/portals",
+//   },
   {
     id: "activeUsers",
     title: "Active Users",
@@ -60,7 +60,7 @@ export default function KPIOverview({ data = {} }) {
   const navigate = useNavigate();
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {metrics.map((metric) => (
         <div
           key={metric.id}
