@@ -36,7 +36,7 @@ export default function CategoryFilter({ onChange, value = "" }) {
 
   return (
     <select
-      className="border rounded-lg p-2 w-full"
+      className="border rounded-lg p-2 w-full h-[39px]"
       value={value}
       onChange={async (e) => {
         const val = e.target.value;

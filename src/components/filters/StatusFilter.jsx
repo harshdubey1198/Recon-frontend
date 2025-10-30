@@ -5,7 +5,7 @@ export default function StatusFilter({ onChange, value = "" }) {
 
   return (
     <select
-      className="border rounded-lg p-2 w-full"
+      className="border rounded-lg p-2 w-full h-[39px]"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >

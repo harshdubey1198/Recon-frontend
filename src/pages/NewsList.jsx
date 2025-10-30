@@ -111,7 +111,7 @@ const NewsList = () => {
         search: filters.search || "",
         status: filters.status || "",
         distribution_status: filters.distribution_status || "",
-        portal_name: filters.portal_id || "",
+        portal: filters.portal_id || "",
         master_category: filters.master_category_id || "",
         created_by: filters.username || "",
         start_date: filters.date_filter?.start_date || "",
