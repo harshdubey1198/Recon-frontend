@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { fetchAdminStats, fetchMasterCategories, fetchNewsList } from "../../server";
 import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2, TrendingUp, Target, ArrowUpRight } from "lucide-react";
 import formatUsername from "../utils/formateName";
+import KPIOverview from "../components/dashboard/KpiOverview";
+import StatusOverview from "../components/dashboard/StatusOverview";
 import PortalLeaderboard from "../components/PortalLeaderboard";
 
 export default function Dashboard() {
@@ -21,6 +23,26 @@ export default function Dashboard() {
     targets: 0,
     activeUsers: 0,
     revenue: 0,
+
+    total_posts: 0,
+    draft_posts: 0,
+    published_posts: 0,
+    today_total_posts: 0,
+    today_total_drafts: 0,
+    total_portals: 0,
+    total_master_categories: 0,
+    news_distribution: {
+        total_distributions: 0,
+        successful_distributions: 0,
+        failed_distributions: 0,
+        pending_distributions: 0,
+        retry_counts: 0,
+        today: {
+            total: 0,
+            successful: 0,
+            failed: 0
+        }
+       }
   });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(15000);
@@ -73,6 +95,7 @@ export default function Dashboard() {
   const loadStats = async () => {
     try {
       const res = await fetchAdminStats();
+      // console.log("Admin stats response:", res);
       if (res?.data?.status) {
         setStats({
           totalPosts: res.data.data.total_posts,
@@ -81,8 +104,17 @@ export default function Dashboard() {
           domains: res.data.data.total_portals,
           targets: res.data.data.news_distribution.total_distributions,
           activeUsers: res.data.data.total_users,
-          revenue: res.data.data.news_distribution.successful_distributions,
-        });
+          revenue: res.data.data.news_distribution.successful_distributions, 
+          
+          total_posts: res.data.data.total_posts,
+          draft_posts: res.data.data.draft_posts,
+          published_posts: res.data.data.published_posts,
+          today_total_posts: res.data.data.today_total_posts,
+          today_total_drafts: res.data.data.today_total_drafts,
+          total_portals: res.data.data.total_portals,
+          total_master_categories: res.data.data.total_master_categories,
+          news_distribution: res.data.data.news_distribution
+          });
       }
     } catch (err) {
       console.error("Failed to fetch stats:", err);
@@ -215,15 +247,132 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
+       {/* ✅ Summary Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {[
+          {
+            id: "totalPosts",
+            title: "Total Posts",
+            value: stats.totalPosts,
+            today: stats.today_total_posts,
+            color: "bg-blue-100 text-blue-600",
+            icon: (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            ),
+          },
+          {
+            id: "todayPosts",
+            title: "Today’s Posts",
+            value: stats.today_total_posts,
+            today: stats.today_total_posts,
+            color: "bg-indigo-100 text-indigo-600",
+            icon: (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            ),
+          },
+          {
+            id: "categories",
+            title: "Categories",
+            value: stats.categories,
+            today: 0, // no daily data
+            color: "bg-purple-100 text-purple-600",
+            icon: (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+            ),
+          },
+          {
+            id: "domains",
+            title: "Active Domains",
+            value: stats.domains,
+            today: 0, // no daily data
+            color: "bg-green-100 text-green-600",
+            icon: (
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"
+                />
+              </svg>
+            ),
+          },
+        ].map((card) => {
+          const percent =
+            card.value && card.today
+              ? ((card.today / card.value) * 100).toFixed(1)
+              : 0;
+          const isPositive = card.today > 0;
+
+          return (
+            <div
+              key={card.id}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all hover:-translate-y-1 duration-300"
+            >
+              <div
+                className={`w-12 h-12 ${card.color} rounded-xl flex items-center justify-center mb-4`}
+              >
+                {card.icon}
               </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                {card.value?.toLocaleString() ?? 0}
+              </h3>
+              <p className="text-sm text-gray-600">{card.title}</p>
+
+              
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {stats.totalPosts.toLocaleString()}
+          );
+        })}
+      </div>
+
+      <KPIOverview data={stats} />
+      <StatusOverview data={stats} />
+        {/* Domain Access Table */}
+        {/* <div className="border-b rounded-xl text-white border-blue-100/50 bg-black mb-8">
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-white">
+              Domain Distribution
             </h3>
             <p className="text-sm text-gray-500">Total Posts</p>
             <div className="mt-2 flex items-center text-xs text-green-600">
@@ -271,13 +420,12 @@ export default function Dashboard() {
               All operational
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Portal Leaderboard Component */}
-        <PortalLeaderboard ref={portalLeaderboardRef} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Recent Posts */}
+        <PortalLeaderboard ref={portalLeaderboardRef} />
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
             <div className="p-6 border-b border-blue-100/50 bg-black">
               <div className="flex items-center space-x-3">
@@ -361,7 +509,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Categories Overview */}
           <div className="bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-lg border border-black/50 overflow-hidden hover:shadow-xl transition-shadow duration-300">
             <div className="p-6 border-b border-purple-100/50 bg-black">
               <div className="flex items-center space-x-3">
@@ -402,7 +549,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
