@@ -2077,11 +2077,11 @@ class GlobalStatsAPIView(APIView):
             )
 
 
-class InactivityAlertsAPIView(APIView):
+class InactivityAlertsAPIView(APIView, PaginationMixin):
     """
-    GET /api/admin/inactivity-alerts/?range=24h|48h|7d
+    GET /api/admin/inactivity-alerts/?range=24h|48h|7d&page=1&page_size=10
 
-    Returns a list of master categories that have not had any
+    Returns a paginated list of master categories that have not had any
     published posts within the given time range.
     """
 
@@ -2140,12 +2140,20 @@ class InactivityAlertsAPIView(APIView):
                         "assigned_groups": list(assigned_groups),
                     })
 
+            # Apply pagination
+            paginated_data = self.paginate_queryset(inactive_categories, request)
+            if paginated_data is not None:
+                return self.get_paginated_response(
+                    paginated_data,
+                    message=f"Inactivity data fetched successfully for {range_param.upper()} range"
+                )
+
+            # (Fallback if pagination disabled)
             data = {
                 "range": range_param,
                 "inactive_count": len(inactive_categories),
                 "inactive_categories": inactive_categories,
             }
-
             return Response(
                 success_response(data, "Inactivity data fetched successfully"),
                 status=status.HTTP_200_OK
