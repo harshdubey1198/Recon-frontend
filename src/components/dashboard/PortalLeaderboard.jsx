@@ -291,7 +291,7 @@ export default function PortalLeaderboard() {
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-700 text-sm sm:text-base">{portal.total}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-red-600 text-sm sm:text-base">{portal.failed}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
-                    <span className="text-gray-700 font-medium text-sm sm:text-base">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}m</span>
+                    <span className="text-gray-700 font-medium text-sm sm:text-base">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}s</span>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-[13px] font-medium">
