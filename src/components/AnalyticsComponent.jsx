@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Grid3x3, AlertTriangle, Clock, Plus, CheckCircle2, Tag, X, Eye, Calendar, User, TrendingUp, Loader2 } from 'lucide-react';
 import { fetchInactivityAlerts } from '../../server';
 import { useNavigate } from "react-router-dom";
+import HitMapCategory from './HitMapCategory';
 
 export default function AnalyticsComponent({ categories }) {
   // State for Heatmap & Inactivity Alerts
@@ -144,36 +145,7 @@ export default function AnalyticsComponent({ categories }) {
     return diffDays;
   };
 
-  // Helper Functions
-  const getHeatmapColor = (intensity) => {
-    if (intensity > 0.7) return 'bg-gray-900';
-    if (intensity > 0.5) return 'bg-gray-700';
-    if (intensity > 0.3) return 'bg-gray-500';
-    if (intensity > 0.1) return 'bg-gray-300';
-    return 'bg-gray-100';
-  };
-
-  // Handle cell click to open modal
-  const handleCellClick = (cellData) => {
-    setSelectedCell(cellData);
-    generateArticlesList(cellData);
-    setShowArticleModal(true);
-  };
-
-  // Generate mock articles list for modal
-  const generateArticlesList = (cellData) => {
-    const articles = Array.from({ length: Math.min(cellData.publications, 10) }, (_, i) => ({
-      id: `article-${i + 1}`,
-      title: `${cellData.mainCategory} ${cellData.subCategory} Article ${i + 1}: Latest News and Updates`,
-      author: ['John Smith', 'Jane Doe', 'Mike Johnson', 'Sarah Williams'][Math.floor(Math.random() * 4)],
-      publishDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      views: Math.floor(Math.random() * 50000) + 1000,
-      status: 'Published'
-    }));
-    setArticlesList(articles);
-  };
-
-  // Infinite scroll handler
+// Infinite scroll handler
   const handleScroll = (e) => {
     const bottom = e.target.scrollHeight - e.target.scrollTop <= e.target.clientHeight + 50;
     const currentData = inactivityAlerts[activeInactivityTab];
@@ -183,8 +155,7 @@ export default function AnalyticsComponent({ categories }) {
       loadInactivityAlerts(false);
     }
   };
-
-  // Initialize data on component mount
+// Initialize data on component mount
   useEffect(() => {
     generateHeatmapData(categories);
     loadInactivityAlerts();
@@ -192,6 +163,8 @@ export default function AnalyticsComponent({ categories }) {
 
   return (
     <div className="space-y-8">
+       {/* hitmap category */}
+       <HitMapCategory/>
      {/* Inactivity Alerts */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-black p-6">
@@ -415,9 +388,10 @@ export default function AnalyticsComponent({ categories }) {
               <span className="text-xs text-gray-600">No publication for 24+ hours</span>
             </div>
           </div>
+          
         </div>
       </div>
-
+  
      
     </div>
   );

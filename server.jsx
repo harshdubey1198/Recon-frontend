@@ -306,6 +306,16 @@ export async function fetchInactivityAlerts(range = "7d", page = 1) {
   });
 }
 
+// hitmap data
+export async function fetchCategoryHeatmap(range = "7d") {
+  return axiosInstance.get("/api/category/heatmap/", {
+    params: { range },
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
 
 
 export default axiosInstance;
