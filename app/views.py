@@ -3,6 +3,7 @@ import json
 import time
 from collections import defaultdict
 from django.utils import timezone
+from django.utils.timezone import now
 from datetime import date
 from urllib.parse import urljoin
 from datetime import timedelta
@@ -2328,6 +2329,130 @@ class FailureReasonsStatsAPIView(APIView):
             ]
 
             return Response({"success": True, "data": data}, status=200)
+
+        except Exception as e:
+            return Response({"success": False, "error": str(e)}, status=500)
+
+
+class MasterCategoryHeatmapAPIView(APIView):
+    """
+    GET /api/analytics/master-category-heatmap/?range=1d|7d|30d
+
+    Returns total postings per MasterCategory for the given range,
+    compared with the previous same-length range.
+
+    Role-based:
+    - MASTER: sees all data
+    - USER: sees only their own posts
+
+    Example Response:
+    {
+        "success": true,
+        "data": {
+            "current_start": "2025-10-01",
+            "current_end": "2025-10-07",
+            "previous_start": "2025-09-24",
+            "previous_end": "2025-10-01",
+            "categories": [
+                {
+                    "master_category_id": 1,
+                    "master_category_name": "Politics",
+                    "current_period_posts": 120,
+                    "previous_period_posts": 100,
+                    "change_ratio": 20.0,
+                    "trend": "increase"
+                }
+            ]
+        }
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+
+            # --- Role detection ---
+            user_role = getattr(user.role.role, "name", None) if hasattr(user, "role") else None
+            is_master = user_role and user_role.upper() == "MASTER"
+
+            # --- Range parameter ---
+            range_param = request.query_params.get("range", "7d").lower()
+            now = timezone.now().date()
+
+            if range_param == "1d":
+                days = 1
+            elif range_param == "30d":
+                days = 30
+            else:
+                days = 7  # default
+
+            current_start = now - timedelta(days=days)
+            current_end = now
+            previous_start = current_start - timedelta(days=days)
+            previous_end = current_start
+
+            # --- Base queryset ---
+            base_qs = MasterNewsPost.objects.filter(master_category__isnull=False)
+            if not is_master:
+                base_qs = base_qs.filter(created_by=user)
+
+            # --- Current period stats ---
+            current_stats = (
+                base_qs.filter(created_at__date__gte=current_start, created_at__date__lte=current_end)
+                .values("master_category__id", "master_category__name")
+                .annotate(current_posts=Count("id"))
+            )
+
+            # --- Previous period stats ---
+            previous_stats = (
+                base_qs.filter(created_at__date__gte=previous_start, created_at__date__lte=previous_end)
+                .values("master_category__id")
+                .annotate(previous_posts=Count("id"))
+            )
+
+            previous_map = {p["master_category__id"]: p["previous_posts"] for p in previous_stats}
+
+            # --- Merge results and calculate ratios ---
+            results = []
+            for item in current_stats:
+                cat_id = item["master_category__id"]
+                cat_name = item["master_category__name"]
+
+                # Skip categories that are still null (extra safeguard)
+                if not cat_id or not cat_name:
+                    continue
+
+                current_count = item["current_posts"]
+                previous_count = previous_map.get(cat_id, 0)
+
+                if previous_count == 0:
+                    ratio = 100.0 if current_count > 0 else 0.0
+                else:
+                    ratio = ((current_count - previous_count) / previous_count) * 100
+
+                trend = "increase" if ratio > 0 else "decrease" if ratio < 0 else "same"
+
+                results.append({
+                    "master_category_id": cat_id,
+                    "master_category_name": cat_name,
+                    "current_period_posts": current_count,
+                    "previous_period_posts": previous_count,
+                    "change_ratio": round(ratio, 2),
+                    "trend": trend,
+                })
+
+            return Response({
+                "success": True,
+                "data": {
+                    "current_start": str(current_start),
+                    "current_end": str(current_end),
+                    "previous_start": str(previous_start),
+                    "previous_end": str(previous_end),
+                    "categories": results
+                }
+            }, status=200)
 
         except Exception as e:
             return Response({"success": False, "error": str(e)}, status=500)
