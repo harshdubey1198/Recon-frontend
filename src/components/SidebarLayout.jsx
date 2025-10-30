@@ -36,7 +36,7 @@ const menuItems = [
   { name: "Create News", icon: FilePlus2 },
   { name: "News List", icon: Newspaper },
   { name: "News Reports", icon: BarChart3 },
-  { name: "News Analytics", icon: AreaChart },
+  // { name: "News Analytics", icon: AreaChart },
   ...(isMaster
     ? [ 
        { name: "Category Mapping", icon: Network },
