@@ -144,50 +144,49 @@ export default function PortalLeaderboard() {
         </div>
       </div>
 
-      {/* Portal Output Leaderboard */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-6 lg:mb-8 overflow-hidden">
+    {/* Portal Output Leaderboard */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
         <div className="bg-black p-4 sm:p-6">
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-3">
             <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm">
               <Award className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-2xl font-bold text-white">Portal Output Leaderboard</h3>
-              <p className="text-xs sm:text-sm text-blue-100 hidden sm:block">Performance metrics across all publishing portals</p>
+              <h3 className="text-xl sm:text-2xl font-bold text-white">Portal Output Leaderboard</h3>
+              <p className="text-blue-100 text-sm sm:text-base hidden sm:block">Performance metrics across all publishing portals</p>
             </div>
           </div>
         </div>
 
-        {/* Desktop Table View */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1200px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <BarChart3 className="w-4 h-4" />
                     <span>Portal</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Publications
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Published %
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Failed
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   <div className="flex items-center space-x-1">
                     <Clock className="w-4 h-4" />
                     <span>Avg Time</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Today (T/S/F/R/Avg)
                 </th>
               </tr>
@@ -198,9 +197,9 @@ export default function PortalLeaderboard() {
                   key={index}
                   className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                 >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${
                         index === 0 ? 'bg-yellow-100' : index === 1 ? 'bg-gray-100' : index === 2 ? 'bg-orange-100' : 'bg-blue-50'
                       }`}>
                         <span className={`font-bold text-sm ${
@@ -211,7 +210,7 @@ export default function PortalLeaderboard() {
                       </div>
                       <div>
                         <p
-                          className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer"
+                          className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer text-sm sm:text-base"
                           onClick={() => openPortalDetailModal(portal)}
                         >
                           {portal.name}
@@ -229,14 +228,14 @@ export default function PortalLeaderboard() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 align-top">
-                    <span className="text-lg font-bold text-gray-900">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
+                    <span className="text-base sm:text-lg font-bold text-gray-900">
                       {portal.success.toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 align-top">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
                     <div className="flex items-center space-x-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[80px]">
+                      <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[60px] sm:max-w-[80px]">
                         <div
                           className={`h-2 rounded-full transition-all ${
                             portal.publishedPercent >= 80 ? 'bg-green-500' :
@@ -245,23 +244,23 @@ export default function PortalLeaderboard() {
                           style={{ width: `${portal.publishedPercent}%` }}
                         ></div>
                       </div>
-                      <span className={`text-sm font-semibold px-2 py-1 rounded ${getPerformanceColor(portal.publishedPercent)}`}>
+                      <span className={`text-xs sm:text-sm font-semibold px-1.5 sm:px-2 py-1 rounded whitespace-nowrap ${getPerformanceColor(portal.publishedPercent)}`}>
                         {portal.publishedPercent}%
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-700">{portal.total}</td>
-                  <td className="px-6 py-4 text-red-600">{portal.failed}</td>
-                  <td className="px-6 py-4 align-top">
-                    <span className="text-gray-700 font-medium">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}m</span>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-700 text-sm sm:text-base">{portal.total}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-red-600 text-sm sm:text-base">{portal.failed}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
+                    <span className="text-gray-700 font-medium text-sm sm:text-base">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}m</span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
-                      <span className="text-gray-900 bg-gray-100 px-2 py-1 rounded-md">Total: {portal.todayTotal}</span>
-                      <span className="text-green-700 bg-green-50 px-2 py-1 rounded-md">Success: {portal.todaySuccess}</span>
-                      <span className="text-red-700 bg-red-50 px-2 py-1 rounded-md">Failed: {portal.todayFailed}</span>
-                      <span className="text-purple-700 bg-purple-50 px-2 py-1 rounded-md">Retry: {portal.todayRetry}</span>
-                      <span className="text-purple-700 bg-purple-50 px-2 py-1 rounded-md">Avg T: {portal.todayAverageTime}</span>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-[13px] font-medium">
+                      <span className="text-gray-900 bg-gray-100 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Total: {portal.todayTotal}</span>
+                      <span className="text-green-700 bg-green-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Success: {portal.todaySuccess}</span>
+                      <span className="text-red-700 bg-red-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Failed: {portal.todayFailed}</span>
+                      <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Retry: {portal.todayRetry}</span>
+                      <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Avg T: {portal.todayAverageTime}</span>
                     </div>
                   </td>
                 </tr>
@@ -269,95 +268,10 @@ export default function PortalLeaderboard() {
             </tbody>
           </table>
         </div>
-
-        {/* Mobile/Tablet Card View */}
-        <div className="lg:hidden divide-y divide-gray-100">
-          {domains.map((portal, index) => (
-            <div
-              key={index}
-              className="p-4 sm:p-5 hover:bg-blue-50/30 transition-colors cursor-pointer"
-              onClick={() => openPortalDetailModal(portal)}
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3 flex-1">
-                  <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex-shrink-0 ${
-                    index === 0 ? 'bg-yellow-100' : index === 1 ? 'bg-gray-100' : index === 2 ? 'bg-orange-100' : 'bg-blue-50'
-                  }`}>
-                    <span className={`font-bold text-base sm:text-lg ${
-                      index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-600' : index === 2 ? 'text-orange-600' : 'text-blue-600'
-                    }`}>
-                      {index + 1}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 text-base sm:text-lg truncate">{portal.name}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className={`text-xs sm:text-sm font-semibold px-2 py-0.5 rounded ${getPerformanceColor(portal.publishedPercent)}`}>
-                        {portal.publishedPercent}%
-                      </span>
-                      <span className="text-xs sm:text-sm text-gray-500">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}m avg</span>
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 ml-2" />
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-3">
-                <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
-                  <p className="text-[10px] sm:text-xs text-gray-500 font-medium">Publications</p>
-                  <p className="text-base sm:text-lg font-bold text-gray-900">{portal.success}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
-                  <p className="text-[10px] sm:text-xs text-gray-500 font-medium">Total</p>
-                  <p className="text-base sm:text-lg font-bold text-gray-900">{portal.total}</p>
-                </div>
-                <div className="bg-red-50 rounded-lg p-2 sm:p-3">
-                  <p className="text-[10px] sm:text-xs text-red-600 font-medium">Failed</p>
-                  <p className="text-base sm:text-lg font-bold text-red-600">{portal.failed}</p>
-                </div>
-                <div className="bg-blue-50 rounded-lg p-2 sm:p-3">
-                  <p className="text-[10px] sm:text-xs text-blue-600 font-medium">Avg Time</p>
-                  <p className="text-base sm:text-lg font-bold text-blue-600">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}m</p>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-600">Success Rate</span>
-                  <span className="text-xs font-semibold text-gray-900">{portal.publishedPercent}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      portal.publishedPercent >= 80 ? 'bg-green-500' :
-                      portal.publishedPercent >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${portal.publishedPercent}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Today's Stats */}
-              <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
-                <p className="text-[10px] sm:text-xs font-semibold text-gray-600 mb-2">Today's Activity</p>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  <span className="text-[10px] sm:text-xs text-gray-900 bg-white px-2 py-1 rounded">T: {portal.todayTotal}</span>
-                  <span className="text-[10px] sm:text-xs text-green-700 bg-green-50 px-2 py-1 rounded">S: {portal.todaySuccess}</span>
-                  <span className="text-[10px] sm:text-xs text-red-700 bg-red-50 px-2 py-1 rounded">F: {portal.todayFailed}</span>
-                  <span className="text-[10px] sm:text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded">R: {portal.todayRetry}</span>
-                  <span className="text-[10px] sm:text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded">Avg: {portal.todayAverageTime}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
         
         <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200">
           <p className="text-xs sm:text-sm text-gray-600">
-            💡 <span className="font-semibold">Pro Tip:</span> <span className="hidden sm:inline">Click on any portal row to view detailed analytics and performance insights</span><span className="sm:hidden">Tap any portal for details</span>
+            💡 <span className="font-semibold">Pro Tip:</span> Click on any portal row to view detailed analytics and performance insights
           </p>
         </div>
       </div>
