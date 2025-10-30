@@ -15,6 +15,7 @@ from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q, Count, Sum, F, Avg, FloatField, Max
+from django.db.models.functions import TruncHour, TruncDay
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -2076,11 +2077,11 @@ class GlobalStatsAPIView(APIView):
             )
 
 
-class InactivityAlertsAPIView(APIView):
+class InactivityAlertsAPIView(APIView, PaginationMixin):
     """
-    GET /api/admin/inactivity-alerts/?range=24h|48h|7d
+    GET /api/admin/inactivity-alerts/?range=24h|48h|7d&page=1&page_size=10
 
-    Returns a list of master categories that have not had any
+    Returns a paginated list of master categories that have not had any
     published posts within the given time range.
     """
 
@@ -2139,12 +2140,20 @@ class InactivityAlertsAPIView(APIView):
                         "assigned_groups": list(assigned_groups),
                     })
 
+            # Apply pagination
+            paginated_data = self.paginate_queryset(inactive_categories, request)
+            if paginated_data is not None:
+                return self.get_paginated_response(
+                    paginated_data,
+                    message=f"Inactivity data fetched successfully for {range_param.upper()} range"
+                )
+
+            # (Fallback if pagination disabled)
             data = {
                 "range": range_param,
                 "inactive_count": len(inactive_categories),
                 "inactive_categories": inactive_categories,
             }
-
             return Response(
                 success_response(data, "Inactivity data fetched successfully"),
                 status=status.HTTP_200_OK
@@ -2155,3 +2164,170 @@ class InactivityAlertsAPIView(APIView):
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class NewsDistributionRateOverTimeAPIView(APIView):
+    """
+    GET /api/admin/success-rate/?mode=hourly|daily
+
+    Returns success rate trends for news distributions.
+    - MASTER role: shows system-wide stats.
+    - USER role: shows only that user's posts' distributions.
+
+    Query Params:
+    - mode = hourly (last 7 hours) | daily (last 7 days)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            role = getattr(getattr(user, "role", None), "role", None)
+            mode = request.query_params.get("mode", "daily").lower()
+
+            now = timezone.now()
+            if mode == "hourly":
+                start_time = now - timezone.timedelta(hours=7)
+                trunc_field = TruncHour("created_at")
+            else:
+                start_time = now - timezone.timedelta(days=7)
+                trunc_field = TruncDay("created_at")
+
+            # Role-based Query Selection
+            if role and role.name.upper() == "MASTER":
+                distributions_qs = NewsDistribution.objects.filter(created_at__gte=start_time)
+
+            elif role and role.name.upper() == "USER":
+                distributions_qs = NewsDistribution.objects.filter(
+                    created_at__gte=start_time,
+                    news_post__created_by=user
+                )
+
+            else:
+                return Response(
+                    error_response("Role not recognized or not assigned"),
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # Aggregation
+            qs = (
+                distributions_qs
+                .annotate(period=trunc_field)
+                .values("period")
+                .annotate(
+                    total_attempts=Count("id"),
+                    success_count=Count("id", filter=Q(status="SUCCESS")),
+                    failed_count=Count("id", filter=Q(status="FAILED")),
+                )
+                .order_by("period")
+            )
+
+            data = []
+            for record in qs:
+                total_attempts = record["total_attempts"] or 0
+                success_count = record["success_count"] or 0
+                failed_count = record["failed_count"] or 0
+
+                success_rate = (
+                    round((success_count / total_attempts) * 100, 2)
+                    if total_attempts > 0
+                    else 0.0
+                )
+
+                label = (
+                    record["period"].strftime("%Y-%m-%d %H:00")
+                    if mode == "hourly"
+                    else record["period"].strftime("%Y-%m-%d")
+                )
+
+                data.append({
+                    "label": label,
+                    "total_attempts": total_attempts,
+                    "success_count": success_count,
+                    "failed_count": failed_count,
+                    "success_rate": success_rate,
+                })
+
+            return Response(
+                success_response(data, "Success rate trend fetched successfully"),
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class FailureReasonsStatsAPIView(APIView):
+    """
+    GET /api/analytics/failure-reasons/?range=24h|7d|all
+
+    Returns aggregated failure reasons and their counts.
+
+    Role-based:
+    - MASTER: gets all data.
+    - USER: gets only their own NewsDistributions.
+
+    Example Response:
+    {
+        "success": true,
+        "data": [
+            {"reason": "Timeout", "count": 5},
+            {"reason": "Invalid API Key", "count": 3},
+            {"reason": "Category Mapping Missing", "count": 2}
+        ]
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+
+            # Get user role
+            user_role = getattr(user.role.role, "name", None) if hasattr(user, "role") else None
+
+            # Time range filter
+            time_range = request.query_params.get("range", "24h")
+            now = timezone.now()
+            print(time_range)
+
+            if time_range == "24h":
+                start_time = now - timedelta(hours=24)
+            elif time_range == "7d":
+                start_time = now - timedelta(days=7)
+            else:
+                start_time = None  # all time
+
+            filters = Q(status="FAILED")
+            if start_time:
+                filters &= Q(sent_at__gte=start_time)
+
+            # Restrict by user role
+            if user_role and user_role.upper() != "MASTER":
+                # Only include NewsDistributions where the NewsPost was created by this user
+                filters &= Q(news_post__created_by=user)
+
+            # Aggregate by failure reason (based on response_message)
+            queryset = (
+                NewsDistribution.objects.filter(filters)
+                .exclude(response_message__isnull=True)
+                .exclude(response_message__exact="")
+                .values("response_message")
+                .annotate(count=Count("id"))
+                .order_by("-count")
+            )
+
+            data = [
+                {"reason": item["response_message"][:200], "count": item["count"]}
+                for item in queryset
+            ]
+
+            return Response({"success": True, "data": data}, status=200)
+
+        except Exception as e:
+            return Response({"success": False, "error": str(e)}, status=500)
