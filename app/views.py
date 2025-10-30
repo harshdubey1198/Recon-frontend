@@ -2251,3 +2251,75 @@ class NewsDistributionRateOverTimeAPIView(APIView):
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class FailureReasonsStatsAPIView(APIView):
+    """
+    GET /api/analytics/failure-reasons/?range=24h|7d|all
+
+    Returns aggregated failure reasons and their counts.
+
+    Role-based:
+    - MASTER: gets all data.
+    - USER: gets only their own NewsDistributions.
+
+    Example Response:
+    {
+        "success": true,
+        "data": [
+            {"reason": "Timeout", "count": 5},
+            {"reason": "Invalid API Key", "count": 3},
+            {"reason": "Category Mapping Missing", "count": 2}
+        ]
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+
+            # Get user role
+            user_role = getattr(user.role.role, "name", None) if hasattr(user, "role") else None
+
+            # Time range filter
+            time_range = request.query_params.get("range", "24h")
+            now = timezone.now()
+            print(time_range)
+
+            if time_range == "24h":
+                start_time = now - timedelta(hours=24)
+            elif time_range == "7d":
+                start_time = now - timedelta(days=7)
+            else:
+                start_time = None  # all time
+
+            filters = Q(status="FAILED")
+            if start_time:
+                filters &= Q(sent_at__gte=start_time)
+
+            # Restrict by user role
+            if user_role and user_role.upper() != "MASTER":
+                # Only include NewsDistributions where the NewsPost was created by this user
+                filters &= Q(news_post__created_by=user)
+
+            # Aggregate by failure reason (based on response_message)
+            queryset = (
+                NewsDistribution.objects.filter(filters)
+                .exclude(response_message__isnull=True)
+                .exclude(response_message__exact="")
+                .values("response_message")
+                .annotate(count=Count("id"))
+                .order_by("-count")
+            )
+
+            data = [
+                {"reason": item["response_message"][:200], "count": item["count"]}
+                for item in queryset
+            ]
+
+            return Response({"success": True, "data": data}, status=200)
+
+        except Exception as e:
+            return Response({"success": False, "error": str(e)}, status=500)
