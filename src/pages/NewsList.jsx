@@ -286,7 +286,7 @@ const NewsList = () => {
                   // "search",
                   "status",
                   "distribution_status",
-                  // "portal_id",
+                  "portal_id",
                   "master_category_id",
                   // "username",
                   "custom_date"

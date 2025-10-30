@@ -16,6 +16,16 @@ export default function NewsReports() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [nextDistPage, setNextDistPage] = useState(null);
   const [totalDistCount, setTotalDistCount] = useState(0);
+  const [userPage, setUserPage] = useState({}); 
+  const itemsPerPage = 6;
+
+  const getPaginatedPosts = (user) => {
+    const currentPage = userPage[user.username] || 1;
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return user.master_posts.slice(start, end);
+  };
+
   // 🔹 Fetch Report Data
   useEffect(() => {
     const loadReport = async () => {
@@ -227,7 +237,7 @@ export default function NewsReports() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {user.master_posts.map((post) => (
+                  {getPaginatedPosts(user).map((post) => (
                     <div
                       key={post.id}
                       onClick={() => handleViewDistribution(post)}
@@ -255,7 +265,48 @@ export default function NewsReports() {
                       </p>
                     </div>
                   ))}
+                  
                 </div>
+                {user.master_posts.length > itemsPerPage && (
+  <div className="flex justify-center items-center gap-4 mt-4">
+    <button
+      onClick={() =>
+        setUserPage((prev) => ({
+          ...prev,
+          [user.username]: Math.max((prev[user.username] || 1) - 1, 1),
+        }))
+      }
+      disabled={(userPage[user.username] || 1) === 1}
+      className="px-4 py-1 border rounded-md text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+    >
+      ← Prev
+    </button>
+
+    <span className="text-xs text-gray-500">
+      Page {userPage[user.username] || 1} of{" "}
+      {Math.ceil(user.master_posts.length / itemsPerPage)}
+    </span>
+
+    <button
+      onClick={() =>
+        setUserPage((prev) => ({
+          ...prev,
+          [user.username]: Math.min(
+            (prev[user.username] || 1) + 1,
+            Math.ceil(user.master_posts.length / itemsPerPage)
+          ),
+        }))
+      }
+      disabled={
+        (userPage[user.username] || 1) ===
+        Math.ceil(user.master_posts.length / itemsPerPage)
+      }
+      className="px-4 py-1 border rounded-md text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+    >
+      Next →
+    </button>
+  </div>
+)}
               </div>
             ))}
 
