@@ -695,32 +695,27 @@ class MasterNewsPostPublishAPIView(APIView):
             # 1. Validate MasterNewsPost
             news_post = get_object_or_404(MasterNewsPost, pk=pk)
 
-            # 1.5 Master category detection
             master_category_id = request.data.get("master_category_id") or getattr(news_post.master_category, "id", None)
             if not master_category_id:
                 return Response(error_response("master_category_id is missing and not saved in post."), status=400)
 
-            # 2. Check category assignment
+            # 2. Validate user assignment
             assignment = UserCategoryGroupAssignment.objects.filter(
                 user=user, master_category_id=master_category_id
             ).first()
-
             if not assignment:
                 return Response(
                     error_response("You are not assigned to this master category."),
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # 3. Get mapped portals
+            # 3. Get portal mappings
             mappings = MasterCategoryMapping.objects.filter(
                 master_category_id=master_category_id
             ).select_related("portal_category", "portal_category__portal")
 
             if not mappings.exists():
-                return Response(
-                    error_response("No portals mapped for this master category."),
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return Response(error_response("No portals mapped for this master category."), status=400)
 
             # 4. Handle excluded portals
             excluded_portals = request.data.get("excluded_portals") or news_post.excluded_portals or []
@@ -797,7 +792,7 @@ class MasterNewsPostPublishAPIView(APIView):
                             else "Rewrite the content slightly for clarity and engagement."
                         )
 
-                        rewritten_title, rewritten_short, rewritten_content, rewritten_meta, rewritten_slug = generate_variation_with_gpt(
+                        result = generate_variation_with_gpt(
                             news_post.title,
                             news_post.short_description,
                             news_post.content,
@@ -807,9 +802,10 @@ class MasterNewsPostPublishAPIView(APIView):
                             portal_name=portal.name,
                         )
 
-                        # If AI failed and returned None or empty
-                        if not all([rewritten_title, rewritten_short, rewritten_content]):
-                            raise ValueError("AI generation returned invalid data")
+                        if not result:
+                            raise ValueError("AI generation failed — no data returned")
+
+                        rewritten_title, rewritten_short, rewritten_content, rewritten_meta, rewritten_slug = result
 
                 except Exception as e:
                     dist.status = "FAILED"
@@ -826,10 +822,7 @@ class MasterNewsPostPublishAPIView(APIView):
                     continue  # skip posting for this portal
 
                 # 7. Get portal user mapping
-                portal_user = PortalUserMapping.objects.filter(
-                    user=user, portal=portal, status="MATCHED"
-                ).first()
-
+                portal_user = PortalUserMapping.objects.filter(user=user, portal=portal, status="MATCHED").first()
                 if not portal_user:
                     dist.status = "FAILED"
                     dist.response_message = "No valid portal user mapping found."
@@ -877,8 +870,7 @@ class MasterNewsPostPublishAPIView(APIView):
                     success = False
                     response_msg = str(e)
 
-                end_time = time.perf_counter()
-                elapsed_time = round(end_time - start_time, 2)
+                elapsed_time = round(time.perf_counter() - start_time, 2)
 
                 # 10. Update distribution
                 dist.status = "SUCCESS" if success else "FAILED"
