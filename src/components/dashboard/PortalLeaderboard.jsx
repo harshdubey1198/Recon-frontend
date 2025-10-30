@@ -115,7 +115,74 @@ export default function PortalLeaderboard() {
 
   return (
     <>
-    
+    {/* Global Top Contributors and Categories Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Top Contributors */}
+        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-orange-100 p-4 sm:p-6">
+          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Contributors</h3>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {globalTopContributors?.length > 0 ? (
+              <div className="space-y-2 sm:space-y-3">
+                {globalTopContributors.map((user, idx) => (
+                  <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-bold text-xs sm:text-sm">
+                            {user.news_post__created_by__username?.[0]?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                            {user.news_post__created_by__username || 'Unknown User'}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <p className="text-lg sm:text-2xl font-bold text-black">{user.total_distributions || 0}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500">articles</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-xs sm:text-sm">No contributors found.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Top Categories */}
+        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-black/50 p-4 sm:p-6">
+          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-black/80" />
+            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Performing Categories</h3>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {globalTopCategories?.length > 0 ? (
+              globalTopCategories.map((cat, idx) => (
+                <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 flex-1 min-w-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                      </div>
+                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{cat.master_category__name || 'Unknown'}</span>
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-blue-600 flex-shrink-0 ml-2">{cat.total_posts || 0} posts</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-xs sm:text-sm">No categories available.</p>
+            )}
+          </div>
+        </div>
+      </div>
       {/* Portal Output Leaderboard */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
         <div className="bg-black p-4 sm:p-6">
@@ -287,74 +354,7 @@ export default function PortalLeaderboard() {
         </div>
       </div>
 
-      {/* Global Top Contributors and Categories Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Top Contributors */}
-        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-orange-100 p-4 sm:p-6">
-          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Contributors</h3>
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {globalTopContributors?.length > 0 ? (
-              <div className="space-y-2 sm:space-y-3">
-                {globalTopContributors.map((user, idx) => (
-                  <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-bold text-xs sm:text-sm">
-                            {user.news_post__created_by__username?.[0]?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                            {user.news_post__created_by__username || 'Unknown User'}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="text-lg sm:text-2xl font-bold text-black">{user.total_distributions || 0}</p>
-                        <p className="text-[10px] sm:text-xs text-gray-500">articles</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-xs sm:text-sm">No contributors found.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Top Categories */}
-        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-black/50 p-4 sm:p-6">
-          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-black/80" />
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Performing Categories</h3>
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {globalTopCategories?.length > 0 ? (
-              globalTopCategories.map((cat, idx) => (
-                <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                      </div>
-                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{cat.master_category__name || 'Unknown'}</span>
-                    </div>
-                    <span className="text-xs sm:text-sm font-bold text-blue-600 flex-shrink-0 ml-2">{cat.total_posts || 0} posts</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-xs sm:text-sm">No categories available.</p>
-            )}
-          </div>
-        </div>
-      </div>
+      
 
       {/* Portal Detail Modal - SIMPLIFIED VERSION */}
       {showPortalModal && portalDetailData && (
