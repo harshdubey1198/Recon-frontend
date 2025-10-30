@@ -20,14 +20,14 @@ export default function AnalyticsOverview() {
               News Analytics
             </h2> */}
           </div>
-          <button
+          {/* <button
             onClick={loadSuccessRate}
             className="text-sm text-gray-500 hover:text-gray-700 transition"
           >
             🔄 Refresh
-          </button>
+          </button> */}
         </div>
-          <SuccessRateChart data={successData} height={520} 
+          <SuccessRateChart  height={520} 
         //    width={520}
            />
       </div>

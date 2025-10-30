@@ -188,34 +188,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 bg-white rounded-sm"></div>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-sm text-gray-500">Content Management System</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {user ? formatUsername(user.username) : "Guest"}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
-                  {user ? user.username[0].toUpperCase() : "G"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
+     
       <div className="p-6">
         {/* Welcome Section */}
         <div className="mb-8">
