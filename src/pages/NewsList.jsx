@@ -27,6 +27,7 @@ const NewsList = () => {
   const [selectedPortal, setSelectedPortal] = useState("");
   const [selectedPortalCategory, setSelectedPortalCategory] = useState("");
   const [selectedMasterCategory, setSelectedMasterCategory] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 🔹 Dropdown Data
   const [portals, setPortals] = useState([]);
@@ -85,6 +86,40 @@ const NewsList = () => {
       setPublishingId(null);
     }
   };
+  // 🔁 Auto-refresh every 20 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("🔄 Auto-refresh triggered...");
+
+      loadNewsWithFilters({
+        search,
+        status,
+        distribution_status: distributionStatus,
+        portal_id: selectedPortal,
+        master_category_id: selectedMasterCategory,
+        username: createdBy,
+        date_filter: { start_date: startDate, end_date: endDate },
+        page,
+      });
+
+      if (expandedRow && distributedData[expandedRow]) {
+        loadDistributedNews(expandedRow);
+      }
+    }, 15000);  
+
+    return () => clearInterval(interval);
+  }, [
+    search,
+    status,
+    distributionStatus,
+    selectedPortal,
+    selectedMasterCategory,
+    createdBy,
+    startDate,
+    endDate,
+    page,
+    expandedRow,
+  ]);
 
 
   // 🔹 Load portal categories when portal changes
@@ -106,6 +141,8 @@ const NewsList = () => {
 
   // 🔹 Load news list (using new API)
   const loadNewsWithFilters = async (filters) => {
+    setIsRefreshing(true);
+
     try {
       const res = await fetchMyNewsPosts({
         search: filters.search || "",
@@ -137,6 +174,8 @@ const NewsList = () => {
         }));
         setNews(mapped);
         setTotalPages(res?.data?.pagination?.total_pages || 1);
+        setIsRefreshing(false);
+
       }
     } catch (err) {
       console.error("Failed to fetch filtered news:", err);
@@ -222,6 +261,7 @@ const NewsList = () => {
     setCreatedBy("");
     loadNewsWithFilters();
   };
+{isRefreshing && <div className="text-xs text-gray-500 text-center py-1">Refreshing data...</div>}
 
   return (
     <div className="min-h-screen bg-gray-50 py-6">
@@ -481,13 +521,28 @@ const NewsList = () => {
                               <td colSpan="9" className="p-0">
                                 {distributedData[item.id]?.length > 0 ? (
                                   <table className="w-full text-sm bg-gray-50">
+                                    {/* ✅ Table Header */}
+                                    <thead className="bg-gray-100 text-gray-700 text-xs uppercase tracking-wide border-b">
+                                      <tr>
+                                        <th className="w-[100px] px-3 py-2 text-left"></th>
+                                        <th className="px-3 py-2 text-left">Image</th>
+                                        <th className="px-3 py-2 text-left">Title</th>
+                                        <th className="px-3 py-2 text-left">Portal / URL</th>
+                                        <th className="px-3 py-2 text-left">Retries</th>
+                                        <th className="px-3 py-2 text-left">Time Taken</th>
+                                        <th className="px-3 py-2 text-left">Status</th>
+                                        <th className="px-3 py-2 text-left">Date</th>
+                                      </tr>
+                                    </thead>
+
                                     <tbody>
                                       {distributedData[item.id].map((dist) => (
                                         <tr
                                           key={dist.id}
                                           className="border-t border-gray-200 hover:bg-gray-100 transition-colors"
                                         >
-                                            <td className="w-[150px]"></td>
+                                          <td className="w-[100px]"></td>
+
                                           {/* 🔹 Portal Image */}
                                           <td className="w-[60px] px-2 py-3">
                                             <img
@@ -496,8 +551,9 @@ const NewsList = () => {
                                               className="w-10 h-10 object-cover rounded-md border"
                                             />
                                           </td>
+
                                           {/* 🔹 Headline + Short Description */}
-                                          <td className="px-2 py-3 max-w-[200px]">
+                                          <td className="px-2 py-3 max-w-[220px]">
                                             <div className="flex flex-col">
                                               <span className="text-sm font-semibold text-gray-900">
                                                 {dist.news_post_title}
@@ -508,22 +564,55 @@ const NewsList = () => {
                                             </div>
                                           </td>
 
-                                          {/* 🔹 Live URL */}
+                                          {/* 🔹 Portal + Live URL */}
                                           <td className="px-2 py-3 text-gray-600 truncate max-w-[200px]">
-                                            <a
+                                            {/* 🔹 Live URL */}
+                                            {/* <a
                                               href={dist.live_url}
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               className="text-blue-600 hover:underline"
                                             >
-                                              {dist.live_url}
+                                              {dist.live_url || "—"}
                                             </a>
-                                              <br/>
-                                              <span className="px-2 py-3 font-medium text-gray-800">{dist.portal_name}</span>
+
+                                            <br /> */}
+                                            <span
+                                              onClick={() => {
+                                                if (dist.live_url) {
+                                                  window.open(dist.live_url, "_blank");
+                                                }
+                                              }}
+                                              className="px-2 font-medium text-gray-800 cursor-pointer hover:text-blue-600 hover:underline transition-all"
+                                              title={`Go to ${dist.portal_name} -> ${dist.live_url}`}
+                                            >
+                                              {dist.portal_name}
+                                            </span>
+                                          </td>
+
+
+                                          {/* 🔹 Retry Count */}
+                                          <td className="px-2 py-3 text-sm font-medium">
+                                            <span
+                                              className={
+                                                dist.retry_count > 0
+                                                  ? "text-red-600"
+                                                  : "text-green-600"
+                                              }
+                                            >
+                                              {dist.retry_count}
+                                            </span>
+                                          </td>
+
+                                          {/* 🔹 Time Taken */}
+                                          <td className="px-2 py-3 text-sm text-gray-700">
+                                            {dist.time_taken
+                                              ? `${dist.time_taken.toFixed(2)}s`
+                                              : "0s"}
                                           </td>
 
                                           {/* 🔹 Status Badge */}
-                                          <td className="px-1 py-3">
+                                          <td className="px-2 py-3">
                                             <span
                                               className={`px-2 py-1 text-xs rounded ${
                                                 dist.status === "SUCCESS"
@@ -538,8 +627,8 @@ const NewsList = () => {
                                           </td>
 
                                           {/* 🔹 Date */}
-                                          <td className="px-1 py-3 text-gray-500 whitespace-nowrap">
-                                            {new Date(dist.sent_at).toLocaleDateString()}
+                                          <td className="px-2 py-3 text-gray-500 whitespace-nowrap">
+                                            {new Date(dist.sent_at).toLocaleString()}
                                           </td>
                                         </tr>
                                       ))}
@@ -553,6 +642,7 @@ const NewsList = () => {
                               </td>
                             </tr>
                           )}
+
 
                       </React.Fragment>
                     ))
