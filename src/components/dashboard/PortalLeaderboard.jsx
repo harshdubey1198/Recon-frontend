@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats } from "../../server";
+import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats } from "../../../server";
 import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, X, Users, FolderOpen, Tag } from "lucide-react";
 
 export default function PortalLeaderboard() {

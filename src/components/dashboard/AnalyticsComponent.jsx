@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Grid3x3, AlertTriangle, Clock, Plus, CheckCircle2, Tag, X, Eye, Calendar, User, TrendingUp, Loader2 } from 'lucide-react';
-import { fetchInactivityAlerts } from '../../server';
+import { fetchInactivityAlerts } from '../../../server';
 import { useNavigate } from "react-router-dom";
-import HitMapCategory from './HitMapCategory';
+import HeatMapCategory from './HeatMapCategory';
 
 export default function AnalyticsComponent({ categories }) {
   // State for Heatmap & Inactivity Alerts
@@ -164,7 +164,7 @@ export default function AnalyticsComponent({ categories }) {
   return (
     <div className="space-y-8">
        {/* hitmap category */}
-       <HitMapCategory/>
+       <HeatMapCategory/>
      {/* Inactivity Alerts */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-black p-6">

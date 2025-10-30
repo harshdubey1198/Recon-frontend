@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Grid3x3, Tag, X, Eye, Calendar, User, TrendingUp, Loader2, TrendingDown, Minus } from 'lucide-react';
-import { fetchCategoryHeatmap } from '../../server';
+import { fetchCategoryHeatmap } from '../../../server';
 
-export default function HitMapCategory() {
+export default function HeatMapCategory() {
   const [heatmapData, setHeatmapData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

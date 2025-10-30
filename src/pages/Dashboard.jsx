@@ -4,8 +4,8 @@ import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2, TrendingUp,
 import formatUsername from "../utils/formateName";
 import KPIOverview from "../components/dashboard/KpiOverview";
 import StatusOverview from "../components/dashboard/StatusOverview";
-import PortalLeaderboard from "../components/PortalLeaderboard";
-import AnalyticsComponent from "../components/AnalyticsComponent";
+import PortalLeaderboard from "../components/dashboard/PortalLeaderboard";
+import AnalyticsComponent from "../components/dashboard/AnalyticsComponent";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);

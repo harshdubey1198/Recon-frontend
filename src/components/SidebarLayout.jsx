@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,BarChart3,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers} from "lucide-react";
+import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,BarChart3,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers, AreaChart} from "lucide-react";
 import Dashboard from "../pages/Dashboard";
 import CreateNews from "../pages/CreateNews";
 import NewsList from "../pages/NewsList";
@@ -13,6 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import UserCategories from "../pages/UserCategories";
 import NewsReports from "../pages/NewsReports";
 import formatUsername from "../utils/formateName";
+import AnalyticsOverview from "./dashboard/AnalyticsOverview";
 
 
 
@@ -35,6 +36,7 @@ const menuItems = [
   { name: "Create News", icon: FilePlus2 },
   { name: "News List", icon: Newspaper },
   { name: "News Reports", icon: BarChart3 },
+  { name: "News Analytics", icon: AreaChart },
   ...(isMaster
     ? [ 
        { name: "Category Mapping", icon: Network },
@@ -298,6 +300,7 @@ const menuItems = [
             {activeItem === "All Categories" && <AllCategories />}
             {activeItem === "User Categories" && <UserCategories />}
             {activeItem === "News Reports" && <NewsReports />}
+            {activeItem === "News Analytics" && <AnalyticsOverview />}
           </div>
         </div>
       </main>
