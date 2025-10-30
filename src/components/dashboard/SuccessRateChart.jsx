@@ -1,12 +1,33 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, } from "recharts";
+import { fetchDistributionRate } from "../../../server";
 
 /**
  * @param {Array} data 
  * @param {Number | String} width 
  * @param {Number} height 
  */
-const SuccessRateChart = ({ data = [], width = "100%", height = 300 }) => {
+const SuccessRateChart = ({ width = "100%", height = 300 }) => {
+   const [successData, setSuccessData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+  
+    const loadSuccessRate = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetchDistributionRate("daily");
+        if (res?.data?.status) {
+          setSuccessData(res.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch success rate:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    useEffect(() => {
+      loadSuccessRate();
+    }, []);
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
       <h3 className="text-lg font-semibold text-gray-800 mb-3">
@@ -15,7 +36,7 @@ const SuccessRateChart = ({ data = [], width = "100%", height = 300 }) => {
 
       <ResponsiveContainer width={width} height={height}>
         <LineChart
-          data={data}
+          data={ successData}
           margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

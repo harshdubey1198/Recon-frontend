@@ -49,26 +49,7 @@ export default function Dashboard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(15000);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [successData, setSuccessData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const loadSuccessRate = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetchDistributionRate("daily");
-      if (res?.data?.status) {
-        setSuccessData(res.data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch success rate:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-    useEffect(() => {
-      loadSuccessRate();
-    }, []);
+ 
   const loadNews = async (pageNumber = 1) => {
     if (isFetching) return;
     setIsFetching(true);
@@ -390,15 +371,10 @@ export default function Dashboard() {
       <KPIOverview data={stats} />
       <StatusOverview data={stats} />
       <PortalLeaderboard ref={portalLeaderboardRef} />
-      {isLoading ? (
-          <div className="text-center py-10 text-gray-400 animate-pulse">
-            Loading chart…
-          </div>
-        ) : (
-          <SuccessRateChart data={successData} height={520} 
-        //    width={520}
-           />
-        )}
+      <SuccessRateChart height={520} 
+    //    width={520}
+        />
+      
       <AnalyticsComponent/>
       </div>
     </div>

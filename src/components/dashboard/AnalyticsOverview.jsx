@@ -4,26 +4,8 @@ import SuccessRateChart from "./SuccessRateChart";
 import { BarChart3, Activity, PieChart } from "lucide-react";
 
 export default function AnalyticsOverview() {
-  const [successData, setSuccessData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadSuccessRate = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetchDistributionRate("daily");
-      if (res?.data?.status) {
-        setSuccessData(res.data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch success rate:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSuccessRate();
-  }, []);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-1 gap-8 mb-10">
@@ -45,15 +27,9 @@ export default function AnalyticsOverview() {
             🔄 Refresh
           </button>
         </div>
-        {isLoading ? (
-          <div className="text-center py-10 text-gray-400 animate-pulse">
-            Loading chart…
-          </div>
-        ) : (
           <SuccessRateChart data={successData} height={520} 
         //    width={520}
            />
-        )}
       </div>
 
     </div>
