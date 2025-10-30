@@ -15,6 +15,7 @@ from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q, Count, Sum, F, Avg, FloatField, Max
+from django.db.models.functions import TruncHour, TruncDay
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -2154,4 +2155,99 @@ class InactivityAlertsAPIView(APIView):
             return Response(
                 error_response(str(e)),
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class NewsDistributionRateOverTimeAPIView(APIView):
+    """
+    GET /api/admin/success-rate/?mode=hourly|daily
+
+    Returns success rate trends for news distributions.
+    - MASTER role: shows system-wide stats.
+    - USER role: shows only that user's posts' distributions.
+
+    Query Params:
+    - mode = hourly (last 7 hours) | daily (last 7 days)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            role = getattr(getattr(user, "role", None), "role", None)
+            mode = request.query_params.get("mode", "daily").lower()
+
+            now = timezone.now()
+            if mode == "hourly":
+                start_time = now - timezone.timedelta(hours=7)
+                trunc_field = TruncHour("created_at")
+            else:
+                start_time = now - timezone.timedelta(days=7)
+                trunc_field = TruncDay("created_at")
+
+            # Role-based Query Selection
+            if role and role.name.upper() == "MASTER":
+                distributions_qs = NewsDistribution.objects.filter(created_at__gte=start_time)
+
+            elif role and role.name.upper() == "USER":
+                distributions_qs = NewsDistribution.objects.filter(
+                    created_at__gte=start_time,
+                    news_post__created_by=user
+                )
+
+            else:
+                return Response(
+                    error_response("Role not recognized or not assigned"),
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # Aggregation
+            qs = (
+                distributions_qs
+                .annotate(period=trunc_field)
+                .values("period")
+                .annotate(
+                    total_attempts=Count("id"),
+                    success_count=Count("id", filter=Q(status="SUCCESS")),
+                    failed_count=Count("id", filter=Q(status="FAILED")),
+                )
+                .order_by("period")
+            )
+
+            data = []
+            for record in qs:
+                total_attempts = record["total_attempts"] or 0
+                success_count = record["success_count"] or 0
+                failed_count = record["failed_count"] or 0
+
+                success_rate = (
+                    round((success_count / total_attempts) * 100, 2)
+                    if total_attempts > 0
+                    else 0.0
+                )
+
+                label = (
+                    record["period"].strftime("%Y-%m-%d %H:00")
+                    if mode == "hourly"
+                    else record["period"].strftime("%Y-%m-%d")
+                )
+
+                data.append({
+                    "label": label,
+                    "total_attempts": total_attempts,
+                    "success_count": success_count,
+                    "failed_count": failed_count,
+                    "success_rate": success_rate,
+                })
+
+            return Response(
+                success_response(data, "Success rate trend fetched successfully"),
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
