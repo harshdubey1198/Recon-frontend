@@ -297,7 +297,14 @@ export async function fetchPortalStats(portalId) {
     params: { portal_id: portalId },
   });
 }
-
+export async function fetchInactivityAlerts(range = "7d", page = 1) {
+  return axiosInstance.get(`/api/inactivity/alerts/`, {
+    params: { range, page },
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 
 
