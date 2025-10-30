@@ -144,7 +144,8 @@ export default function PortalLeaderboard() {
         </div>
       </div>
 
-    {/* Portal Output Leaderboard */}
+      {/* Portal Output Leaderboard */}
+     {/* Portal Output Leaderboard */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
         <div className="bg-black p-4 sm:p-6">
           <div className="flex items-center space-x-3">
