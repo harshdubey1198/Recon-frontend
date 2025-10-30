@@ -2,6 +2,7 @@ import requests
 import json
 import time
 from collections import defaultdict
+from django.utils import timezone
 from datetime import date
 from urllib.parse import urljoin
 from datetime import timedelta
@@ -13,7 +14,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.http import Http404
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q, Count, Sum, F, Avg, FloatField
+from django.db.models import Q, Count, Sum, F, Avg, FloatField, Max
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -2072,4 +2073,85 @@ class GlobalStatsAPIView(APIView):
             return Response(
                 {"success": False, "error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class InactivityAlertsAPIView(APIView):
+    """
+    GET /api/admin/inactivity-alerts/?range=24h|48h|7d
+
+    Returns a list of master categories that have not had any
+    published posts within the given time range.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            range_param = request.query_params.get("range", "24h").lower()
+            now = timezone.now()
+
+            # Determine cutoff date
+            if range_param == "48h":
+                cutoff = now - timezone.timedelta(hours=48)
+            elif range_param == "7d":
+                cutoff = now - timezone.timedelta(days=7)
+            else:  # Default 24h
+                cutoff = now - timezone.timedelta(hours=24)
+
+            # Get last publish timestamp for each master category
+            category_last_published = (
+                MasterNewsPost.objects.filter(status="PUBLISHED")
+                .values("master_category")
+                .annotate(last_publish=Max("created_at"))
+            )
+
+            # Map category_id -> last_publish
+            last_publish_map = {
+                item["master_category"]: item["last_publish"]
+                for item in category_last_published
+                if item["master_category"]
+            }
+
+            inactive_categories = []
+
+            for category in MasterCategory.objects.all():
+                last_publish = last_publish_map.get(category.id)
+                if not last_publish or last_publish < cutoff:
+                    # Get assigned users and groups
+                    assignments = UserCategoryGroupAssignment.objects.filter(
+                        Q(master_category=category) | Q(group__master_categories=category)
+                    ).select_related("user", "group")
+
+                    assigned_users = []
+                    assigned_groups = set()
+
+                    for a in assignments:
+                        if a.user:
+                            assigned_users.append(a.user.email)
+                        if a.group:
+                            assigned_groups.add(a.group.name)
+
+                    inactive_categories.append({
+                        "master_category": category.name,
+                        "last_publish": last_publish,
+                        "assigned_users": assigned_users,
+                        "assigned_groups": list(assigned_groups),
+                    })
+
+            data = {
+                "range": range_param,
+                "inactive_count": len(inactive_categories),
+                "inactive_categories": inactive_categories,
+            }
+
+            return Response(
+                success_response(data, "Inactivity data fetched successfully"),
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
