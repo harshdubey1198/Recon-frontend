@@ -2049,11 +2049,18 @@ class GlobalStatsAPIView(APIView):
     - Top Performing Categories (MasterCategory-wise post counts)
     - Weekly Performance (Success/Failed counts for each day, last 7 days)
     - Top Contributors (User-wise total distributions across all portals)
+    Role logic:
+        - MASTER: weekly performance for all users
+        - USER: weekly performance for their own posts only
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         try:
+            user = request.user
+            role_obj = getattr(user, "role", None)
+            role_name = getattr(role_obj.role, "name", "").upper() if role_obj else None
+
             today = timezone.now().date()
             last_week = today - timedelta(days=6)
 
@@ -2069,8 +2076,14 @@ class GlobalStatsAPIView(APIView):
             )
 
             # --- 2️⃣ Weekly Performance (SUCCESS / FAILED for last 7 days) ---
+            weekly_qs = distributions.filter(sent_at__date__range=[last_week, today])
+
+            # Apply user-level filter if not MASTER
+            if role_name != "MASTER":
+                weekly_qs = weekly_qs.filter(news_post__created_by=user)
+
             weekly_data = (
-                distributions.filter(sent_at__date__range=[last_week, today])
+                weekly_qs
                 .values("sent_at__date", "status")
                 .annotate(count=Count("id"))
             )
