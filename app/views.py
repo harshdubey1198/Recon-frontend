@@ -1661,8 +1661,20 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                 )
 
             # ----- Count summaries -----
+            distribution_qs = NewsDistribution.objects.filter(news_post__in=queryset)
+
+            # Apply portal filter if present
+            if portal_id:
+                distribution_qs = distribution_qs.filter(portal_id=portal_id)
+
+            # Apply distribution_status filter if present
+            if distribution_status:
+                valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() in valid_statuses:
+                    distribution_qs = distribution_qs.filter(status__iexact=distribution_status)
+
             total_posts = queryset.count()
-            total_distributions = NewsDistribution.objects.filter(news_post__in=queryset).count()
+            total_distributions = distribution_qs.count()
 
             # ----- Pagination -----
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
