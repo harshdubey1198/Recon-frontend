@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 from django.utils import timezone
 from django.utils.timezone import now
+from django.db.models.functions import Coalesce
 from datetime import date
 from urllib.parse import urljoin
 from datetime import timedelta
@@ -2511,3 +2512,145 @@ class MasterCategoryHeatmapAPIView(APIView):
 
         except Exception as e:
             return Response({"success": False, "error": str(e)}, status=500)
+        
+
+class UserPostStatsAPIView(APIView, PaginationMixin):
+    """
+    GET /api/master/users/post-stats/?user_id=5&date_filter=7d&start_date=2025-10-01&end_date=2025-10-10
+
+    For MASTER users only.
+    Returns posting and distribution statistics for all users (or a specific user).
+
+    Query Params:
+    - user_id (optional): Filter by specific user
+    - date_filter: today | yesterday | 7d | 1m | custom
+    - start_date / end_date: required if date_filter=custom
+
+    Example Response:
+    {
+        "status": true,
+        "pagination": {...},
+        "data": [
+            {
+                "user_id": 3,
+                "username": "editor_1",
+                "num_master_posts": 12,
+                "num_total_distributions": 28,
+                "num_successful_distributions": 24,
+                "num_failed_distributions": 4,
+                "assigned_master_categories": ["Business", "Sports", "Politics"]
+            },
+            ...
+        ],
+        "message": "User posting stats fetched successfully"
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            role_obj = getattr(user, "role", None)
+            role_name = getattr(role_obj.role, "name", "").upper() if role_obj else None
+
+            # --- Restrict access to MASTER users only ---
+            if role_name != "MASTER":
+                return Response(
+                    error_response("Access denied. Only MASTER users can access this endpoint."),
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # --- Query Parameters ---
+            params = request.query_params
+            selected_user_id = params.get("user_id")
+            date_filter = params.get("range")  # today | yesterday | 7d | 1m | custom
+            start_date = params.get("start_date")
+            end_date = params.get("end_date")
+
+            # --- Base Querysets ---
+            posts_qs = MasterNewsPost.objects.select_related("created_by").all()
+            dist_qs = NewsDistribution.objects.select_related("news_post", "news_post__created_by")
+
+            # --- Apply Date Filters ---
+            now = timezone.now()
+            today = now.date()
+            
+            print(date_filter)
+
+            if date_filter == "today":
+                posts_qs = posts_qs.filter(created_at__date=today)
+                dist_qs = dist_qs.filter(sent_at__date=today)
+            elif date_filter == "yesterday":
+                posts_qs = posts_qs.filter(created_at__date=today - timedelta(days=1))
+                dist_qs = dist_qs.filter(sent_at__date=today - timedelta(days=1))
+            elif date_filter == "7d":
+                posts_qs = posts_qs.filter(created_at__gte=now - timedelta(days=7))
+                dist_qs = dist_qs.filter(sent_at__gte=now - timedelta(days=7))
+            elif date_filter == "1m":
+                posts_qs = posts_qs.filter(created_at__gte=now - timedelta(days=30))
+                dist_qs = dist_qs.filter(sent_at__gte=now - timedelta(days=30))
+            elif date_filter == "custom":
+                parsed_start = parse_date(start_date)
+                parsed_end = parse_date(end_date)
+                if not parsed_start or not parsed_end:
+                    return Response(
+                        error_response("For 'custom' date_filter, both start_date and end_date are required (YYYY-MM-DD)."),
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                posts_qs = posts_qs.filter(created_at__date__range=[parsed_start, parsed_end])
+                dist_qs = dist_qs.filter(sent_at__date__range=[parsed_start, parsed_end])
+
+            # --- Optional: Filter by specific user ---
+            if selected_user_id:
+                posts_qs = posts_qs.filter(created_by_id=selected_user_id)
+                dist_qs = dist_qs.filter(news_post__created_by_id=selected_user_id)
+
+            # --- Aggregate Stats Per User ---
+            users_data = (
+                posts_qs.values("created_by_id", "created_by__username")
+                .annotate(
+                    num_master_posts=Count("id", distinct=True),
+                    num_total_distributions=Coalesce(
+                        Count("news_distribution", distinct=True), 0
+                    ),
+                    num_successful_distributions=Coalesce(
+                        Count("news_distribution", filter=Q(news_distribution__status="SUCCESS"), distinct=True), 0
+                    ),
+                    num_failed_distributions=Coalesce(
+                        Count("news_distribution", filter=Q(news_distribution__status="FAILED"), distinct=True), 0
+                    ),
+                )
+                .order_by("created_by__username")
+            )
+
+            # --- Map Assigned Master Categories for Each User ---
+            user_ids = [u["created_by_id"] for u in users_data]
+            user_categories_map = (
+                UserCategoryGroupAssignment.objects.filter(
+                    user_id__in=user_ids, master_category__isnull=False
+                )
+                .values("user_id", "master_category__name")
+            )
+
+            # Build a mapping { user_id: [category names] }
+            category_mapping = {}
+            for entry in user_categories_map:
+                category_mapping.setdefault(entry["user_id"], []).append(entry["master_category__name"])
+
+            # --- Merge category data ---
+            for user in users_data:
+                user["assigned_master_categories"] = category_mapping.get(user["created_by_id"], [])
+
+            # --- Pagination ---
+            paginated_data = self.paginate_queryset(users_data, request)
+            return self.get_paginated_response(
+                paginated_data,
+                message="User posting stats fetched successfully",
+            )
+
+        except Exception as e:
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
