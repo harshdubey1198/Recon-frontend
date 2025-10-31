@@ -807,7 +807,7 @@ class MasterNewsPostPublishAPIView(APIView):
 
                         rewritten_title, rewritten_short, rewritten_content, rewritten_meta, rewritten_slug = result
 
-                except Exception as e:
+                except Exception as e:    
                     dist.status = "FAILED"
                     dist.response_message = f"AI generation failed: {str(e)}"
                     dist.completed_at = timezone.now()
@@ -835,7 +835,7 @@ class MasterNewsPostPublishAPIView(APIView):
                         "success": False,
                         "response": "No valid portal user mapping found.",
                     })
-                    continue
+                    continue                
 
                 # 8. Prepare payload
                 payload = {
