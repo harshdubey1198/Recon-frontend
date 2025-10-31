@@ -22,10 +22,13 @@ def generate_variation_with_gpt(title, short_desc, desc, prompt_text, meta_title
     """
     Generate rephrased version of news fields using GPT.
     Always tries to parse JSON safely.
-    Returns (title, short_desc, desc, meta_title, slug).
+    Handles:
+      - dict responses
+      - list responses
+      - nested dicts (e.g. {'dxbnewsnetwork.com': {...}})
+    Returns (title, short_desc, desc, meta_title, slug) or None if failed.
     """
     logger.info("Started AI generation for portal: %s", portal_name)
-
 
     user_content = f"""
     Rewrite the following news content for the portal
@@ -34,7 +37,7 @@ def generate_variation_with_gpt(title, short_desc, desc, prompt_text, meta_title
     Rules:
     - Preserve all HTML tags, attributes, styles, images, links, lists, and formatting inside the description.
     - Rewrite the textual content for: title, short_description, description, and meta_title.
-    - The short_description must be a concise 1–2 sentence less than 160 characters, summary of the rewritten description.
+    - The short_description must be a concise 1–2 sentence less than 160 characters summary of the rewritten description.
     - Generate a new slug as a clean, URL-safe version of the rewritten meta_title (lowercase, hyphen separated).
     - Ensure wording differs slightly for each portal, but keep meaning intact.
     - Do not remove, add, or modify any HTML structure.
@@ -47,10 +50,9 @@ def generate_variation_with_gpt(title, short_desc, desc, prompt_text, meta_title
         "description": "{desc}",
         "meta_title": "{meta_title or title}",
         "slug": "{slug or slugify(meta_title or title)}",
-        "portal_name":{portal_name}
+        "portal_name": "{portal_name or ''}"
     }}
     """
-
 
     try:
         response = client.responses.create(
@@ -62,20 +64,38 @@ def generate_variation_with_gpt(title, short_desc, desc, prompt_text, meta_title
         )
 
         content = response.output_text.strip()
-        logger.info("Raw GPT response (first 500 chars): %s", content[:500])  # debug
+        logger.info("Raw GPT response (first 500 chars): %s", content[:500])
 
-        # Try strict JSON parse
+        # ---- Safe JSON Parsing ----
         try:
             data = json.loads(content)
         except json.JSONDecodeError:
-            # Fallback: extract JSON from text
             import re
-            match = re.search(r"\{.*\}", content, re.DOTALL)
+            match = re.search(r"\{.*\}|\[.*\]", content, re.DOTALL)
             if match:
                 data = json.loads(match.group(0))
             else:
-                raise ValueError("No valid JSON in GPT response")
-        
+                raise ValueError("No valid JSON structure in GPT response")
+
+        # ---- Handle Lists ----
+        if isinstance(data, list):
+            logger.warning("GPT returned list for %s — using first item", portal_name)
+            data = data[0] if data else {}
+
+        # ---- Handle Nested Dicts (e.g., {"dxbnewsnetwork.com": {...}}) ----
+        elif isinstance(data, dict) and len(data.keys()) >= 1:
+            # If the only key is not a known field, treat it as nested
+            first_key = list(data.keys())[0]
+            if first_key not in ["title", "short_description", "description", "meta_title", "slug"]:
+                logger.warning("GPT returned nested dict for %s — using inner value under key %s", portal_name, first_key)
+                data = data[first_key]
+
+        # ---- Final Validation ----
+        required_keys = ["title", "short_description", "description", "meta_title", "slug"]
+
+        if not all(k in data and data[k] for k in required_keys):
+            raise ValueError(f"Missing or empty keys in GPT response: {data}")
+
         logger.info("Successfully generated AI variation for %s", portal_name)
 
         return (
@@ -88,14 +108,7 @@ def generate_variation_with_gpt(title, short_desc, desc, prompt_text, meta_title
 
     except Exception as e:
         logger.exception("AI generation failed for %s: %s", portal_name, str(e))
-        # fallback if GPT fails
-        return (
-            title,
-            short_desc,
-            desc,
-            meta_title or title,
-            slug or slugify(meta_title or title),
-        )
+        return None
 
 def get_portals_from_assignment(assignment):
     """

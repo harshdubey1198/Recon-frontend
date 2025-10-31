@@ -682,6 +682,8 @@ class MasterNewsPostPublishAPIView(APIView):
     """
     POST /api/master-news/{id}/publish/
     Publishes a MasterNewsPost to portals mapped under the selected master category.
+    Creates NewsDistribution entries upfront with status='PENDING'.
+    If AI or posting fails, updates them with 'FAILED' and error message.
     """
 
     permission_classes = [IsAuthenticated]
@@ -689,63 +691,33 @@ class MasterNewsPostPublishAPIView(APIView):
     def post(self, request, pk):
         try:
             user = request.user
-            # master_category_id = request.data.get("master_category_id")
 
-            # if not master_category_id:
-            #     return Response(
-            #         error_response("Please provide master_category_id."),
-            #         status=status.HTTP_400_BAD_REQUEST,
-            #     )
-
-            # 1. Validate MasterNewsPost 
+            # 1. Validate MasterNewsPost
             news_post = get_object_or_404(MasterNewsPost, pk=pk)
-            
-            # 1.5 Get master category id from request or newspost 
+
             master_category_id = request.data.get("master_category_id") or getattr(news_post.master_category, "id", None)
             if not master_category_id:
                 return Response(error_response("master_category_id is missing and not saved in post."), status=400)
 
-            # 2. Check if user has that master category assigned
+            # 2. Validate user assignment
             assignment = UserCategoryGroupAssignment.objects.filter(
                 user=user, master_category_id=master_category_id
             ).first()
-
             if not assignment:
                 return Response(
                     error_response("You are not assigned to this master category."),
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # 3. Get mappings (portals under this master category)
-            
-            # If no master_category_id provided, try to fetch default mapping for this portal
-            if not master_category_id:
-                default_mapping = MasterCategoryMapping.objects.filter(
-                    portal=portal, is_default=True
-                ).select_related("master_category").first()
-
-                if not default_mapping:
-                    return Response(
-                        error_response(
-                            "No default master category is mapped for this portal. Please provide master_category_id."
-                        ),
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                # Use default master category from mapping
-                master_category_id = default_mapping.master_category.id
-
-            # Now fetch all portal mappings under this master category
+            # 3. Get portal mappings
             mappings = MasterCategoryMapping.objects.filter(
                 master_category_id=master_category_id
             ).select_related("portal_category", "portal_category__portal")
 
             if not mappings.exists():
-                return Response(
-                    error_response("No portals mapped for this master category."),
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return Response(error_response("No portals mapped for this master category."), status=400)
 
+            # 4. Handle excluded portals
             excluded_portals = request.data.get("excluded_portals") or news_post.excluded_portals or []
             if isinstance(excluded_portals, str):
                 excluded_portals = json.loads(excluded_portals)
@@ -754,12 +726,12 @@ class MasterNewsPostPublishAPIView(APIView):
 
             results = []
 
-            # 4. Iterate through mapped portals
+            # 5. Process each portal mapping
             for mapping in mappings:
                 portal = mapping.portal_category.portal
                 portal_category = mapping.portal_category
 
-                # Skip excluded ones
+                # Skip manually excluded
                 if portal.id in excluded_portals or portal.name in excluded_portals:
                     results.append({
                         "portal": portal.name,
@@ -768,14 +740,22 @@ class MasterNewsPostPublishAPIView(APIView):
                         "response": "Skipped manually by user",
                     })
                     continue
-                
-                # --- 🔁 Check existing distribution status
-                existing_dist = NewsDistribution.objects.filter(
-                    news_post=news_post, portal=portal
-                ).first()
 
-                if existing_dist and existing_dist.status == "SUCCESS":
-                    # ✅ Skip already successful
+                # Existing distribution or create pending
+                dist, created = NewsDistribution.objects.get_or_create(
+                    news_post=news_post,
+                    portal=portal,
+                    defaults={
+                        "portal_category": portal_category,
+                        "master_category_id": master_category_id,
+                        "status": "PENDING",
+                        "response_message": "Queued for publishing",
+                        "started_at": timezone.now(),
+                    },
+                )
+
+                # Skip if already successful
+                if dist.status == "SUCCESS":
                     results.append({
                         "portal": portal.name,
                         "category": portal_category.name,
@@ -784,51 +764,80 @@ class MasterNewsPostPublishAPIView(APIView):
                     })
                     continue
 
-                # If failed earlier, increment retry count
-                if existing_dist and existing_dist.status == "FAILED":
-                    existing_dist.retry_count += 1
-                    existing_dist.save(update_fields=["retry_count"])
+                # Increment retry if failed previously
+                if dist.status == "FAILED":
+                    dist.retry_count += 1
+                    dist.status = "PENDING"
+                    dist.response_message = "Retrying..."
+                    dist.save(update_fields=["retry_count", "status", "response_message"])
 
                 start_time = time.perf_counter()
-                if mapping.use_default_content:
-                    rewritten_title = news_post.title
-                    rewritten_short = news_post.short_description
-                    rewritten_content = news_post.content
-                    rewritten_meta = news_post.meta_title or news_post.title
-                    rewritten_slug = news_post.slug or slugify(news_post.meta_title or news_post.title)
-                else:
-                    portal_prompt = (
-                        PortalPrompt.objects.filter(portal=portal, is_active=True).first()
-                        or PortalPrompt.objects.filter(portal__isnull=True, is_active=True).first()
-                    )
-                    prompt_text = (
-                        portal_prompt.prompt_text
-                        if portal_prompt
-                        else "Rewrite the content slightly for clarity and engagement."
-                    )
-                    rewritten_title, rewritten_short, rewritten_content, rewritten_meta, rewritten_slug = generate_variation_with_gpt(
-                        news_post.title,
-                        news_post.short_description,
-                        news_post.content,
-                        prompt_text,
-                        news_post.meta_title,
-                        news_post.slug,
-                        portal_name=portal.name,
-                    )
 
-                # Get portal user mapping
-                portal_user = PortalUserMapping.objects.filter(
-                    user=user, portal=portal, status="MATCHED"
-                ).first()
+                # 6. AI generation
+                try:
+                    if mapping.use_default_content:
+                        rewritten_title = news_post.title
+                        rewritten_short = news_post.short_description
+                        rewritten_content = news_post.content
+                        rewritten_meta = news_post.meta_title or news_post.title
+                        rewritten_slug = news_post.slug or slugify(news_post.meta_title or news_post.title)
+                    else:
+                        portal_prompt = (
+                            PortalPrompt.objects.filter(portal=portal, is_active=True).first()
+                            or PortalPrompt.objects.filter(portal__isnull=True, is_active=True).first()
+                        )
+                        prompt_text = (
+                            portal_prompt.prompt_text
+                            if portal_prompt
+                            else "Rewrite the content slightly for clarity and engagement."
+                        )
+
+                        result = generate_variation_with_gpt(
+                            news_post.title,
+                            news_post.short_description,
+                            news_post.content,
+                            prompt_text,
+                            news_post.meta_title,
+                            news_post.slug,
+                            portal_name=portal.name,
+                        )
+
+                        if not result:
+                            raise ValueError("AI generation failed — no data returned")
+
+                        rewritten_title, rewritten_short, rewritten_content, rewritten_meta, rewritten_slug = result
+
+                except Exception as e:    
+                    dist.status = "FAILED"
+                    dist.response_message = f"AI generation failed: {str(e)}"
+                    dist.completed_at = timezone.now()
+                    dist.save(update_fields=["status", "response_message", "completed_at"])
+
+                    results.append({
+                        "portal": portal.name,
+                        "category": portal_category.name,
+                        "success": False,
+                        "response": f"AI generation failed: {str(e)}",
+                    })
+                    continue  # skip posting for this portal
+
+                # 7. Get portal user mapping
+                portal_user = PortalUserMapping.objects.filter(user=user, portal=portal, status="MATCHED").first()
                 if not portal_user:
+                    dist.status = "FAILED"
+                    dist.response_message = "No valid portal user mapping found."
+                    dist.completed_at = timezone.now()
+                    dist.save(update_fields=["status", "response_message", "completed_at"])
+
                     results.append({
                         "portal": portal.name,
                         "category": portal_category.name,
                         "success": False,
                         "response": "No valid portal user mapping found.",
                     })
-                    continue
+                    continue                
 
+                # 8. Prepare payload
                 payload = {
                     "post_cat": portal_category.external_id if portal_category else None,
                     "post_title": rewritten_title,
@@ -838,13 +847,9 @@ class MasterNewsPostPublishAPIView(APIView):
                     "slug": rewritten_slug,
                     "post_tag": news_post.post_tag or "",
                     "author": portal_user.portal_user_id,
-                    
-                    # Dates
                     "Event_date": (news_post.Event_date or timezone.now().date()).isoformat(),
                     "Eventend_date": (news_post.Event_end_date or timezone.now().date()).isoformat(),
                     "schedule_date": (news_post.schedule_date or timezone.now()).isoformat(),
-
-                    # Flags
                     "is_active": int(bool(news_post.latest_news)) if news_post.latest_news is not None else 0,
                     "Event": int(bool(news_post.upcoming_event)) if news_post.upcoming_event is not None else 0,
                     "Head_Lines": int(bool(news_post.Head_Lines)) if news_post.Head_Lines is not None else 0,
@@ -855,36 +860,30 @@ class MasterNewsPostPublishAPIView(APIView):
                 }
                 files = {"post_image": open(news_post.post_image.path, "rb")} if news_post.post_image else {}
 
-                api_url = f"{portal.base_url}/api/create-news/"
+                # 9. Call portal API
                 try:
+                    api_url = f"{portal.base_url}/api/create-news/"
                     response = requests.post(api_url, data=payload, files=files, timeout=90)
                     success = response.status_code in [200, 201]
                     response_msg = response.text
                 except Exception as e:
                     success = False
                     response_msg = str(e)
-                    
-                end_time = time.perf_counter()  # End timer
-                elapsed_time = round(end_time - start_time, 2) 
 
-                NewsDistribution.objects.update_or_create(
-                    news_post=news_post,
-                    portal=portal,
-                    defaults={
-                        "portal_category": portal_category,
-                        "master_category_id": master_category_id,
-                        "status": "SUCCESS" if success else "FAILED",
-                        "response_message": response_msg,
-                        "ai_title": rewritten_title,
-                        "ai_short_description": rewritten_short,
-                        "ai_content": rewritten_content,
-                        "ai_meta_title": rewritten_meta,
-                        "ai_slug": rewritten_slug,
-                        "time_taken": elapsed_time,
-                        "started_at": timezone.now() - timezone.timedelta(seconds=elapsed_time),
-                        "completed_at": timezone.now(),
-                    },
-                )
+                elapsed_time = round(time.perf_counter() - start_time, 2)
+
+                # 10. Update distribution
+                dist.status = "SUCCESS" if success else "FAILED"
+                dist.response_message = response_msg
+                dist.ai_title = rewritten_title
+                dist.ai_short_description = rewritten_short
+                dist.ai_content = rewritten_content
+                dist.ai_meta_title = rewritten_meta
+                dist.ai_slug = rewritten_slug
+                dist.time_taken = elapsed_time
+                dist.started_at = timezone.now() - timezone.timedelta(seconds=elapsed_time)
+                dist.completed_at = timezone.now()
+                dist.save()
 
                 results.append({
                     "portal": portal.name,
@@ -1536,23 +1535,26 @@ class NewsPostUpdateAPIView(APIView):
 class MyPostsListAPIView(APIView, PaginationMixin):
     """
     GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&portal=1&search=abc&master_category=3
-        &start_date=2025-10-01&end_date=2025-10-05&sort=publish_date_desc
+        &date_filter=today|yesterday|7d|custom&start_date=2025-10-01&end_date=2025-10-05&sort=publish_date_desc&user_id=12
 
-    Returns posts created by the logged-in user.
+    Returns posts for:
+      - USER → only their own posts.
+      - MASTER → all users' posts, with optional `user_id` filter.
+
+    Includes total counts for:
+      - MasterNewsPost
+      - NewsDistribution
 
     Supported query params:
+      - user_id (MASTER only)
       - status: DRAFT / PUBLISHED
       - distribution_status: SUCCESS / FAILED / PENDING
-      - portal: integer (filter posts distributed to a specific portal)
-      - search: string (matches title, slug, or master category name)
-      - master_category: integer (filters by master category ID)
-      - start_date: filter posts created on or after this date (YYYY-MM-DD)
-      - end_date: filter posts created on or before this date (YYYY-MM-DD)
-      - sort:
-          • publish_date_desc → Newest to Oldest (default)
-          • publish_date_asc → Oldest to Newest
-          • status → Sort by Distribution Status (SUCCESS → FAILED → PENDING)
-          • category → Sort alphabetically by master category name (non-null first)
+      - portal: integer
+      - search: string (title, slug, category)
+      - master_category: integer
+      - date_filter: today | yesterday | 7d | custom
+      - start_date / end_date: required if custom
+      - sort: publish_date_desc | publish_date_asc | category
     """
 
     permission_classes = [IsAuthenticated]
@@ -1562,25 +1564,59 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             user = request.user
             params = request.query_params
 
+            # --- Role detection ---
+            user_role = getattr(getattr(user, "role", None), "role", None)
+            role_name = getattr(user_role, "name", "").upper() if user_role else None
+
+            # --- Query params ---
             status_filter = params.get("status")
             distribution_status = params.get("distribution_status")
             portal_id = params.get("portal")
             search = params.get("search")
             master_category_id = params.get("master_category")
+            sort_option = params.get("sort", "publish_date_desc")
+            selected_user_id = params.get("user_id")
+            date_filter = params.get("date_filter")  # today | yesterday | 7d | custom
+
             start_date = params.get("start_date")
             end_date = params.get("end_date")
-            sort_option = params.get("sort", "publish_date_desc")
 
-            queryset = MasterNewsPost.objects.filter(created_by=user).order_by("-created_at")
+            # --- Base queryset ---
+            if role_name == "MASTER":
+                queryset = MasterNewsPost.objects.all()
+                if selected_user_id:
+                    queryset = queryset.filter(created_by_id=selected_user_id)
+            else:
+                queryset = MasterNewsPost.objects.filter(created_by=user)
 
-            # ----- Filters -----
+            queryset = queryset.order_by("-created_at")
+
+            # ----- Date filter handling -----
+            now = timezone.now()
+            today = now.date()
+
+            if date_filter == "today":
+                queryset = queryset.filter(created_at__date=today)
+            elif date_filter == "yesterday":
+                queryset = queryset.filter(created_at__date=today - timedelta(days=1))
+            elif date_filter == "7d":
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=7))
+            elif date_filter == "custom":
+                parsed_start = parse_date(start_date)
+                parsed_end = parse_date(end_date)
+                if not parsed_start or not parsed_end:
+                    return Response(
+                        error_response("For 'custom' date_filter, both start_date and end_date are required (YYYY-MM-DD)."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                queryset = queryset.filter(created_at__date__range=[parsed_start, parsed_end])
+
+            # ----- Other filters -----
             if status_filter:
                 queryset = queryset.filter(status__iexact=status_filter)
 
-            # Portal filter logic (combined with distribution status if given)
             if portal_id:
                 queryset = queryset.filter(news_distribution__portal_id=portal_id)
-
                 if distribution_status:
                     valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
                     if distribution_status.upper() not in valid_statuses:
@@ -1592,63 +1628,69 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                         news_distribution__portal_id=portal_id,
                         news_distribution__status__iexact=distribution_status
                     ).distinct()
-
-            else:
-                # distribution_status alone (no portal filter)
-                if distribution_status:
-                    valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
-                    if distribution_status.upper() not in valid_statuses:
-                        return Response(
-                            error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    queryset = queryset.filter(
-                        news_distribution__status__iexact=distribution_status
-                    ).distinct()
-
-            # Search by title, slug, or master category name
-            if search:
+            elif distribution_status:
+                valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() not in valid_statuses:
+                    return Response(
+                        error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 queryset = queryset.filter(
-                    Q(title__icontains=search) |
-                    Q(slug__icontains=search) |
-                    Q(master_category__name__icontains=search)
+                    news_distribution__status__iexact=distribution_status
                 ).distinct()
 
-            # Filter by master category
+            if search:
+                queryset = queryset.filter(
+                    Q(title__icontains=search)
+                    | Q(slug__icontains=search)
+                    | Q(master_category__name__icontains=search)
+                ).distinct()
+
             if master_category_id:
                 queryset = queryset.filter(master_category_id=master_category_id)
-
-            # Date range filters
-            if start_date:
-                parsed_start = parse_date(start_date)
-                if parsed_start:
-                    queryset = queryset.filter(created_at__date__gte=parsed_start)
-
-            if end_date:
-                parsed_end = parse_date(end_date)
-                if parsed_end:
-                    queryset = queryset.filter(created_at__date__lte=parsed_end)
 
             # ----- Sorting -----
             if sort_option == "publish_date_asc":
                 queryset = queryset.order_by("created_at")
-
             elif sort_option == "publish_date_desc":
                 queryset = queryset.order_by("-created_at")
-
             elif sort_option == "category":
                 queryset = queryset.order_by(
                     F("master_category__name").asc(nulls_last=True),
                     "-created_at"
                 )
 
-            # Paginate & Serialize
+            # ----- Count summaries -----
+            distribution_qs = NewsDistribution.objects.filter(news_post__in=queryset)
+
+            # Apply portal filter if present
+            if portal_id:
+                distribution_qs = distribution_qs.filter(portal_id=portal_id)
+
+            # Apply distribution_status filter if present
+            if distribution_status:
+                valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() in valid_statuses:
+                    distribution_qs = distribution_qs.filter(status__iexact=distribution_status)
+
+            total_posts = queryset.count()
+            total_distributions = distribution_qs.count()
+
+            # ----- Pagination -----
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
             serializer = MasterNewsPostSerializer(paginated_qs, many=True)
 
+            response_data = {
+                "counts": {
+                    "total_master_news_posts": total_posts,
+                    "total_news_distributions": total_distributions
+                },
+                "results": serializer.data
+            }
+
             return self.get_paginated_response(
-                serializer.data,
-                message=f"Posts fetched successfully for user {user.username}"
+                response_data,
+                message=f"Posts fetched successfully for {'all users' if role_name == 'MASTER' else user.username}"
             )
 
         except Exception as e:
@@ -1657,7 +1699,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
-
+            
 class NewsReportAPIView(APIView, PaginationMixin):
     """
     GET /api/news/report/

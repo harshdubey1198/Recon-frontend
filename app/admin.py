@@ -40,22 +40,23 @@ class GroupAdmin(admin.ModelAdmin):
 
 @admin.register(MasterNewsPost)
 class MasterNewsPostAdmin(admin.ModelAdmin):
-    list_display = ['id', 'title', 'created_by__username', 'master_category']
+    list_display = ['id', 'title', 'created_by__username', 'master_category', 'created_at']
     search_fields = [
         "title",
         "slug",
         "meta_title",
         "created_by__username",
-        "master_category"
+        "master_category",
+        'created_at'
     ]
-    list_filter = ['id', 'title', 'created_by__username', 'master_category']
+    list_filter = ['id', 'title', 'created_by__username', 'master_category', 'created_at']
 
 
 @admin.register(NewsDistribution)
 class NewsDistributionAdmin(admin.ModelAdmin):
-    list_display = ['id', 'news_post', 'portal', 'portal_category', 'status', 'master_category', 'news_post__created_by__username', 'time_taken']
-    search_fields = ['id', 'news_post', 'portal', 'portal_category', 'status', 'master_category', 'news_post__created_by__username', 'time_taken']
-    list_filter = ['id', 'news_post', 'portal', 'portal_category', 'status', 'master_category', 'news_post__created_by__username', 'time_taken']
+    list_display = ['id', 'news_post', 'portal', 'portal_category', 'status', 'master_category', 'news_post__created_by__username', 'time_taken', 'created_at']
+    search_fields = ['id', 'news_post', 'portal', 'portal_category', 'status', 'master_category', 'news_post__created_by__username', 'time_taken', 'created_at']
+    list_filter = ['id', 'news_post', 'portal', 'portal_category', 'status', 'master_category', 'news_post__created_by__username', 'time_taken', 'created_at']
 
 
 @admin.register(PortalPrompt)
