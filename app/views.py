@@ -1535,23 +1535,26 @@ class NewsPostUpdateAPIView(APIView):
 class MyPostsListAPIView(APIView, PaginationMixin):
     """
     GET /api/my-posts/?status=DRAFT&distribution_status=FAILED&portal=1&search=abc&master_category=3
-        &start_date=2025-10-01&end_date=2025-10-05&sort=publish_date_desc
+        &date_filter=today|yesterday|7d|custom&start_date=2025-10-01&end_date=2025-10-05&sort=publish_date_desc&user_id=12
 
-    Returns posts created by the logged-in user.
+    Returns posts for:
+      - USER → only their own posts.
+      - MASTER → all users' posts, with optional `user_id` filter.
+
+    Includes total counts for:
+      - MasterNewsPost
+      - NewsDistribution
 
     Supported query params:
+      - user_id (MASTER only)
       - status: DRAFT / PUBLISHED
       - distribution_status: SUCCESS / FAILED / PENDING
-      - portal: integer (filter posts distributed to a specific portal)
-      - search: string (matches title, slug, or master category name)
-      - master_category: integer (filters by master category ID)
-      - start_date: filter posts created on or after this date (YYYY-MM-DD)
-      - end_date: filter posts created on or before this date (YYYY-MM-DD)
-      - sort:
-          • publish_date_desc → Newest to Oldest (default)
-          • publish_date_asc → Oldest to Newest
-          • status → Sort by Distribution Status (SUCCESS → FAILED → PENDING)
-          • category → Sort alphabetically by master category name (non-null first)
+      - portal: integer
+      - search: string (title, slug, category)
+      - master_category: integer
+      - date_filter: today | yesterday | 7d | custom
+      - start_date / end_date: required if custom
+      - sort: publish_date_desc | publish_date_asc | category
     """
 
     permission_classes = [IsAuthenticated]
@@ -1561,25 +1564,59 @@ class MyPostsListAPIView(APIView, PaginationMixin):
             user = request.user
             params = request.query_params
 
+            # --- Role detection ---
+            user_role = getattr(getattr(user, "role", None), "role", None)
+            role_name = getattr(user_role, "name", "").upper() if user_role else None
+
+            # --- Query params ---
             status_filter = params.get("status")
             distribution_status = params.get("distribution_status")
             portal_id = params.get("portal")
             search = params.get("search")
             master_category_id = params.get("master_category")
+            sort_option = params.get("sort", "publish_date_desc")
+            selected_user_id = params.get("user_id")
+            date_filter = params.get("date_filter")  # today | yesterday | 7d | custom
+
             start_date = params.get("start_date")
             end_date = params.get("end_date")
-            sort_option = params.get("sort", "publish_date_desc")
 
-            queryset = MasterNewsPost.objects.filter(created_by=user).order_by("-created_at")
+            # --- Base queryset ---
+            if role_name == "MASTER":
+                queryset = MasterNewsPost.objects.all()
+                if selected_user_id:
+                    queryset = queryset.filter(created_by_id=selected_user_id)
+            else:
+                queryset = MasterNewsPost.objects.filter(created_by=user)
 
-            # ----- Filters -----
+            queryset = queryset.order_by("-created_at")
+
+            # ----- Date filter handling -----
+            now = timezone.now()
+            today = now.date()
+
+            if date_filter == "today":
+                queryset = queryset.filter(created_at__date=today)
+            elif date_filter == "yesterday":
+                queryset = queryset.filter(created_at__date=today - timedelta(days=1))
+            elif date_filter == "7d":
+                queryset = queryset.filter(created_at__gte=now - timedelta(days=7))
+            elif date_filter == "custom":
+                parsed_start = parse_date(start_date)
+                parsed_end = parse_date(end_date)
+                if not parsed_start or not parsed_end:
+                    return Response(
+                        error_response("For 'custom' date_filter, both start_date and end_date are required (YYYY-MM-DD)."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                queryset = queryset.filter(created_at__date__range=[parsed_start, parsed_end])
+
+            # ----- Other filters -----
             if status_filter:
                 queryset = queryset.filter(status__iexact=status_filter)
 
-            # Portal filter logic (combined with distribution status if given)
             if portal_id:
                 queryset = queryset.filter(news_distribution__portal_id=portal_id)
-
                 if distribution_status:
                     valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
                     if distribution_status.upper() not in valid_statuses:
@@ -1591,63 +1628,57 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                         news_distribution__portal_id=portal_id,
                         news_distribution__status__iexact=distribution_status
                     ).distinct()
-
-            else:
-                # distribution_status alone (no portal filter)
-                if distribution_status:
-                    valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
-                    if distribution_status.upper() not in valid_statuses:
-                        return Response(
-                            error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    queryset = queryset.filter(
-                        news_distribution__status__iexact=distribution_status
-                    ).distinct()
-
-            # Search by title, slug, or master category name
-            if search:
+            elif distribution_status:
+                valid_statuses = ["SUCCESS", "FAILED", "PENDING"]
+                if distribution_status.upper() not in valid_statuses:
+                    return Response(
+                        error_response("Invalid distribution_status. Use SUCCESS, FAILED, or PENDING."),
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 queryset = queryset.filter(
-                    Q(title__icontains=search) |
-                    Q(slug__icontains=search) |
-                    Q(master_category__name__icontains=search)
+                    news_distribution__status__iexact=distribution_status
                 ).distinct()
 
-            # Filter by master category
+            if search:
+                queryset = queryset.filter(
+                    Q(title__icontains=search)
+                    | Q(slug__icontains=search)
+                    | Q(master_category__name__icontains=search)
+                ).distinct()
+
             if master_category_id:
                 queryset = queryset.filter(master_category_id=master_category_id)
-
-            # Date range filters
-            if start_date:
-                parsed_start = parse_date(start_date)
-                if parsed_start:
-                    queryset = queryset.filter(created_at__date__gte=parsed_start)
-
-            if end_date:
-                parsed_end = parse_date(end_date)
-                if parsed_end:
-                    queryset = queryset.filter(created_at__date__lte=parsed_end)
 
             # ----- Sorting -----
             if sort_option == "publish_date_asc":
                 queryset = queryset.order_by("created_at")
-
             elif sort_option == "publish_date_desc":
                 queryset = queryset.order_by("-created_at")
-
             elif sort_option == "category":
                 queryset = queryset.order_by(
                     F("master_category__name").asc(nulls_last=True),
                     "-created_at"
                 )
 
-            # Paginate & Serialize
+            # ----- Count summaries -----
+            total_posts = queryset.count()
+            total_distributions = NewsDistribution.objects.filter(news_post__in=queryset).count()
+
+            # ----- Pagination -----
             paginated_qs = self.paginate_queryset(queryset, request, view=self)
             serializer = MasterNewsPostSerializer(paginated_qs, many=True)
 
+            response_data = {
+                "counts": {
+                    "total_master_news_posts": total_posts,
+                    "total_news_distributions": total_distributions
+                },
+                "results": serializer.data
+            }
+
             return self.get_paginated_response(
-                serializer.data,
-                message=f"Posts fetched successfully for user {user.username}"
+                response_data,
+                message=f"Posts fetched successfully for {'all users' if role_name == 'MASTER' else user.username}"
             )
 
         except Exception as e:
@@ -1656,7 +1687,7 @@ class MyPostsListAPIView(APIView, PaginationMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
             
-
+            
 class NewsReportAPIView(APIView, PaginationMixin):
     """
     GET /api/news/report/
