@@ -1,0 +1,335 @@
+/* Recon Loader Styles */
+
+.recon-loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.recon-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: reconGridMove 20s linear infinite;
+}
+
+@keyframes reconGridMove {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(50px, 50px);
+  }
+}
+
+.recon-glow-orb {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: reconOrbPulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes reconOrbPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.recon-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  position: relative;
+  z-index: 10;
+}
+
+.recon-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.recon-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #fff;
+  border-radius: 50%;
+  animation: reconFloat 3s ease-in-out infinite;
+  opacity: 0;
+}
+
+.recon-particle:nth-child(1) {
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+.recon-particle:nth-child(2) {
+  top: 60%;
+  left: 80%;
+  animation-delay: 1s;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+}
+
+.recon-particle:nth-child(3) {
+  top: 80%;
+  left: 30%;
+  animation-delay: 2s;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.8);
+}
+
+.recon-particle:nth-child(4) {
+  top: 40%;
+  left: 70%;
+  animation-delay: 1.5s;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+}
+
+@keyframes reconFloat {
+  0%, 100% {
+    transform: translateY(0) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(-30px) scale(1);
+    opacity: 1;
+  }
+}
+
+.recon-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+}
+
+.recon-logo-wrapper {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.recon-orbital-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.recon-ring-1 {
+  width: 130px;
+  height: 130px;
+  border-top-color: rgba(59, 130, 246, 0.8);
+  border-right-color: rgba(59, 130, 246, 0.4);
+  animation: reconSpin 2s linear infinite;
+}
+
+.recon-ring-2 {
+  width: 160px;
+  height: 160px;
+  border-top-color: rgba(139, 92, 246, 0.6);
+  border-left-color: rgba(139, 92, 246, 0.3);
+  animation: reconSpin 3s linear infinite reverse;
+}
+
+.recon-ring-3 {
+  width: 190px;
+  height: 190px;
+  border-top-color: rgba(236, 72, 153, 0.4);
+  border-bottom-color: rgba(236, 72, 153, 0.2);
+  animation: reconSpin 4s linear infinite;
+}
+
+@keyframes reconSpin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.recon-scan-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    rgba(59, 130, 246, 0.8) 50%,
+    transparent 100%);
+  animation: reconScan 3s ease-in-out infinite;
+  z-index: 1;
+}
+
+@keyframes reconScan {
+  0%, 100% {
+    top: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.recon-logo {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
+  border-radius: 22px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  box-shadow: 
+    0 0 40px rgba(59, 130, 246, 0.3),
+    0 0 80px rgba(139, 92, 246, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.05);
+  animation: reconLogoGlow 3s ease-in-out infinite;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes reconLogoGlow {
+  0%, 100% {
+    box-shadow: 
+      0 0 40px rgba(59, 130, 246, 0.3),
+      0 0 80px rgba(139, 92, 246, 0.2),
+      inset 0 0 20px rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    box-shadow: 
+      0 0 60px rgba(59, 130, 246, 0.5),
+      0 0 100px rgba(139, 92, 246, 0.3),
+      inset 0 0 30px rgba(255, 255, 255, 0.1);
+  }
+}
+
+.recon-logo-text {
+  font-size: 48px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -2px;
+  animation: reconTextShine 2s ease-in-out infinite;
+}
+
+@keyframes reconTextShine {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.5);
+  }
+}
+
+.recon-brand-text {
+  font-size: 52px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, #888 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -2px;
+  opacity: 0;
+  animation: reconSlideIn 1s ease-out 0.5s forwards;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+}
+
+@keyframes reconSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.recon-progress-bar-container {
+  width: 300px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.recon-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(59, 130, 246, 0.8) 0%,
+    rgba(139, 92, 246, 0.8) 50%,
+    rgba(236, 72, 153, 0.8) 100%);
+  border-radius: 10px;
+  animation: reconProgressMove 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+@keyframes reconProgressMove {
+  0% {
+    width: 0%;
+    transform: translateX(0);
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+    transform: translateX(0);
+  }
+}
+
+.recon-loading-text {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+  animation: reconPulse 2s ease-in-out infinite;
+}
+
+@keyframes reconPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}

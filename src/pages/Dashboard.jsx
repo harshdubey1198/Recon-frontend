@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { fetchAdminStats, fetchDistributionRate, fetchMasterCategories, fetchNewsList } from "../../server";
-import { FileText, FolderOpen, Tag, Eye, ChevronRight, CheckCircle2, TrendingUp, Target, ArrowUpRight } from "lucide-react";
-import formatUsername from "../utils/formateName";
+import { fetchAdminStats,  fetchMasterCategories, fetchNewsList } from "../../server";
 import KPIOverview from "../components/dashboard/KpiOverview";
 import StatusOverview from "../components/dashboard/StatusOverview";
 import PortalLeaderboard from "../components/dashboard/PortalLeaderboard";
@@ -344,10 +342,7 @@ export default function Dashboard() {
       <KPIOverview data={stats} />
       <StatusOverview data={stats} />
       <PortalLeaderboard ref={portalLeaderboardRef} />
-      <SuccessRateChart height={520} 
-    //    width={520}
-        />
-      
+      <SuccessRateChart height={520} />
       <AnalyticsComponent/>
       </div>
     </div>

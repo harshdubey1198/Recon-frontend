@@ -371,25 +371,7 @@ export default function AnalyticsComponent({ categories }) {
               </table>
             </div>
           )}
-
-          {/* Color Indicators */}
-          <div className="mt-6 flex items-center space-x-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <p className="text-sm font-semibold text-gray-700">Color Indicators:</p>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-200 border-2 border-red-400 rounded"></div>
-              <span className="text-xs text-gray-600">No publication for 7+ days</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-yellow-200 border-2 border-yellow-400 rounded"></div>
-              <span className="text-xs text-gray-600">No publication for 48+ hours</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-orange-200 border-2 border-orange-400 rounded"></div>
-              <span className="text-xs text-gray-600">No publication for 24+ hours</span>
-            </div>
-          </div>
-          
-        </div>
+    </div>
       </div>
   
      

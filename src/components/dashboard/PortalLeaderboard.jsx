@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats } from "../../../server";
 import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, X, Users, FolderOpen, Tag } from "lucide-react";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function PortalLeaderboard() {
   const [domains, setDomains] = useState([]);
@@ -10,7 +12,8 @@ export default function PortalLeaderboard() {
   const [selectedPortal, setSelectedPortal] = useState(null);
   const [showPortalModal, setShowPortalModal] = useState(false);
   const [portalDetailData, setPortalDetailData] = useState(null);
-
+const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+const [filterLimit, setFilterLimit] = useState("ALL");
   const loadDomains = async () => {
     try {
       const res = await fetchDomainDistribution();
@@ -98,7 +101,61 @@ export default function PortalLeaderboard() {
     return 'text-red-600 bg-red-50';
   };
 
-  useEffect(() => {
+const handleDownload = (format) => {
+  let exportData = [];
+  let fileName = "";
+
+  if (showPortalModal && portalDetailData) {
+    // Export single portal data with details
+    exportData = [
+      {
+        Portal: portalDetailData.name,
+        Total_Publications: portalDetailData.success,
+        Total_Distributions: portalDetailData.total,
+        Failed: portalDetailData.failed,
+        Success_Rate: `${portalDetailData.publishedPercent}%`,
+        Avg_Publish_Time: portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0,
+        Today_Total: portalDetailData.todayTotal,
+        Today_Success: portalDetailData.todaySuccess,
+        Today_Failed: portalDetailData.todayFailed,
+        Today_Retry: portalDetailData.todayRetry,
+        Today_Avg_Time: portalDetailData.todayAverageTime,
+      },
+    ];
+    fileName = `Portal_Performance_Report_${portalDetailData.name}`;
+  } else {
+    // Export all portals data
+    exportData = domains.map((portal, index) => ({
+      Rank: index + 1,
+      Portal: portal.name,
+      Total_Publications: portal.success,
+      Total_Distributions: portal.total,
+      Failed: portal.failed,
+      Success_Rate: `${portal.publishedPercent}%`,
+      Avg_Publish_Time: portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0,
+      Today_Total: portal.todayTotal,
+      Today_Success: portal.todaySuccess,
+      Today_Failed: portal.todayFailed,
+      Today_Pending: portal.todayPending,
+      Today_Retry: portal.todayRetry,
+      Today_Avg_Time: portal.todayAverageTime,
+    }));
+    fileName = `Portal_Performance_Report_All_Portals`;
+  }
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Portal Report");
+
+  if (format === "csv") {
+    const csvData = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+    saveAs(blob, `${fileName}.csv`);
+  } else {
+    XLSX.writeFile(wb, `${fileName}.xlsx`);
+  }
+};
+useEffect(() => {
     loadDomains();
     loadWeeklyPerformanceData();
   }, []);
@@ -185,17 +242,69 @@ export default function PortalLeaderboard() {
       </div>
       {/* Portal Output Leaderboard */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
-        <div className="bg-black p-4 sm:p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+      <div className="bg-black p-4 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Award className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-50">Portal Output Leaderboard</h3>
+                <p className="text-blue-100 text-sm sm:text-base hidden sm:block">Performance metrics across all publishing portals</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-50">Portal Output Leaderboard</h3>
-              <p className="text-blue-100 text-sm sm:text-base hidden sm:block">Performance metrics across all publishing portals</p>
-            </div>
+            <div className="flex items-center gap-4">
+                {/* Filter Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-white font-medium text-sm">Show:</label>
+                  <select
+                    value={filterLimit}
+                    onChange={(e) => setFilterLimit(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-sm text-white backdrop-blur-sm hover:bg-white/20 transition cursor-pointer"
+                  >
+                    <option value="ALL" className="text-black">All</option>
+                    <option value="10" className="text-black">10</option>
+                    <option value="20" className="text-black">20</option>
+                    <option value="30" className="text-black">30</option>
+                  </select>
+                </div>
+
+                {/* Download Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDownloadOptions(!showDownloadOptions)}
+                    className="px-4 py-1.5 bg-white/20 text-white text-sm rounded-md hover:bg-white/30 backdrop-blur-sm transition"
+                  >
+                    Download ▼
+                  </button>
+
+                  {showDownloadOptions && (
+                    <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                      <button
+                        onClick={() => {
+                          handleDownload("csv");
+                          setShowDownloadOptions(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        CSV
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDownload("xlsx");
+                          setShowDownloadOptions(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        XLSX
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
           </div>
         </div>
+        
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1200px]">
@@ -409,7 +518,9 @@ export default function PortalLeaderboard() {
                   <div className="space-y-3">
                     {portalDetailData.topContributors?.length > 0 ? (
                       <div className="space-y-3">
-                        {portalDetailData.topContributors.map((user, idx) => (
+                       {portalDetailData.topContributors
+                          .slice(0, filterLimit === "ALL" ? portalDetailData.topContributors.length : Number(filterLimit))
+                          .map((user, idx) => (
                           <div key={idx} className="bg-white rounded-xl p-4 border border-gray-100 hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
