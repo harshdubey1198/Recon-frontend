@@ -76,7 +76,7 @@ const NewsList = () => {
       setPublishingId(item.id);
       const res = await publishNewsArticle(item.id);
       if (res?.data?.status) {
-        console.log("✅ Re-publish success:", res.data.message);
+        // console.log("✅ Re-publish success:", res.data.message);
         toast.success("Article republished successfully!");
         loadDistributedNews(item.id); 
       } else {
@@ -90,39 +90,39 @@ const NewsList = () => {
     }
   };
   // 🔁 Auto-refresh every 20 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      console.log("🔄 Auto-refresh triggered...");
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     console.log("🔄 Auto-refresh triggered...");
 
-      loadNewsWithFilters({
-        search,
-        status,
-        distribution_status: distributionStatus,
-        portal_id: selectedPortal,
-        master_category_id: selectedMasterCategory,
-        username: createdBy,
-        date_filter: { start_date: startDate, end_date: endDate },
-        page,
-      });
+  //     loadNewsWithFilters({
+  //       search,
+  //       status,
+  //       distribution_status: distributionStatus,
+  //       portal_id: selectedPortal,
+  //       master_category_id: selectedMasterCategory,
+  //       username: createdBy,
+  //       date_filter: { start_date: startDate, end_date: endDate },
+  //       page,
+  //     });
 
-      if (expandedRow && distributedData[expandedRow]) {
-        loadDistributedNews(expandedRow);
-      }
-    }, 15000);  
+  //     if (expandedRow && distributedData[expandedRow]) {
+  //       loadDistributedNews(expandedRow);
+  //     }
+  //   }, 15000);  
 
-    return () => clearInterval(interval);
-  }, [
-    search,
-    status,
-    distributionStatus,
-    selectedPortal,
-    selectedMasterCategory,
-    createdBy,
-    startDate,
-    endDate,
-    page,
-    expandedRow,
-  ]);
+  //   return () => clearInterval(interval);
+  // }, [
+  //   search,
+  //   status,
+  //   distributionStatus,
+  //   selectedPortal,
+  //   selectedMasterCategory,
+  //   createdBy,
+  //   startDate,
+  //   endDate,
+  //   page,
+  //   expandedRow,
+  // ]);
 
 
   useEffect(() => {
@@ -159,7 +159,7 @@ const NewsList = () => {
       end_date = df.end_date || "";
     }
 
-    console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
+    // console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
 
 
     const res = await fetchMyNewsPosts({
