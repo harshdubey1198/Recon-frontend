@@ -1,9 +1,11 @@
 import requests
 import json
 import time
+import logging
 from collections import defaultdict
 from django.utils import timezone
 from django.utils.timezone import now
+from django.db.models.functions import Coalesce
 from datetime import date
 from urllib.parse import urljoin
 from datetime import timedelta
@@ -42,6 +44,10 @@ from user.models import (
 )
 
 User = get_user_model()
+
+logger = logging.getLogger("news_publish")
+
+REQUEST_TIMEOUT_SECS = 60
 
 class PortalListCreateView(APIView, PaginationMixin):
     """
@@ -689,17 +695,24 @@ class MasterNewsPostPublishAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        try:
-            user = request.user
+        user = request.user
+        results = []
 
-            # 1. Validate MasterNewsPost
+        try:
+            # 1) Validate post
             news_post = get_object_or_404(MasterNewsPost, pk=pk)
 
-            master_category_id = request.data.get("master_category_id") or getattr(news_post.master_category, "id", None)
+            master_category_id = (
+                request.data.get("master_category_id")
+                or getattr(news_post.master_category, "id", None)
+            )
             if not master_category_id:
-                return Response(error_response("master_category_id is missing and not saved in post."), status=400)
+                return Response(
+                    error_response("master_category_id is missing and not saved in post."),
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # 2. Validate user assignment
+            # 2) Validate user assignment
             assignment = UserCategoryGroupAssignment.objects.filter(
                 user=user, master_category_id=master_category_id
             ).first()
@@ -709,39 +722,55 @@ class MasterNewsPostPublishAPIView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # 3. Get portal mappings
-            mappings = MasterCategoryMapping.objects.filter(
-                master_category_id=master_category_id
-            ).select_related("portal_category", "portal_category__portal")
-
+            # 3) Get portal mappings
+            mappings = (
+                MasterCategoryMapping.objects.filter(
+                    master_category_id=master_category_id
+                )
+                .select_related("portal_category", "portal_category__portal")
+            )
             if not mappings.exists():
-                return Response(error_response("No portals mapped for this master category."), status=400)
+                return Response(
+                    error_response("No portals mapped for this master category."),
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            # 4. Handle excluded portals
-            excluded_portals = request.data.get("excluded_portals") or news_post.excluded_portals or []
+            # 4) Excluded portals
+            excluded_portals = (
+                request.data.get("excluded_portals")
+                or news_post.excluded_portals
+                or []
+            )
             if isinstance(excluded_portals, str):
-                excluded_portals = json.loads(excluded_portals)
+                try:
+                    excluded_portals = json.loads(excluded_portals)
+                except Exception:
+                    excluded_portals = []
             if not isinstance(excluded_portals, list):
                 excluded_portals = []
 
-            results = []
-
-            # 5. Process each portal mapping
+            # 5) Iterate per mapping — isolate each portal so one failure doesn't abort everything
             for mapping in mappings:
                 portal = mapping.portal_category.portal
                 portal_category = mapping.portal_category
 
-                # Skip manually excluded
-                if portal.id in excluded_portals or portal.name in excluded_portals:
-                    results.append({
-                        "portal": portal.name,
-                        "category": portal_category.name,
-                        "success": False,
-                        "response": "Skipped manually by user",
-                    })
+                portal_name = getattr(portal, "name", "unknown")
+                logger.info("Publishing to %s started.", portal_name)
+
+                # Respect manual exclusions
+                if portal.id in excluded_portals or portal_name in excluded_portals:
+                    results.append(
+                        {
+                            "portal": portal_name,
+                            "category": portal_category.name if portal_category else None,
+                            "success": False,
+                            "response": "Skipped manually by user",
+                        }
+                    )
+                    logger.info("Publishing to %s skipped by exclusion.", portal_name)
                     continue
 
-                # Existing distribution or create pending
+                # Ensure / create a distribution row
                 dist, created = NewsDistribution.objects.get_or_create(
                     news_post=news_post,
                     portal=portal,
@@ -753,150 +782,256 @@ class MasterNewsPostPublishAPIView(APIView):
                         "started_at": timezone.now(),
                     },
                 )
+                # # If it existed but portal_category changed in mapping, keep it synced
+                # if not created and dist.portal_category_id != portal_category.id:
+                #     dist.portal_category = portal_category
+                #     dist.save(update_fields=["portal_category"])
 
-                # Skip if already successful
+                # Already successful? Skip
                 if dist.status == "SUCCESS":
-                    results.append({
-                        "portal": portal.name,
-                        "category": portal_category.name,
-                        "success": True,
-                        "response": "Already published successfully, skipped.",
-                    })
+                    results.append(
+                        {
+                            "portal": portal_name,
+                            "category": portal_category.name if portal_category else None,
+                            "success": True,
+                            "response": "Already published successfully, skipped.",
+                        }
+                    )
+                    logger.info("Publishing to %s skipped (already SUCCESS).", portal_name)
                     continue
 
-                # Increment retry if failed previously
+                # If previously failed, mark as retry
                 if dist.status == "FAILED":
-                    dist.retry_count += 1
+                    dist.retry_count = (dist.retry_count or 0) + 1
                     dist.status = "PENDING"
                     dist.response_message = "Retrying..."
-                    dist.save(update_fields=["retry_count", "status", "response_message"])
+                    dist.started_at = timezone.now()
+                    dist.save(update_fields=["retry_count", "status", "response_message", "started_at"])
 
-                start_time = time.perf_counter()
+                start_perf = time.perf_counter()
+                dist.started_at = timezone.now()
+                dist.response_message = "Processing..."
+                dist.save(update_fields=["started_at", "response_message"])
 
-                # 6. AI generation
+                # Wrap the entire portal iteration so we never bubble up
                 try:
-                    if mapping.use_default_content:
-                        rewritten_title = news_post.title
-                        rewritten_short = news_post.short_description
-                        rewritten_content = news_post.content
-                        rewritten_meta = news_post.meta_title or news_post.title
-                        rewritten_slug = news_post.slug or slugify(news_post.meta_title or news_post.title)
-                    else:
-                        portal_prompt = (
-                            PortalPrompt.objects.filter(portal=portal, is_active=True).first()
-                            or PortalPrompt.objects.filter(portal__isnull=True, is_active=True).first()
+                    # 6) AI generation (safe guard)
+                    try:
+                        if getattr(mapping, "use_default_content", False):
+                            rewritten_title = news_post.title
+                            rewritten_short = news_post.short_description
+                            rewritten_content = news_post.content
+                            rewritten_meta = news_post.meta_title or news_post.title
+                            rewritten_slug = news_post.slug or slugify(
+                                news_post.meta_title or news_post.title
+                            )
+                        else:
+                            portal_prompt = (
+                                PortalPrompt.objects.filter(portal=portal, is_active=True).first()
+                                or PortalPrompt.objects.filter(portal__isnull=True, is_active=True).first()
+                            )
+                            prompt_text = (
+                                portal_prompt.prompt_text
+                                if portal_prompt
+                                else "Rewrite the content slightly for clarity and engagement."
+                            )
+
+                            ai_result = generate_variation_with_gpt(
+                                news_post.title,
+                                news_post.short_description,
+                                news_post.content,
+                                prompt_text,
+                                news_post.meta_title,
+                                news_post.slug,
+                                portal_name=portal_name,
+                            )
+                            if not ai_result:
+                                raise ValueError("AI generation failed — no data returned")
+
+                            (
+                                rewritten_title,
+                                rewritten_short,
+                                rewritten_content,
+                                rewritten_meta,
+                                rewritten_slug,
+                            ) = ai_result
+
+                    except Exception as e:
+                        # Mark this portal as failed but continue the loop
+                        msg = f"AI generation failed: {str(e)}"
+                        logger.exception(msg)
+                        dist.status = "FAILED"
+                        dist.response_message = msg
+                        dist.completed_at = timezone.now()
+                        dist.time_taken = round(time.perf_counter() - start_perf, 2)
+                        dist.save(
+                            update_fields=[
+                                "status",
+                                "response_message",
+                                "completed_at",
+                                "time_taken",
+                            ]
                         )
-                        prompt_text = (
-                            portal_prompt.prompt_text
-                            if portal_prompt
-                            else "Rewrite the content slightly for clarity and engagement."
+                        results.append(
+                            {
+                                "portal": portal_name,
+                                "category": portal_category.name if portal_category else None,
+                                "success": False,
+                                "response": msg,
+                                "time_taken": dist.time_taken,
+                            }
                         )
+                        logger.info("Publishing to %s finished with FAILED (AI).", portal_name)
+                        continue  # next portal
 
-                        result = generate_variation_with_gpt(
-                            news_post.title,
-                            news_post.short_description,
-                            news_post.content,
-                            prompt_text,
-                            news_post.meta_title,
-                            news_post.slug,
-                            portal_name=portal.name,
+                    # 7) Validate user mapping
+                    portal_user = PortalUserMapping.objects.filter(
+                        user=user, portal=portal, status="MATCHED"
+                    ).first()
+                    if not portal_user:
+                        msg = "No valid portal user mapping found."
+                        dist.status = "FAILED"
+                        dist.response_message = msg
+                        dist.completed_at = timezone.now()
+                        dist.time_taken = round(time.perf_counter() - start_perf, 2)
+                        dist.save(
+                            update_fields=[
+                                "status",
+                                "response_message",
+                                "completed_at",
+                                "time_taken",
+                            ]
                         )
+                        results.append(
+                            {
+                                "portal": portal_name,
+                                "category": portal_category.name if portal_category else None,
+                                "success": False,
+                                "response": msg,
+                                "time_taken": dist.time_taken,
+                            }
+                        )
+                        logger.info("Publishing to %s finished with FAILED (no portal user).", portal_name)
+                        continue
 
-                        if not result:
-                            raise ValueError("AI generation failed — no data returned")
+                    # 8) Payload
+                    payload = {
+                        "post_cat": portal_category.external_id if portal_category else None,
+                        "post_title": rewritten_title,
+                        "post_short_des": rewritten_short,
+                        "post_des": rewritten_content,
+                        "meta_title": rewritten_meta,
+                        "slug": rewritten_slug,
+                        "post_tag": news_post.post_tag or "",
+                        "author": portal_user.portal_user_id,
+                        "Event_date": (news_post.Event_date or timezone.now().date()).isoformat(),
+                        "Eventend_date": (news_post.Event_end_date or timezone.now().date()).isoformat(),
+                        "schedule_date": (news_post.schedule_date or timezone.now()).isoformat(),
+                        "is_active": int(bool(news_post.latest_news)) if news_post.latest_news is not None else 0,
+                        "Event": int(bool(news_post.upcoming_event)) if news_post.upcoming_event is not None else 0,
+                        "Head_Lines": int(bool(news_post.Head_Lines)) if news_post.Head_Lines is not None else 0,
+                        "articles": int(bool(news_post.articles)) if news_post.articles is not None else 0,
+                        "trending": int(bool(news_post.trending)) if news_post.trending is not None else 0,
+                        "BreakingNews": int(bool(news_post.BreakingNews)) if news_post.BreakingNews is not None else 0,
+                        "post_status": news_post.counter or 0,
+                    }
 
-                        rewritten_title, rewritten_short, rewritten_content, rewritten_meta, rewritten_slug = result
-
-                except Exception as e:    
-                    dist.status = "FAILED"
-                    dist.response_message = f"AI generation failed: {str(e)}"
-                    dist.completed_at = timezone.now()
-                    dist.save(update_fields=["status", "response_message", "completed_at"])
-
-                    results.append({
-                        "portal": portal.name,
-                        "category": portal_category.name,
-                        "success": False,
-                        "response": f"AI generation failed: {str(e)}",
-                    })
-                    continue  # skip posting for this portal
-
-                # 7. Get portal user mapping
-                portal_user = PortalUserMapping.objects.filter(user=user, portal=portal, status="MATCHED").first()
-                if not portal_user:
-                    dist.status = "FAILED"
-                    dist.response_message = "No valid portal user mapping found."
-                    dist.completed_at = timezone.now()
-                    dist.save(update_fields=["status", "response_message", "completed_at"])
-
-                    results.append({
-                        "portal": portal.name,
-                        "category": portal_category.name,
-                        "success": False,
-                        "response": "No valid portal user mapping found.",
-                    })
-                    continue                
-
-                # 8. Prepare payload
-                payload = {
-                    "post_cat": portal_category.external_id if portal_category else None,
-                    "post_title": rewritten_title,
-                    "post_short_des": rewritten_short,
-                    "post_des": rewritten_content,
-                    "meta_title": rewritten_meta,
-                    "slug": rewritten_slug,
-                    "post_tag": news_post.post_tag or "",
-                    "author": portal_user.portal_user_id,
-                    "Event_date": (news_post.Event_date or timezone.now().date()).isoformat(),
-                    "Eventend_date": (news_post.Event_end_date or timezone.now().date()).isoformat(),
-                    "schedule_date": (news_post.schedule_date or timezone.now()).isoformat(),
-                    "is_active": int(bool(news_post.latest_news)) if news_post.latest_news is not None else 0,
-                    "Event": int(bool(news_post.upcoming_event)) if news_post.upcoming_event is not None else 0,
-                    "Head_Lines": int(bool(news_post.Head_Lines)) if news_post.Head_Lines is not None else 0,
-                    "articles": int(bool(news_post.articles)) if news_post.articles is not None else 0,
-                    "trending": int(bool(news_post.trending)) if news_post.trending is not None else 0,
-                    "BreakingNews": int(bool(news_post.BreakingNews)) if news_post.BreakingNews is not None else 0,
-                    "post_status": news_post.counter or 0,
-                }
-                files = {"post_image": open(news_post.post_image.path, "rb")} if news_post.post_image else {}
-
-                # 9. Call portal API
-                try:
+                    # 9) Call portal API with proper file handling
                     api_url = f"{portal.base_url}/api/create-news/"
-                    response = requests.post(api_url, data=payload, files=files, timeout=90)
-                    success = response.status_code in [200, 201]
-                    response_msg = response.text
+                    response = None
+                    try:
+                        if news_post.post_image and getattr(news_post.post_image, "path", None):
+                            with open(news_post.post_image.path, "rb") as f:
+                                files = {"post_image": f}
+                                response = requests.post(
+                                    api_url, data=payload, files=files, timeout=REQUEST_TIMEOUT_SECS
+                                )
+                        else:
+                            response = requests.post(
+                                api_url, data=payload, timeout=REQUEST_TIMEOUT_SECS
+                            )
+
+                        success = response.status_code in (200, 201)
+                        response_msg = response.text
+
+                    except requests.Timeout:
+                        success = False
+                        response_msg = f"Portal API timed out after {REQUEST_TIMEOUT_SECS}s."
+                    except requests.RequestException as re:
+                        success = False
+                        response_msg = f"Portal API error: {str(re)}"
+                    except Exception as e:
+                        success = False
+                        response_msg = f"Unexpected error posting to portal: {str(e)}"
+
+                    # 10) Finalize dist for this portal
+                    elapsed = round(time.perf_counter() - start_perf, 2)
+                    dist.status = "SUCCESS" if success else "FAILED"
+                    dist.response_message = response_msg
+                    dist.ai_title = rewritten_title
+                    dist.ai_short_description = rewritten_short
+                    dist.ai_content = rewritten_content
+                    dist.ai_meta_title = rewritten_meta
+                    dist.ai_slug = rewritten_slug
+                    dist.time_taken = elapsed
+                    dist.completed_at = timezone.now()
+                    # Keep started_at realistic using elapsed
+                    dist.started_at = dist.started_at or (timezone.now() - timezone.timedelta(seconds=elapsed))
+                    dist.save()
+
+                    results.append(
+                        {
+                            "portal": portal_name,
+                            "category": portal_category.name if portal_category else None,
+                            "success": bool(success),
+                            "response": response_msg,
+                            "time_taken": elapsed,
+                        }
+                    )
+                    logger.info(
+                        "Publishing to %s finished with %s.",
+                        portal_name,
+                        dist.status,
+                    )
+
                 except Exception as e:
-                    success = False
-                    response_msg = str(e)
+                    # Absolute safety net: never let one portal crash the whole request
+                    logger.exception("Unexpected crash while publishing to %s: %s", portal_name, str(e))
+                    elapsed = round(time.perf_counter() - start_perf, 2)
+                    dist.status = "FAILED"
+                    dist.response_message = f"Unexpected crash in portal iteration: {str(e)}"
+                    dist.time_taken = elapsed
+                    dist.completed_at = timezone.now()
+                    dist.save(
+                        update_fields=["status", "response_message", "time_taken", "completed_at"]
+                    )
 
-                elapsed_time = round(time.perf_counter() - start_time, 2)
+                    results.append(
+                        {
+                            "portal": portal_name,
+                            "category": portal_category.name if portal_category else None,
+                            "success": False,
+                            "response": dist.response_message,
+                            "time_taken": elapsed,
+                        }
+                    )
 
-                # 10. Update distribution
-                dist.status = "SUCCESS" if success else "FAILED"
-                dist.response_message = response_msg
-                dist.ai_title = rewritten_title
-                dist.ai_short_description = rewritten_short
-                dist.ai_content = rewritten_content
-                dist.ai_meta_title = rewritten_meta
-                dist.ai_slug = rewritten_slug
-                dist.time_taken = elapsed_time
-                dist.started_at = timezone.now() - timezone.timedelta(seconds=elapsed_time)
-                dist.completed_at = timezone.now()
-                dist.save()
+            # Return aggregated outcomes without 500
+            return Response(
+                success_response(
+                    results,
+                    "Publish attempt completed. Check per-portal statuses."
+                ),
+                status=status.HTTP_200_OK,
+            )
 
-                results.append({
-                    "portal": portal.name,
-                    "category": portal_category.name,
-                    "success": success,
-                    "response": response_msg,
-                    "time_taken": elapsed_time,
-                })
-
-            return Response(success_response(results, "News published successfully."))
-
-        except Exception as e:
-            return Response(error_response(str(e)), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as outer_e:
+            # If we ever get here, it's truly an outer error
+            logger.exception("Master publish crashed: %s", str(outer_e))
+            return Response(
+                error_response(f"Master publish crashed: {str(outer_e)}"),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class NewsPostCreateAPIView(APIView):
@@ -2049,11 +2184,18 @@ class GlobalStatsAPIView(APIView):
     - Top Performing Categories (MasterCategory-wise post counts)
     - Weekly Performance (Success/Failed counts for each day, last 7 days)
     - Top Contributors (User-wise total distributions across all portals)
+    Role logic:
+        - MASTER: weekly performance for all users
+        - USER: weekly performance for their own posts only
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         try:
+            user = request.user
+            role_obj = getattr(user, "role", None)
+            role_name = getattr(role_obj.role, "name", "").upper() if role_obj else None
+
             today = timezone.now().date()
             last_week = today - timedelta(days=6)
 
@@ -2069,8 +2211,14 @@ class GlobalStatsAPIView(APIView):
             )
 
             # --- 2️⃣ Weekly Performance (SUCCESS / FAILED for last 7 days) ---
+            weekly_qs = distributions.filter(sent_at__date__range=[last_week, today])
+
+            # Apply user-level filter if not MASTER
+            if role_name != "MASTER":
+                weekly_qs = weekly_qs.filter(news_post__created_by=user)
+
             weekly_data = (
-                distributions.filter(sent_at__date__range=[last_week, today])
+                weekly_qs
                 .values("sent_at__date", "status")
                 .annotate(count=Count("id"))
             )
@@ -2498,3 +2646,145 @@ class MasterCategoryHeatmapAPIView(APIView):
 
         except Exception as e:
             return Response({"success": False, "error": str(e)}, status=500)
+        
+
+class UserPostStatsAPIView(APIView, PaginationMixin):
+    """
+    GET /api/master/users/post-stats/?user_id=5&date_filter=7d&start_date=2025-10-01&end_date=2025-10-10
+
+    For MASTER users only.
+    Returns posting and distribution statistics for all users (or a specific user).
+
+    Query Params:
+    - user_id (optional): Filter by specific user
+    - date_filter: today | yesterday | 7d | 1m | custom
+    - start_date / end_date: required if date_filter=custom
+
+    Example Response:
+    {
+        "status": true,
+        "pagination": {...},
+        "data": [
+            {
+                "user_id": 3,
+                "username": "editor_1",
+                "num_master_posts": 12,
+                "num_total_distributions": 28,
+                "num_successful_distributions": 24,
+                "num_failed_distributions": 4,
+                "assigned_master_categories": ["Business", "Sports", "Politics"]
+            },
+            ...
+        ],
+        "message": "User posting stats fetched successfully"
+    }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            role_obj = getattr(user, "role", None)
+            role_name = getattr(role_obj.role, "name", "").upper() if role_obj else None
+
+            # --- Restrict access to MASTER users only ---
+            if role_name != "MASTER":
+                return Response(
+                    error_response("Access denied. Only MASTER users can access this endpoint."),
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # --- Query Parameters ---
+            params = request.query_params
+            selected_user_id = params.get("user_id")
+            date_filter = params.get("range")  # today | yesterday | 7d | 1m | custom
+            start_date = params.get("start_date")
+            end_date = params.get("end_date")
+
+            # --- Base Querysets ---
+            posts_qs = MasterNewsPost.objects.select_related("created_by").all()
+            dist_qs = NewsDistribution.objects.select_related("news_post", "news_post__created_by")
+
+            # --- Apply Date Filters ---
+            now = timezone.now()
+            today = now.date()
+            
+            print(date_filter)
+
+            if date_filter == "today":
+                posts_qs = posts_qs.filter(created_at__date=today)
+                dist_qs = dist_qs.filter(sent_at__date=today)
+            elif date_filter == "yesterday":
+                posts_qs = posts_qs.filter(created_at__date=today - timedelta(days=1))
+                dist_qs = dist_qs.filter(sent_at__date=today - timedelta(days=1))
+            elif date_filter == "7d":
+                posts_qs = posts_qs.filter(created_at__gte=now - timedelta(days=7))
+                dist_qs = dist_qs.filter(sent_at__gte=now - timedelta(days=7))
+            elif date_filter == "1m":
+                posts_qs = posts_qs.filter(created_at__gte=now - timedelta(days=30))
+                dist_qs = dist_qs.filter(sent_at__gte=now - timedelta(days=30))
+            elif date_filter == "custom":
+                parsed_start = parse_date(start_date)
+                parsed_end = parse_date(end_date)
+                if not parsed_start or not parsed_end:
+                    return Response(
+                        error_response("For 'custom' date_filter, both start_date and end_date are required (YYYY-MM-DD)."),
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                posts_qs = posts_qs.filter(created_at__date__range=[parsed_start, parsed_end])
+                dist_qs = dist_qs.filter(sent_at__date__range=[parsed_start, parsed_end])
+
+            # --- Optional: Filter by specific user ---
+            if selected_user_id:
+                posts_qs = posts_qs.filter(created_by_id=selected_user_id)
+                dist_qs = dist_qs.filter(news_post__created_by_id=selected_user_id)
+
+            # --- Aggregate Stats Per User ---
+            users_data = (
+                posts_qs.values("created_by_id", "created_by__username")
+                .annotate(
+                    num_master_posts=Count("id", distinct=True),
+                    num_total_distributions=Coalesce(
+                        Count("news_distribution", distinct=True), 0
+                    ),
+                    num_successful_distributions=Coalesce(
+                        Count("news_distribution", filter=Q(news_distribution__status="SUCCESS"), distinct=True), 0
+                    ),
+                    num_failed_distributions=Coalesce(
+                        Count("news_distribution", filter=Q(news_distribution__status="FAILED"), distinct=True), 0
+                    ),
+                )
+                .order_by("created_by__username")
+            )
+
+            # --- Map Assigned Master Categories for Each User ---
+            user_ids = [u["created_by_id"] for u in users_data]
+            user_categories_map = (
+                UserCategoryGroupAssignment.objects.filter(
+                    user_id__in=user_ids, master_category__isnull=False
+                )
+                .values("user_id", "master_category__name")
+            )
+
+            # Build a mapping { user_id: [category names] }
+            category_mapping = {}
+            for entry in user_categories_map:
+                category_mapping.setdefault(entry["user_id"], []).append(entry["master_category__name"])
+
+            # --- Merge category data ---
+            for user in users_data:
+                user["assigned_master_categories"] = category_mapping.get(user["created_by_id"], [])
+
+            # --- Pagination ---
+            paginated_data = self.paginate_queryset(users_data, request)
+            return self.get_paginated_response(
+                paginated_data,
+                message="User posting stats fetched successfully",
+            )
+
+        except Exception as e:
+            return Response(
+                error_response(str(e)),
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

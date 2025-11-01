@@ -185,12 +185,26 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
+
+        #HANDLER for news publish logs
+        "news_publish_file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "news_publish.log"),
+            "formatter": "verbose",
+        },
     },
 
     "loggers": {
-        # Logger specifically for your AI-related module
         "ai_variation": {
             "handlers": ["file", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        #LOGGER for news publishing API
+        "news_publish": {
+            "handlers": ["news_publish_file", "console"],
             "level": "INFO",
             "propagate": False,
         },

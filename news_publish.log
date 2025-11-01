@@ -1,0 +1,8 @@
+[2025-11-01 11:56:54,593] INFO news_publish — Publishing to newsibleasia started.
+[2025-11-01 11:56:55,496] INFO news_publish — Publishing to newsibleasia finished with SUCCESS.
+[2025-11-01 11:56:55,497] INFO news_publish — Publishing to gccnews started.
+[2025-11-01 11:57:48,332] INFO news_publish — Publishing to gccnews finished with FAILED.
+[2025-11-01 11:57:48,332] INFO news_publish — Publishing to cninews started.
+[2025-11-01 11:58:42,236] INFO news_publish — Publishing to cninews finished with SUCCESS.
+[2025-11-01 11:58:42,237] INFO news_publish — Publishing to middleeastbulletin started.
+[2025-11-01 11:59:38,098] INFO news_publish — Publishing to middleeastbulletin finished with FAILED.
