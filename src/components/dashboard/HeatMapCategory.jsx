@@ -159,7 +159,7 @@ useEffect(() => {
         <div className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Darker colors indicate higher publishing activity. Click any cell to view articles.
+              Darker colors indicate higher publishing activity.
             </p>
             
             <div className="flex items-center space-x-2">

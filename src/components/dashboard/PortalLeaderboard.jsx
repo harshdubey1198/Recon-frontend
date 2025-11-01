@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats } from "../../../server";
 import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, X, Users, FolderOpen, Tag } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import formatUsername from "../../utils/formateName";
 
 export default function PortalLeaderboard() {
   const [domains, setDomains] = useState([]);
@@ -12,8 +13,14 @@ export default function PortalLeaderboard() {
   const [selectedPortal, setSelectedPortal] = useState(null);
   const [showPortalModal, setShowPortalModal] = useState(false);
   const [portalDetailData, setPortalDetailData] = useState(null);
-const [showDownloadOptions, setShowDownloadOptions] = useState(false);
-const [filterLimit, setFilterLimit] = useState("ALL");
+  const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+  const [filterLimit, setFilterLimit] = useState("ALL");
+  const [globalContributorsPage, setGlobalContributorsPage] = useState(1);
+  const [modalContributorsPage, setModalContributorsPage] = useState(1);
+  const globalContributorsRef = useRef(null);
+  const modalContributorsRef = useRef(null);
+  const ITEMS_PER_PAGE = 8;
+
   const loadDomains = async () => {
     try {
       const res = await fetchDomainDistribution();
@@ -87,6 +94,7 @@ const [filterLimit, setFilterLimit] = useState("ALL");
         setPortalDetailData(detailData);
         setSelectedPortal(portal);
         setShowPortalModal(true);
+        setModalContributorsPage(1);
       } else {
         console.error("Portal stats API returned invalid status:", res.data);
       }
@@ -95,86 +103,105 @@ const [filterLimit, setFilterLimit] = useState("ALL");
     }
   };
 
+  const handleGlobalScroll = useCallback(() => {
+    if (!globalContributorsRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = globalContributorsRef.current;
+    if (scrollTop + clientHeight >= scrollHeight - 10) {
+      setGlobalContributorsPage(prev => {
+        const maxPage = Math.ceil(globalTopContributors.length / ITEMS_PER_PAGE);
+        return prev < maxPage ? prev + 1 : prev;
+      });
+    }
+  }, [globalTopContributors.length]);
+
+  const handleModalScroll = useCallback(() => {
+    if (!modalContributorsRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = modalContributorsRef.current;
+    if (scrollTop + clientHeight >= scrollHeight - 10) {
+      setModalContributorsPage(prev => {
+        const maxPage = Math.ceil((portalDetailData?.topContributors?.length || 0) / ITEMS_PER_PAGE);
+        return prev < maxPage ? prev + 1 : prev;
+      });
+    }
+  }, [portalDetailData?.topContributors?.length]);
+
   const getPerformanceColor = (percent) => {
     if (percent >= 80) return 'text-green-600 bg-green-50';
     if (percent >= 60) return 'text-yellow-600 bg-yellow-50';
     return 'text-red-600 bg-red-50';
   };
 
-const handleDownload = (format) => {
-  let exportData = [];
-  let fileName = "";
+  const handleDownload = (format) => {
+    let exportData = [];
+    let fileName = "";
 
-  if (showPortalModal && portalDetailData) {
-    // Export single portal data with details
-    exportData = [
-      {
-        Portal: portalDetailData.name,
-        Total_Publications: portalDetailData.success,
-        Total_Distributions: portalDetailData.total,
-        Failed: portalDetailData.failed,
-        Success_Rate: `${portalDetailData.publishedPercent}%`,
-        Avg_Publish_Time: portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0,
-        Today_Total: portalDetailData.todayTotal,
-        Today_Success: portalDetailData.todaySuccess,
-        Today_Failed: portalDetailData.todayFailed,
-        Today_Retry: portalDetailData.todayRetry,
-        Today_Avg_Time: portalDetailData.todayAverageTime,
-      },
-    ];
-    fileName = `Portal_Performance_Report_${portalDetailData.name}`;
-  } else {
-    // Export all portals data
-    exportData = domains.map((portal, index) => ({
-      Rank: index + 1,
-      Portal: portal.name,
-      Total_Publications: portal.success,
-      Total_Distributions: portal.total,
-      Failed: portal.failed,
-      Success_Rate: `${portal.publishedPercent}%`,
-      Avg_Publish_Time: portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0,
-      Today_Total: portal.todayTotal,
-      Today_Success: portal.todaySuccess,
-      Today_Failed: portal.todayFailed,
-      Today_Pending: portal.todayPending,
-      Today_Retry: portal.todayRetry,
-      Today_Avg_Time: portal.todayAverageTime,
-    }));
-    fileName = `Portal_Performance_Report_All_Portals`;
-  }
+    if (showPortalModal && portalDetailData) {
+      exportData = [
+        {
+          Portal: portalDetailData.name,
+          Total_Publications: portalDetailData.success,
+          Total_Distributions: portalDetailData.total,
+          Failed: portalDetailData.failed,
+          Success_Rate: `${portalDetailData.publishedPercent}%`,
+          Avg_Publish_Time: portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0,
+          Today_Total: portalDetailData.todayTotal,
+          Today_Success: portalDetailData.todaySuccess,
+          Today_Failed: portalDetailData.todayFailed,
+          Today_Retry: portalDetailData.todayRetry,
+          Today_Avg_Time: portalDetailData.todayAverageTime,
+        },
+      ];
+      fileName = `Portal_Performance_Report_${portalDetailData.name}`;
+    } else {
+      exportData = domains.map((portal, index) => ({
+        Rank: index + 1,
+        Portal: portal.name,
+        Total_Publications: portal.success,
+        Total_Distributions: portal.total,
+        Failed: portal.failed,
+        Success_Rate: `${portal.publishedPercent}%`,
+        Avg_Publish_Time: portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0,
+        Today_Total: portal.todayTotal,
+        Today_Success: portal.todaySuccess,
+        Today_Failed: portal.todayFailed,
+        Today_Pending: portal.todayPending,
+        Today_Retry: portal.todayRetry,
+        Today_Avg_Time: portal.todayAverageTime,
+      }));
+      fileName = `Portal_Performance_Report_All_Portals`;
+    }
 
-  const ws = XLSX.utils.json_to_sheet(exportData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Portal Report");
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Portal Report");
 
-  if (format === "csv") {
-    const csvData = XLSX.utils.sheet_to_csv(ws);
-    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-    saveAs(blob, `${fileName}.csv`);
-  } else {
-    XLSX.writeFile(wb, `${fileName}.xlsx`);
-  }
-};
-useEffect(() => {
+    if (format === "csv") {
+      const csvData = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, `${fileName}.csv`);
+    } else {
+      XLSX.writeFile(wb, `${fileName}.xlsx`);
+    }
+  };
+
+  useEffect(() => {
     loadDomains();
     loadWeeklyPerformanceData();
   }, []);
 
-  // Public method to refresh data
   const refreshData = async () => {
     await Promise.all([loadDomains(), loadWeeklyPerformanceData()]);
   };
 
-  // Expose refresh method via ref (if needed)
   React.useImperativeHandle(React.forwardRef(() => {}), () => ({
     refreshData
   }));
 
   return (
     <>
-    {/* Global Top Contributors and Categories Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Top Contributors */}
         <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-orange-100 p-4 sm:p-6">
           <div className="flex items-center space-x-2 mb-3 sm:mb-4">
             <Users className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
@@ -182,8 +209,16 @@ useEffect(() => {
           </div>
           <div className="space-y-2 sm:space-y-3">
             {globalTopContributors?.length > 0 ? (
-              <div className="space-y-2 sm:space-y-3">
-                {globalTopContributors.map((user, idx) => (
+              <div 
+                ref={globalContributorsRef}
+                onScroll={handleGlobalScroll}
+                className="space-y-2 sm:space-y-3 max-h-[400px] overflow-y-auto pr-2"
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#d1d5db #f3f4f6'
+                }}
+              >
+                {globalTopContributors.slice(0, globalContributorsPage * ITEMS_PER_PAGE).map((user, idx) => (
                   <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
@@ -194,7 +229,7 @@ useEffect(() => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                            {user.news_post__created_by__username || 'Unknown User'}
+                            {formatUsername(user.news_post__created_by__username || 'Unknown User')}
                           </p>
                           <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
                         </div>
@@ -206,6 +241,11 @@ useEffect(() => {
                     </div>
                   </div>
                 ))}
+                {globalContributorsPage * ITEMS_PER_PAGE < globalTopContributors.length && (
+                  <div className="text-center py-2">
+                    <p className="text-xs text-gray-500">load more...</p>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-gray-500 text-xs sm:text-sm">No contributors found.</p>
@@ -213,7 +253,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Top Categories */}
         <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-black/50 p-4 sm:p-6">
           <div className="flex items-center space-x-2 mb-3 sm:mb-4">
             <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-black/80" />
@@ -240,9 +279,9 @@ useEffect(() => {
           </div>
         </div>
       </div>
-      {/* Portal Output Leaderboard */}
+
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
-      <div className="bg-black p-4 sm:p-6">
+        <div className="bg-black p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="p-2 sm:p-3 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -254,57 +293,54 @@ useEffect(() => {
               </div>
             </div>
             <div className="flex items-center gap-4">
-                {/* Filter Dropdown */}
-                <div className="flex items-center gap-2">
-                  <label className="text-white font-medium text-sm">Show:</label>
-                  <select
-                    value={filterLimit}
-                    onChange={(e) => setFilterLimit(e.target.value)}
-                    className="bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-sm text-white backdrop-blur-sm hover:bg-white/20 transition cursor-pointer"
-                  >
-                    <option value="ALL" className="text-black">All</option>
-                    <option value="10" className="text-black">10</option>
-                    <option value="20" className="text-black">20</option>
-                    <option value="30" className="text-black">30</option>
-                  </select>
-                </div>
-
-                {/* Download Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowDownloadOptions(!showDownloadOptions)}
-                    className="px-4 py-1.5 bg-white/20 text-white text-sm rounded-md hover:bg-white/30 backdrop-blur-sm transition"
-                  >
-                    Download ▼
-                  </button>
-
-                  {showDownloadOptions && (
-                    <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                      <button
-                        onClick={() => {
-                          handleDownload("csv");
-                          setShowDownloadOptions(false);
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        CSV
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleDownload("xlsx");
-                          setShowDownloadOptions(false);
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        XLSX
-                      </button>
-                    </div>
-                  )}
-                </div>
+              <div className="flex items-center gap-2">
+                <label className="text-white font-medium text-sm">Show:</label>
+                <select
+                  value={filterLimit}
+                  onChange={(e) => setFilterLimit(e.target.value)}
+                  className="bg-white/10 border border-white/20 rounded-md px-3 py-1.5 text-sm text-white backdrop-blur-sm hover:bg-white/20 transition cursor-pointer"
+                >
+                  <option value="ALL" className="text-black">All</option>
+                  <option value="10" className="text-black">10</option>
+                  <option value="20" className="text-black">20</option>
+                  <option value="30" className="text-black">30</option>
+                </select>
               </div>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowDownloadOptions(!showDownloadOptions)}
+                  className="px-4 py-1.5 bg-white/20 text-white text-sm rounded-md hover:bg-white/30 backdrop-blur-sm transition"
+                >
+                  Download ▼
+                </button>
+
+                {showDownloadOptions && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <button
+                      onClick={() => {
+                        handleDownload("csv");
+                        setShowDownloadOptions(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDownload("xlsx");
+                        setShowDownloadOptions(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      XLSX
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-        
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1200px]">
@@ -408,7 +444,7 @@ useEffect(() => {
                       <span className="text-green-700 bg-green-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Success: {portal.todaySuccess}</span>
                       <span className="text-red-700 bg-red-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Failed: {portal.todayFailed}</span>
                       <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Retry: {portal.todayRetry}</span>
-                      <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Avg T: {portal.todayAverageTime}</span>
+                      <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Avg T: {portal.todayAverageTime}s</span>
                     </div>
                   </td>
                 </tr>
@@ -423,7 +459,7 @@ useEffect(() => {
           </p>
         </div>
       </div>
-         {/* Weekly Performance Chart */}
+
       <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-purple-100 p-4 sm:p-6 mb-6 sm:mb-8">
         <div className="flex items-center space-x-2 mb-3 sm:mb-4">
           <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
@@ -436,10 +472,10 @@ useEffect(() => {
               <div className="flex-1 flex items-center space-x-1">
                 <div className="flex-1 bg-white rounded-full h-6 sm:h-8 relative overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-1.5 sm:pr-2"
-                    style={{ width: `${(day.success / 60) * 100}%` }}
+                    className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-2"
+                    style={{ width: `${day.success > 0 ? (day.success / (day.success + day.failed)) * 100 : 0}%` }}
                   >
-                    <span className="text-[10px] sm:text-xs font-bold text-white">{day.success}</span>
+                    <span className="text-xs font-bold text-white">{day.success}</span>
                   </div>
                 </div>
                 {day.failed > 0 && (
@@ -463,13 +499,9 @@ useEffect(() => {
         </div>
       </div>
 
-      
-
-      {/* Portal Detail Modal - SIMPLIFIED VERSION */}
       {showPortalModal && portalDetailData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-7xl w-full max-h-[100vh] overflow-hidden animate-in fade-in duration-300">
-            {/* Modal Header */}
             <div className="bg-black p-6 relative">
               <button
                 onClick={() => setShowPortalModal(false)}
@@ -488,7 +520,6 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* Quick Stats Row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                   <p className="text-blue-100 text-sm">Total Publications</p>
@@ -500,16 +531,14 @@ useEffect(() => {
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                   <p className="text-blue-100 text-sm">Avg Publish Time</p>
-                  <p className="text-3xl font-bold text-white mt-1">{portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0}m</p>
-                </div> 
-              </div> 
-            </div> 
+                  <p className="text-3xl font-bold text-white mt-1">{portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0}s</p>
+                </div>
+              </div>
+            </div>
 
-            {/* Modal Content - ONLY 4 SECTIONS */}
             <div className="overflow-y-auto max-h-[calc(95vh-280px)] p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* Top Contributors */}
                 <div className="bg-gray-100 rounded-2xl border border-orange-100 p-6">
                   <div className="flex items-center space-x-2 mb-4">
                     <Users className="w-5 h-5 text-black" />
@@ -517,9 +546,17 @@ useEffect(() => {
                   </div>
                   <div className="space-y-3">
                     {portalDetailData.topContributors?.length > 0 ? (
-                      <div className="space-y-3">
-                       {portalDetailData.topContributors
-                          .slice(0, filterLimit === "ALL" ? portalDetailData.topContributors.length : Number(filterLimit))
+                      <div 
+                        ref={modalContributorsRef}
+                        onScroll={handleModalScroll}
+                        className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
+                        style={{
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: '#d1d5db #f3f4f6'
+                        }}
+                      >
+                        {portalDetailData.topContributors
+                          .slice(0, modalContributorsPage * ITEMS_PER_PAGE)
                           .map((user, idx) => (
                           <div key={idx} className="bg-white rounded-xl p-4 border border-gray-100 hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between">
@@ -531,7 +568,7 @@ useEffect(() => {
                                 </div>
                                 <div>
                                   <p className="font-semibold text-gray-900">
-                                    {user.news_post__created_by__username || 'Unknown User'}
+                                    {formatUsername(user.news_post__created_by__username || 'Unknown User')}
                                   </p>
                                   <p className="text-xs text-gray-500">Contributor</p>
                                 </div>
@@ -543,6 +580,11 @@ useEffect(() => {
                             </div>
                           </div>
                         ))}
+                        {modalContributorsPage * ITEMS_PER_PAGE < portalDetailData.topContributors.length && (
+                          <div className="text-center py-2">
+                            <p className="text-xs text-gray-500">load more...</p>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <p className="text-gray-500 text-sm">No contributors found.</p>
@@ -550,7 +592,6 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Weekly Performance Chart */}
                 <div className="bg-gray-100 rounded-2xl border border-purple-100 p-6">
                   <div className="flex items-center space-x-2 mb-4">
                     <BarChart3 className="w-5 h-5 text-black" />
@@ -596,7 +637,6 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Top Categories - FULL WIDTH */}
                 <div className="lg:col-span-2 bg-gray-100 rounded-2xl border border-black/50 p-6">
                   <div className="flex items-center space-x-2 mb-4">
                     <FolderOpen className="w-5 h-5 text-black/80" />
@@ -626,7 +666,6 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <p className="text-sm text-gray-600">
                 <span className="font-semibold">Last updated:</span> Just now
