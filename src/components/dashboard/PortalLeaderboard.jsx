@@ -3,6 +3,7 @@ import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats }
 import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, X, Users, FolderOpen, Tag } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import formatUsername from "../../utils/formateName";
 
 export default function PortalLeaderboard() {
   const [domains, setDomains] = useState([]);
@@ -194,7 +195,7 @@ useEffect(() => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                            {user.news_post__created_by__username || 'Unknown User'}
+                             {formatUsername(user.news_post__created_by__username || 'Unknown User')}
                           </p>
                           <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
                         </div>
@@ -435,12 +436,12 @@ useEffect(() => {
               <span className="text-xs sm:text-sm font-semibold text-gray-600 w-8 sm:w-12">{day.day}</span>
               <div className="flex-1 flex items-center space-x-1">
                 <div className="flex-1 bg-white rounded-full h-6 sm:h-8 relative overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-1.5 sm:pr-2"
-                    style={{ width: `${(day.success / 60) * 100}%` }}
-                  >
-                    <span className="text-[10px] sm:text-xs font-bold text-white">{day.success}</span>
-                  </div>
+                   <div
+                  className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-2"
+                  style={{ width: `${day.success > 0 ? (day.success / (day.success + day.failed)) * 100 : 0}%` }}
+                >
+                  <span className="text-xs font-bold text-white">{day.success}</span>
+                </div>
                 </div>
                 {day.failed > 0 && (
                   <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center">
@@ -500,7 +501,7 @@ useEffect(() => {
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
                   <p className="text-blue-100 text-sm">Avg Publish Time</p>
-                  <p className="text-3xl font-bold text-white mt-1">{portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0}m</p>
+                  <p className="text-3xl font-bold text-white mt-1">{portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0}s</p>
                 </div> 
               </div> 
             </div> 
@@ -531,7 +532,8 @@ useEffect(() => {
                                 </div>
                                 <div>
                                   <p className="font-semibold text-gray-900">
-                                    {user.news_post__created_by__username || 'Unknown User'}
+                                {formatUsername(user.news_post__created_by__username || 'Unknown User')}
+
                                   </p>
                                   <p className="text-xs text-gray-500">Contributor</p>
                                 </div>

@@ -175,7 +175,7 @@ export default function AnalyticsComponent({ categories }) {
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-white">Inactivity Alerts</h3>
-                <p className="text-gray-300">Categories with no recent publications (content gaps)</p>
+                <p className="text-gray-300">Categories with no recent publications</p>
               </div>
             </div>
             <button
