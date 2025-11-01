@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from "react";
 
-export default function TimeRangeFilter({ onChange, value }) {
-  const [range, setRange] = useState(""); // default null
+export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) {
+  const [range, setRange] = useState("");
   const [customDates, setCustomDates] = useState({
     start_date: "",
     end_date: "",
   });
 
-  const options = [
+  // ✅ Default filter options
+  const baseOptions = [
     { label: "Today", value: "today" },
     { label: "Yesterday", value: "yesterday" },
     { label: "Last 7 Days", value: "7d" },
     { label: "Custom Range", value: "custom" },
   ];
 
-  // ✅ Sync internal state with parent (when modal opens or filter changes)
+  // ✅ Merge parent-provided extra options (if any)
+  const options = [...baseOptions, ...extraOptions];
+
   useEffect(() => {
     if (value) {
       if (typeof value === "object" && value.date_filter === "custom") {
@@ -50,8 +53,6 @@ export default function TimeRangeFilter({ onChange, value }) {
   const handleCustomChange = (key, val) => {
     const updated = { ...customDates, [key]: val };
     setCustomDates(updated);
-
-    // ✅ Only trigger when both dates are selected
     if (updated.start_date && updated.end_date) {
       onChange({
         date_filter: "custom",

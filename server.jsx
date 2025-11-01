@@ -288,6 +288,17 @@ export async function removeUserAssignment(data) {
     }
   });
 }
+export async function fetchUserPostStats(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.page) query.append("page", params.page);
+  if (params.range && params.range !== "") query.append("range", params.range);
+  if (params.start_date) query.append("start_date", params.start_date);
+  if (params.end_date) query.append("end_date", params.end_date);
+  if (params.user_id) query.append("user_id", params.user_id);
+
+  return axiosInstance.get(`/api/user/posts/stats/?${query.toString()}`);
+}
 
 // weakly performance data global
 export async function fetchWeeklyPerformanceData() {

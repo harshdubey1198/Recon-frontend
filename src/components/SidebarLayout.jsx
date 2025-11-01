@@ -14,6 +14,7 @@ import UserCategories from "../pages/UserCategories";
 import NewsReports from "../pages/NewsReports";
 import formatUsername from "../utils/formateName";
 import AnalyticsOverview from "./dashboard/AnalyticsOverview";
+import UserStats from "../pages/UserStats";
 
 
 
@@ -42,8 +43,9 @@ const menuItems = [
        { name: "Category Mapping", icon: Network },
        { name: "All Categories", icon: FolderTree },
        { name: "User Access Control", icon: ShieldCheck },
-      { name: "User Categories", icon: Layers },
-        { name: "User Portal Access", icon: Users2 },
+       { name: "User Categories", icon: Layers },
+       { name: "User Stats", icon: BarChart3 },
+       { name: "User Portal Access", icon: Users2 },
        { name: "Portal Management", icon: Building2 },
        
       ]
@@ -300,6 +302,7 @@ const menuItems = [
             {activeItem === "All Categories" && <AllCategories />}
             {activeItem === "User Categories" && <UserCategories />}
             {activeItem === "News Reports" && <NewsReports />}
+            {activeItem === "User Stats" && <UserStats />}
             {activeItem === "News Analytics" && <AnalyticsOverview />}
           </div>
         </div>

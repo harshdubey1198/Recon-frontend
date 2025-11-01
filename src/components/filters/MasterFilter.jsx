@@ -13,11 +13,11 @@ export default function MasterFilter({
   onChange,
   onClear,
   visibleFilters = [],
-  initialFilters = {}, 
+  initialFilters = {},
+  timeRangeOptions = [],
 }) {
   const [filters, setFilters] = useState(initialFilters || {});
 
-  // ✅ Keep internal filters in sync when modal reopens
   useEffect(() => {
     setFilters(initialFilters || {});
   }, [initialFilters]);
@@ -26,13 +26,10 @@ export default function MasterFilter({
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const applyAllFilters = () => {
-    onChange?.(filters);
-  };
-
+  const applyAllFilters = () => onChange?.(filters);
   const clearAllFilters = () => {
     setFilters({});
-    onClear?.(); // 🔹 notify parent to clear and refetch
+    onClear?.();
   };
 
   const show = (name) => visibleFilters.includes(name);
@@ -44,8 +41,11 @@ export default function MasterFilter({
           <TimeRangeFilter
             value={filters.date_filter}
             onChange={(v) => updateFilter("date_filter", v)}
+            extraOptions={timeRangeOptions} // 👈 dynamic per page
           />
         )}
+
+        {/* other filters remain unchanged */}
         {show("custom_date") && (
           <CustomDateFilter
             value={filters.date_filter}
@@ -61,7 +61,11 @@ export default function MasterFilter({
         {show("username") && (
           <UserFilter
             value={filters.username}
-            onChange={(v) => updateFilter("username", v)}
+            selectedUserID={filters.user_id}
+            onChange={(username, id) => {
+              updateFilter("username", username);
+              updateFilter("user_id", id);
+            }}
           />
         )}
         {show("master_category_id") && (
@@ -103,3 +107,4 @@ export default function MasterFilter({
     </div>
   );
 }
+

@@ -3,7 +3,7 @@ import { fetchAllUsersList } from "../../../server";
 import { useAuth } from "../../context/AuthContext";
 import formatUsername from "../../utils/formateName";
 
-export default function UserFilter({ onChange, value = "" }) {
+export default function UserFilter({ onChange, value = "", selectedUserID = "" }) {
   const [users, setUsers] = useState([]);
   const [nextPage, setNextPage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +40,17 @@ export default function UserFilter({ onChange, value = "" }) {
 
   if (!user || user.role !== "master") return null;
 
+  // ✅ Automatically reflect selectedUserID if available
+  useEffect(() => {
+    if (selectedUserID && users.length > 0) {
+      const match = users.find((u) => u.id === selectedUserID);
+      if (match && match.username !== value) {
+        onChange(match.username, selectedUserID);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserID, users]);
+
   return (
     <select
       className="border rounded-lg p-2 w-full"
@@ -54,16 +65,21 @@ export default function UserFilter({ onChange, value = "" }) {
           return;
         }
 
-        onChange(val);
+        // ✅ find selected user and send both username + user_id to parent
+        const selectedUser = users.find((u) => u.username === val);
+        const userId = selectedUser ? selectedUser.id : "";
+
+        onChange(val, userId);
       }}
     >
       <option value="">All Users</option>
 
       {users.map((u) => (
         <option key={u.id} value={u.username}>
-         {formatUsername(u.username)}
+          {formatUsername(u.username)}
         </option>
       ))}
+
       {nextPage && (
         <option value="load_more" disabled={isLoading}>
           {isLoading ? "Loading more..." : "↓ Load More Users"}
