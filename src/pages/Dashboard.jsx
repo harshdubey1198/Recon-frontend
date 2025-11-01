@@ -16,32 +16,10 @@ export default function Dashboard() {
   const scrollContainerRef = useRef(null);
   const portalLeaderboardRef = useRef(null);
   const [stats, setStats] = useState({
-    totalPosts: 0,
-    totaltodayPosts: 0,
-    categories: 0,
-    domains: 0,
-    targets: 0,
-    activeUsers: 0,
-    revenue: 0,
-
-    total_posts: 0,
-    draft_posts: 0,
-    published_posts: 0,
-    today_total_posts: 0,
-    today_total_drafts: 0,
-    total_portals: 0,
+    totalPosts: 0,totaltodayPosts: 0,categories: 0,domains: 0,targets: 0,activeUsers: 0,revenue: 0,total_posts: 0,draft_posts: 0,published_posts: 0,today_total_posts: 0,today_total_drafts: 0,total_portals: 0,
     total_master_categories: 0,
-    news_distribution: {
-        total_distributions: 0,
-        successful_distributions: 0,
-        failed_distributions: 0,
-        pending_distributions: 0,
-        retry_counts: 0,
-        today: {
-            total: 0,
-            successful: 0,
-            failed: 0
-        }
+    news_distribution: {total_distributions: 0,successful_distributions: 0,failed_distributions: 0,pending_distributions: 0,retry_counts: 0,
+    today: { total: 0, successful: 0,failed: 0}
        }
   });
   const [autoRefresh, setAutoRefresh] = useState(true);
