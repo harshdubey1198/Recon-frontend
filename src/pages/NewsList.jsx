@@ -17,11 +17,14 @@ const NewsList = () => {
   const [distributedData, setDistributedData] = useState({});
   const [publishingId, setPublishingId] = useState(null);
   const [distributionStatus, setDistributionStatus] = useState("");
-
+  const [counts, setCounts] = useState({ total_master_news_posts: 0, total_news_distributions: 0 });
+  // console.log(counts)
   // 🔹 Filter States
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [createdBy, setCreatedBy] = useState("");
+  const [username, setUsername] = useState("");
+  const [dateFilter, setDateFilter] = useState("today");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedPortal, setSelectedPortal] = useState("");
@@ -73,7 +76,7 @@ const NewsList = () => {
       setPublishingId(item.id);
       const res = await publishNewsArticle(item.id);
       if (res?.data?.status) {
-        console.log("✅ Re-publish success:", res.data.message);
+        // console.log("✅ Re-publish success:", res.data.message);
         toast.success("Article republished successfully!");
         loadDistributedNews(item.id); 
       } else {
@@ -87,42 +90,41 @@ const NewsList = () => {
     }
   };
   // 🔁 Auto-refresh every 20 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      console.log("🔄 Auto-refresh triggered...");
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     console.log("🔄 Auto-refresh triggered...");
 
-      loadNewsWithFilters({
-        search,
-        status,
-        distribution_status: distributionStatus,
-        portal_id: selectedPortal,
-        master_category_id: selectedMasterCategory,
-        username: createdBy,
-        date_filter: { start_date: startDate, end_date: endDate },
-        page,
-      });
+  //     loadNewsWithFilters({
+  //       search,
+  //       status,
+  //       distribution_status: distributionStatus,
+  //       portal_id: selectedPortal,
+  //       master_category_id: selectedMasterCategory,
+  //       username: createdBy,
+  //       date_filter: { start_date: startDate, end_date: endDate },
+  //       page,
+  //     });
 
-      if (expandedRow && distributedData[expandedRow]) {
-        loadDistributedNews(expandedRow);
-      }
-    }, 15000);  
+  //     if (expandedRow && distributedData[expandedRow]) {
+  //       loadDistributedNews(expandedRow);
+  //     }
+  //   }, 15000);  
 
-    return () => clearInterval(interval);
-  }, [
-    search,
-    status,
-    distributionStatus,
-    selectedPortal,
-    selectedMasterCategory,
-    createdBy,
-    startDate,
-    endDate,
-    page,
-    expandedRow,
-  ]);
+  //   return () => clearInterval(interval);
+  // }, [
+  //   search,
+  //   status,
+  //   distributionStatus,
+  //   selectedPortal,
+  //   selectedMasterCategory,
+  //   createdBy,
+  //   startDate,
+  //   endDate,
+  //   page,
+  //   expandedRow,
+  // ]);
 
 
-  // 🔹 Load portal categories when portal changes
   useEffect(() => {
     const loadPortalCats = async () => {
       if (!selectedPortal) {
@@ -139,64 +141,70 @@ const NewsList = () => {
     loadPortalCats();
   }, [selectedPortal]);
 
-  // 🔹 Load news list (using new API)
   const loadNewsWithFilters = async (filters) => {
-    setIsRefreshing(true);
+  setIsRefreshing(true);
 
-    try {
-      const res = await fetchMyNewsPosts({
-        search: filters.search || "",
-        status: filters.status || "",
-        distribution_status: filters.distribution_status || "",
-        portal: filters.portal_id || "",
-        master_category: filters.master_category_id || "",
-        created_by: filters.username || "",
-        start_date: filters.date_filter?.start_date || "",
-        end_date: filters.date_filter?.end_date || "",
-        page: filters.page || page || 1,
-      });
+  try {
+    let date_filter = "";
+    let start_date = "";
+    let end_date = "";
 
-      if (res?.data?.status) {
-        const posts = res?.data?.data || [];
-        const mapped = posts.map((item) => ({
-          id: item.id,
-          category: item.master_category_name || "N/A",
-          headline: item.title || "Untitled",
-          shortDesc: item.short_description || "",
-          longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
-          author: "You",
-          live_url: "",
-          status: item.status || "N/A",
-          date: new Date(item.created_at).toLocaleDateString(),
-          image: item.post_image
-            ? `${constant?.appBaseUrl}/${item.post_image}`
-            : "https://via.placeholder.com/150",
-        }));
-        setNews(mapped);
-        setTotalPages(res?.data?.pagination?.total_pages || 1);
-        setIsRefreshing(false);
+    const df = filters.date_filter;
 
-      }
-    } catch (err) {
-      console.error("Failed to fetch filtered news:", err);
+    if (typeof df === "string") {
+      date_filter = df;
+    } else if (typeof df === "object" && df !== null) {
+      date_filter = df.date_filter || "custom";
+      start_date = df.start_date || "";
+      end_date = df.end_date || "";
     }
-  };
+
+    // console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
 
 
-
-  useEffect(() => {
-    loadNewsWithFilters({
-      search,
-      status,
-      distribution_status:distributionStatus,
-      portal_id: selectedPortal,
-      master_category_id: selectedMasterCategory,
-      username: createdBy,
-      date_filter: { start_date: startDate, end_date: endDate },
-      page,
+    const res = await fetchMyNewsPosts({
+      search: filters.search || "",
+      status: filters.status || "",
+      distribution_status: filters.distribution_status || "",
+      portal: filters.portal_id || "",
+      master_category: filters.master_category_id || "",
+      created_by: filters.username || "",
+      username: filters.username || "",
+      date_filter, // ✅ fixed
+      start_date,
+      end_date,
+      page: filters.page || page || 1,
     });
-  }, [page]);
 
+    if (res?.data?.status) {
+      const posts = res?.data?.data.results || [];
+      const countsData = res?.data?.data.counts || {};
+      setCounts(countsData);
+
+      const mapped = posts.map((item) => ({
+        id: item.id,
+        category: item.master_category_name || "N/A",
+        headline: item.title || "Untitled",
+        shortDesc: item.short_description || "",
+        longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
+        author: "You",
+        live_url: "",
+        status: item.status || "N/A",
+        date: new Date(item.created_at).toLocaleDateString(),
+        image: item.post_image
+          ? `${constant?.appBaseUrl}/${item.post_image}`
+          : "https://via.placeholder.com/150",
+      }));
+
+      setNews(mapped);
+      setTotalPages(res?.data?.pagination?.total_pages || 1);
+    }
+  } catch (err) {
+    console.error("Failed to fetch filtered news:", err);
+  } finally {
+    setIsRefreshing(false);
+  }
+};
 
   // 🔹 Selection
   const toggleSelect = (id) =>
@@ -208,45 +216,6 @@ const NewsList = () => {
     setSelectedNewsIds(
       selectedNewsIds.length === news.length ? [] : news.map((n) => n.id)
     );
-
-  // 🔹 Detail view
-  const handleViewDetail = async (item) => {
-    try {
-      const res = await fetchNewsDetail(item.id);
-      if (res?.data?.status) {
-        const d = res.data.data;
-        const parsed = d.response_message ? JSON.parse(d.response_message) : {};
-        const data = parsed?.data || {};
-
-        setSelectedNews({
-          id: d.id,
-          category: d.master_category_name,
-          headline: d.ai_title || data.post_title || item.headline,
-          shortDesc: d.ai_short_description || data.post_short_des,
-          longDesc: d.ai_content || data.post_des,
-          author: d.portal_name,
-          journalist: data.journalist || "",
-          status: d.status,
-          date: new Date(d.created_at).toLocaleDateString(),
-          tags: data.post_tag ? data.post_tag.split(" ") : [],
-          image: d.news_post_image,
-          latestNews: data.Head_Lines || false,
-          headlines: data.Head_Lines || false,
-          articles: data.articles || false,
-          trending: data.trending || false,
-          breakingNews: data.BreakingNews || false,
-          upcomingEvents: data.Event || false,
-          eventStartDate: data.Event_date || null,
-          eventEndDate: data.Eventend_date || null,
-          scheduleDate: data.schedule_date || "",
-          counter: data.viewcounter || 0,
-          order: data.order || 0,
-        });
-      }
-    } catch (err) {
-      console.error("Failed to fetch detail:", err);
-    }
-  };
 
   // 🔹 Reset filters
   const handleReset = () => {
@@ -328,9 +297,9 @@ const NewsList = () => {
                   "distribution_status",
                   "portal_id",
                   "master_category_id",
-                  // "username",
-                  "custom_date"
-                  // "date_filter",
+                  // "custom_date",
+                  "username",
+                  "date_filter",
                 ]}
                 initialFilters={{
                   search,
@@ -339,7 +308,9 @@ const NewsList = () => {
                   portal_id: selectedPortal,
                   master_category_id: selectedMasterCategory,
                   username: createdBy,
-                  date_filter: { start_date: startDate, end_date: endDate },
+                  date_filter: dateFilter,
+                  start_date:startDate,
+                  end_date:endDate
                 }}
                 onChange={(filters) => {
                   setSearch(filters.search || "");
@@ -347,8 +318,11 @@ const NewsList = () => {
                   setSelectedPortal(filters.portal_id || "");
                   setSelectedMasterCategory(filters.master_category_id || "");
                   setCreatedBy(filters.username || "");
-                  setStartDate(filters.date_filter?.start || "");
-                  setEndDate(filters.date_filter?.end || "");
+                  setUsername(filters.username || "");
+                  setDateFilter(filters.date_filter || "today");
+                  setStartDate(filters.date_filter?.start_date || "");
+                  setEndDate(filters.date_filter?.end_date || "");
+
                   setDistributionStatus(filters.distribution_status || "");
                   setPage(1);
 
@@ -362,9 +336,35 @@ const NewsList = () => {
                   handleReset();
                 }}
               />
+              {/* 🔹 Stats Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-6 mt-2">
+                <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                  <div>
+                    <h3 className="text-sm text-gray-500 font-medium">Total Master Posts</h3>
+                    <p className="text-2xl font-bold text-blue-700 mt-1">
+                      {counts?.total_master_news_posts || 0}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-200 rounded-full">
+                    <FileText className="w-5 h-5 text-blue-800" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                  <div>
+                    <h3 className="text-sm text-gray-500 font-medium">Total Distributions</h3>
+                    <p className="text-2xl font-bold text-green-700 mt-1">
+                      {counts?.total_news_distributions || 0}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-200 rounded-full">
+                    <Clock className="w-5 h-5 text-green-800" />
+                  </div>
+                </div>
+              </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mt-4">
               <table className="w-full border border-gray-200 rounded-lg overflow-hidden">
                 <thead className="bg-gray-100 text-center">
                   <tr>
@@ -420,7 +420,7 @@ const NewsList = () => {
                             expandedRow === item.id ? "bg-gray-50" : ""
                           }`}
                         >
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-center">
                             <input
                               type="checkbox"
                               className="h-4 w-4 accent-black"
@@ -429,14 +429,14 @@ const NewsList = () => {
                               onChange={() => toggleSelect(item.id)}
                             />
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-center flex justify-center">
                             <img
                               src={item.image}
                               alt={item.headline}
                               className="w-16 h-12 object-cover rounded border"
                             />
                           </td>
-                          <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                          <td className="px-4 py-2 text-sm font-medium text-gray-900 max-w-[140px]">
                             <div className="flex items-center gap-2">
                               <span
                                 className={`transition-transform ${
@@ -449,7 +449,7 @@ const NewsList = () => {
                             </div>
                             <p className="text-xs text-gray-500">{item.shortDesc}</p>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-700">{item.category}</td>
+                          <td className="px-4 py-2 text-sm text-center text-gray-700">{item.category}</td>
                           {/* <td className="px-4 py-2 text-sm text-gray-700">{item.author}</td> */}
                           {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
                             {item.live_url}
@@ -467,14 +467,14 @@ const NewsList = () => {
                               {item.status}
                             </span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">
-                            <div className="flex items-center space-x-1">
+                          <td className="px-4 py-2  text-center text-sm text-gray-600">
+                            <div className="flex items-center justify-center space-x-1">
                               <Clock className="w-4 h-4" />
                               <span>{item.date}</span>
                             </div>
                           </td>
                           <td
-                              className="px-4 py-2 text-sm"
+                              className="px-4 py-2 text-sm text-center "
                               onClick={(e) => {
                                 e.stopPropagation(); // prevent row expand/collapse
                                 if (!publishingId) handleRetryPublish(item);

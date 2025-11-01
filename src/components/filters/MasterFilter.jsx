@@ -58,16 +58,16 @@ export default function MasterFilter({
             onChange={(v) => updateFilter("portal_id", v)}
           />
         )}
-        {show("master_category_id") && (
-          <CategoryFilter
-            value={filters.master_category_id}
-            onChange={(v) => updateFilter("master_category_id", v)}
-          />
-        )}
         {show("username") && (
           <UserFilter
             value={filters.username}
             onChange={(v) => updateFilter("username", v)}
+          />
+        )}
+        {show("master_category_id") && (
+          <CategoryFilter
+            value={filters.master_category_id}
+            onChange={(v) => updateFilter("master_category_id", v)}
           />
         )}
         {show("status") && (
