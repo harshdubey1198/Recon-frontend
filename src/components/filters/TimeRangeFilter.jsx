@@ -39,13 +39,13 @@ export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) 
   const handleSelect = (val) => {
     setRange(val);
 
-    if (val !== "custom") {
-      onChange({
-        date_filter: val || "",
-        start_date: "",
-        end_date: "",
-      });
-    } else {
+    onChange({
+      date_filter: val || "",
+      start_date: "",
+      end_date: "",
+    });
+
+    if (val === "custom") {
       setCustomDates({ start_date: "", end_date: "" });
     }
   };

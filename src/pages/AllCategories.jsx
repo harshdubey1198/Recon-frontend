@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { List, Info, Search, Folder, ArrowRight, Package, X, Users, Link2, Loader2 } from "lucide-react";
-import { fetchCategoryMappings, fetchMasterCategories, fetchMappedCategoriesById,deleteMapping } from "../../server";
+import { fetchCategoryMappings, fetchMasterCategories, fetchMappedCategoriesById, deleteMapping, updateCategoryMapping } from "../../server";
 import CategoryMapping from "../pages/CategoryMapping";
 import formatUsername from "../utils/formateName";
 import { toast } from "react-toastify";
+
 const AllCategories = () => {
   const [categories, setCategories] = useState([]);
   const [categoriesCount, setCategoriesCount] = useState(0);
@@ -60,7 +61,6 @@ const AllCategories = () => {
   };
 
   useEffect(() => {
-   
     loadData();
   }, [searchTerm]);
 
@@ -119,29 +119,46 @@ const AllCategories = () => {
     }
   };
 
- const handleDeleteMapping = async (mappingId) => {
-  try {
-    const response = await deleteMapping(mappingId);
-    toast.success(response.data?.data || "Mapping deleted");
+  const handleDeleteMapping = async (mappingId) => {
+    try {
+      const response = await deleteMapping(mappingId);
+      toast.success(response.data?.data || "Mapping deleted");
 
-    // Directly refresh mapping details after delete (fetch page 1)
-    if (selectedCategory?.id) {
-      const updatedRes = await fetchMappedCategoriesById(selectedCategory.id, 1);
-      if (updatedRes?.data?.data) {
-        setMappingDetails(updatedRes.data.data);
-        // reset modal pagination to first page after refresh
-      setDetailsPage(1);
-       setHasMoreDetails(updatedRes.data.pagination?.next !== null);
-     }
+      // Directly refresh mapping details after delete (fetch page 1)
+      if (selectedCategory?.id) {
+        const updatedRes = await fetchMappedCategoriesById(selectedCategory.id, 1);
+        if (updatedRes?.data?.data) {
+          setMappingDetails(updatedRes.data.data);
+          // reset modal pagination to first page after refresh
+          setDetailsPage(1);
+          setHasMoreDetails(updatedRes.data.pagination?.next !== null);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete mapping:", error);
+      toast.error(error.response?.data?.message || "Failed to delete mapping");
     }
-  } catch (error) {
-    console.error("Failed to delete mapping:", error);
-    toast.error(error.response?.data?.message || "Failed to delete mapping");
-  }
-};
+  };
 
+  const handleToggleDefaultContent = async (mappingId, currentValue) => {
+    try {
+      await updateCategoryMapping(mappingId, !currentValue);
+      toast.success(`Default content ${!currentValue ? 'enabled' : 'disabled'}`);
 
-
+      // Refresh the mapping details after toggle
+      if (selectedCategory?.id) {
+        const updatedRes = await fetchMappedCategoriesById(selectedCategory.id, 1);
+        if (updatedRes?.data?.data) {
+          setMappingDetails(updatedRes.data.data);
+          setDetailsPage(1);
+          setHasMoreDetails(updatedRes.data.pagination?.next !== null);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update mapping:", error);
+      toast.error(error.response?.data?.message || "Failed to update mapping");
+    }
+  };
 
   const handleModalScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
@@ -156,8 +173,6 @@ const AllCategories = () => {
     setMappingDetails(null);
     setDetailsPage(1);
   };
-
-  
 
   const filteredCategories = categories.filter((cat) =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -230,7 +245,7 @@ const AllCategories = () => {
                   placeholder="Search categories..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-4 py-3 w-full border-2 border-gray-300 rounded-xl  text-sm bg-white shadow-sm transition-all"
+                  className="pl-12 pr-4 py-3 w-full border-2 border-gray-300 rounded-xl text-sm bg-white shadow-sm transition-all"
                 />
               </div>
             </div>
@@ -243,54 +258,53 @@ const AllCategories = () => {
               </div>
             ) : (
               <div className="border-2 border-gray-300 rounded-2xl bg-gradient-to-br from-gray-50 to-white h-[410px] p-4 shadow-inner">
-               <div 
-  ref={categoriesScrollRef}
-  onScroll={handleCategoriesScroll}
-  className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto h-full pr-2"
->
-  {loading && categories.length === 0 ? (
-    <div className="col-span-full flex justify-center items-center py-10">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-3"></div>
-        <p className="text-gray-700 text-sm font-medium">Loading categories...</p>
-      </div>
-    </div>
-  ) : (
-    visibleCategories.map((cat) => (
-      <div
-        key={cat.id}
-        onClick={() => handleCategoryClick(cat)}
-        className="group relative px-4 py-3 bg-white border-2 border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer transform"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gray-900 rounded-lg group-hover:bg-black transition-all">
-            <Folder className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {cat.name}
-            </p>
-            {cat.description && (
-              <p className="text-xs text-gray-600 truncate mt-0.5">
-                {cat.description}
-              </p>
-            )}
-          </div>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <ArrowRight className="w-4 h-4 text-gray-900" />
-          </div>
-        </div>
-      </div>
-    ))
-  )}
+                <div 
+                  ref={categoriesScrollRef}
+                  onScroll={handleCategoriesScroll}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto h-full pr-2"
+                >
+                  {loading && categories.length === 0 ? (
+                    <div className="col-span-full flex justify-center items-center py-10">
+                      <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-3"></div>
+                        <p className="text-gray-700 text-sm font-medium">Loading categories...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    visibleCategories.map((cat) => (
+                      <div
+                        key={cat.id}
+                        onClick={() => handleCategoryClick(cat)}
+                        className="group relative px-4 py-3 bg-white border-2 border-gray-300 rounded-xl shadow-sm hover:shadow-md hover:border-gray-900 hover:bg-gray-50 transition-all cursor-pointer transform"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-gray-900 rounded-lg group-hover:bg-black transition-all">
+                            <Folder className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {cat.name}
+                            </p>
+                            {cat.description && (
+                              <p className="text-xs text-gray-600 truncate mt-0.5">
+                                {cat.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowRight className="w-4 h-4 text-gray-900" />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
 
-  {loadingMoreCategories && (
-    <div className="col-span-full flex justify-center py-4">
-      <Loader2 className="w-6 h-6 text-gray-900 animate-spin" />
-    </div>
-  )}
-</div>
-
+                  {loadingMoreCategories && (
+                    <div className="col-span-full flex justify-center py-4">
+                      <Loader2 className="w-6 h-6 text-gray-900 animate-spin" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -411,39 +425,52 @@ const AllCategories = () => {
 
                     {mappingDetails?.mappings?.length > 0 ? (
                       <div className="space-y-3">
-                       {mappingDetails.mappings.map((mapping) => (
-                              <div
-                                key={mapping.id}
-                                className="p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:shadow-md transition-all flex justify-between items-center"
-                              >
-                                {/* Left section with mapping details */}
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <span className="px-3 py-1 bg-gray-900 text-white text-sm font-semibold rounded-lg">
-                                    {mapping.portal_name}
-                                  </span>
-                                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                                  <span className="px-3 py-1 bg-gray-100 text-gray-900 text-sm font-semibold rounded-lg">
-                                    {mapping.portal_category_name}
-                                  </span>
-
-                                  {mapping.is_default && (
-                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                                      Default
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Right-aligned Delete button */}
+                        {mappingDetails.mappings.map((mapping) => (
+                          <div
+                            key={mapping.id}
+                            className="p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-900 hover:shadow-md transition-all"
+                          >
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                              {/* Left section with mapping details */}
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <span className="px-3 py-1 bg-gray-900 text-white text-sm font-semibold rounded-lg">
+                                  {mapping.portal_name}
+                                </span>
+                                <ArrowRight className="w-4 h-4 text-gray-400" />
+                                <span className="px-3 py-1 bg-gray-100 text-gray-900 text-sm font-semibold rounded-lg">
+                                  {mapping.portal_category_name}
+                                </span>
+                                
+                                {/* Toggle Default Content Button */}
                                 <button
-                                  onClick={() => handleDeleteMapping(mapping.id)}
-                                  className="px-3 py-1 text-sm font-semibold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                                  onClick={() => handleToggleDefaultContent(mapping.id, mapping.use_default_content)}
+                                  className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                                    mapping.use_default_content
+                                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
                                 >
-                                  Delete
+                                  {mapping.use_default_content ? 'Default Content: ON' : 'Default Content: OFF'}
                                 </button>
-                              </div>
-                            ))}
 
-                        
+                                {mapping.is_default && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Right-aligned Delete button */}
+                              <button
+                                onClick={() => handleDeleteMapping(mapping.id)}
+                                className="px-3 py-1 text-sm font-semibold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+
                         {loadingMoreDetails && (
                           <div className="flex justify-center py-4">
                             <Loader2 className="w-6 h-6 text-gray-900 animate-spin" />

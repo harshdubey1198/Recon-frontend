@@ -135,11 +135,10 @@ const NewsList = () => {
         // ✅ Always reload the distribution immediately after retry
         await loadDistributedNews(item.id);
 
-        // ✅ If this row is expanded, trigger a smooth refresh
         if (expandedRow === item.id) {
           setTimeout(() => {
             loadDistributedNews(item.id);
-          }, 1000); // short delay to let backend finish
+          }, 1000); 
         }
       } else {
         toast.error("Failed to republish the article.");
@@ -151,6 +150,16 @@ const NewsList = () => {
       setPublishingId(null);
     }
   };
+  useEffect(() => {
+    if (!expandedRow) return; 
+
+    const interval = setInterval(() => {
+      console.log(`⏳ Auto-refreshing distribution for news ID: ${expandedRow}`);
+      loadDistributedNews(expandedRow);
+    }, 15000);
+
+    return () => clearInterval(interval); 
+  }, [expandedRow]);
 
   useEffect(() => {
     const loadPortalCats = async () => {
