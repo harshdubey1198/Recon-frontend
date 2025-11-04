@@ -81,14 +81,12 @@ const NewsList = () => {
       if (res?.data?.status) {
         toast.success("Article republished successfully!");
         
-        // ✅ Always reload the distribution immediately after retry
         await loadDistributedNews(item.id);
 
-        // ✅ If this row is expanded, trigger a smooth refresh
         if (expandedRow === item.id) {
           setTimeout(() => {
             loadDistributedNews(item.id);
-          }, 1000); // short delay to let backend finish
+          }, 1000); 
         }
       } else {
         toast.error("Failed to republish the article.");
@@ -100,6 +98,16 @@ const NewsList = () => {
       setPublishingId(null);
     }
   };
+  useEffect(() => {
+    if (!expandedRow) return; 
+
+    const interval = setInterval(() => {
+      console.log(`⏳ Auto-refreshing distribution for news ID: ${expandedRow}`);
+      loadDistributedNews(expandedRow);
+    }, 15000);
+
+    return () => clearInterval(interval); 
+  }, [expandedRow]);
 
   useEffect(() => {
     const loadPortalCats = async () => {
@@ -118,69 +126,62 @@ const NewsList = () => {
   }, [selectedPortal]);
 
   const loadNewsWithFilters = async (filters) => {
-  setIsRefreshing(true);
+    setIsRefreshing(true);
+    try {
+      let date_filter = "today";
+      let start_date = "";
+      let end_date = "";
 
-  try {
-    let date_filter = "";
-    let start_date = "";
-    let end_date = "";
+      const df = filters.date_filter;
 
-    const df = filters.date_filter;
+      if (typeof df === "object" && df !== null) {
+        date_filter = df.date_filter || "today";
+        start_date = df.start_date || "";
+        end_date = df.end_date || "";
+      } else if (typeof df === "string") {
+        date_filter = df;
+      }
 
-    if (typeof df === "string") {
-      date_filter = df;
-    } else if (typeof df === "object" && df !== null) {
-      date_filter = df.date_filter || "custom";
-      start_date = df.start_date || "";
-      end_date = df.end_date || "";
+      console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
+
+      const res = await fetchMyNewsPosts({
+        search: filters.search || "",
+        status: filters.status || "",
+        distribution_status: filters.distribution_status || "",
+        portal: filters.portal_id || "",
+        master_category: filters.master_category_id || "",
+        created_by: filters.username || "",
+        date_filter,
+        start_date,
+        end_date,
+        page: filters.page || page || 1,
+      });
+
+      if (res?.data?.status) {
+        const posts = res.data.data.results || [];
+        setCounts(res.data.data.counts || {});
+        setNews(posts.map((item) => ({
+          id: item.id,
+          category: item.master_category_name || "N/A",
+          headline: item.title || "Untitled",
+          shortDesc: item.short_description || "",
+          longDesc: item.content?.replace(/<[^>]+>/g, "") || "",
+          author: "You",
+          status: item.status || "N/A",
+          date: new Date(item.created_at).toLocaleDateString(),
+          image: item.post_image
+            ? `${constant.appBaseUrl}/${item.post_image}`
+            : "https://via.placeholder.com/150",
+        })));
+        setTotalPages(res.data.pagination?.total_pages || 1);
+      }
+    } catch (err) {
+      console.error("Failed to fetch filtered news:", err);
+    } finally {
+      setIsRefreshing(false);
     }
+  };
 
-    // console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
-
-
-    const res = await fetchMyNewsPosts({
-      search: filters.search || "",
-      status: filters.status || "",
-      distribution_status: filters.distribution_status || "",
-      portal: filters.portal_id || "",
-      master_category: filters.master_category_id || "",
-      created_by: filters.username || "",
-      username: filters.username || "",
-      date_filter, // ✅ fixed
-      start_date,
-      end_date,
-      page: filters.page || page || 1,
-    });
-
-    if (res?.data?.status) {
-      const posts = res?.data?.data.results || [];
-      const countsData = res?.data?.data.counts || {};
-      setCounts(countsData);
-
-      const mapped = posts.map((item) => ({
-        id: item.id,
-        category: item.master_category_name || "N/A",
-        headline: item.title || "Untitled",
-        shortDesc: item.short_description || "",
-        longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
-        author: "You",
-        live_url: "",
-        status: item.status || "N/A",
-        date: new Date(item.created_at).toLocaleDateString(),
-        image: item.post_image
-          ? `${constant?.appBaseUrl}/${item.post_image}`
-          : "https://via.placeholder.com/150",
-      }));
-
-      setNews(mapped);
-      setTotalPages(res?.data?.pagination?.total_pages || 1);
-    }
-  } catch (err) {
-    console.error("Failed to fetch filtered news:", err);
-  } finally {
-    setIsRefreshing(false);
-  }
-};
 
   // 🔹 Selection
   const toggleSelect = (id) =>
