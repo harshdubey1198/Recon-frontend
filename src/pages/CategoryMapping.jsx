@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Globe, List, Plus, ChevronDown, Loader2, Users } from "lucide-react";
-import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById, deleteMapping } from "../../server";
+import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCategory, createMasterCategory, fetchMappedCategoriesById, deleteMapping, updateCategoryMapping } from "../../server";
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 
@@ -33,7 +33,7 @@ const InfiniteScrollDropdown = ({
   useEffect(() => {
     if (isOpen && dropdownRef.current) {
       const rect = dropdownRef.current.getBoundingClientRect();
-      const dropdownHeight = 288; // max-h-72 = 18rem = 288px
+      const dropdownHeight = 288;
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
       
@@ -146,7 +146,6 @@ const CategoryMapping = () => {
   const [newMasterCategoryName, setNewMasterCategoryName] = useState("");
   const [newMasterCategoryDescription, setNewMasterCategoryDescription] = useState("");
 
-  // New state for mapped categories
   const [mappedData, setMappedData] = useState(null);
   const [mappedCategoriesPage, setMappedCategoriesPage] = useState(1);
   const [mappedCategoriesHasMore, setMappedCategoriesHasMore] = useState(false);
@@ -233,7 +232,6 @@ const CategoryMapping = () => {
     }
   };
 
-  // Load mapped categories
   const loadMappedCategories = async (categoryId, page) => {
     if (mappedCategoriesLoading) return;
     
@@ -262,7 +260,6 @@ const CategoryMapping = () => {
     }
   };
 
-  // Handle mapped categories scroll
   const handleMappedScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     if (scrollHeight - scrollTop <= clientHeight * 1.2 && mappedCategoriesHasMore && !mappedCategoriesLoading && selectedMasterCategoryId) {
@@ -280,7 +277,6 @@ const CategoryMapping = () => {
     loadPortalCategories(selectedPortal.name, 1);
   }, [selectedPortal]);
 
-  // Load mapped categories when master category changes
   useEffect(() => {
     if (selectedMasterCategoryId) {
       setMappedCategoriesPage(1);
@@ -337,7 +333,6 @@ const CategoryMapping = () => {
       setSelectedPortalCategory("");
       toast.success(res.data.message);
       
-      // Refresh mapped categories
       if (selectedMasterCategoryId) {
         loadMappedCategories(selectedMasterCategoryId, 1);
       }
@@ -376,7 +371,6 @@ const CategoryMapping = () => {
       const response = await deleteMapping(mappingId);
       toast.success(response.data?.data || "Mapping deleted");
 
-      // Refresh the mapped categories list
       if (selectedMasterCategoryId) {
         loadMappedCategories(selectedMasterCategoryId, 1);
       }
@@ -386,11 +380,24 @@ const CategoryMapping = () => {
     }
   };
 
+  const handleToggleDefaultContent = async (mappingId, currentValue) => {
+    try {
+      await updateCategoryMapping(mappingId, !currentValue);
+      toast.success(`Default content ${!currentValue ? 'enabled' : 'disabled'}`);
+
+      if (selectedMasterCategoryId) {
+        loadMappedCategories(selectedMasterCategoryId, 1);
+      }
+    } catch (error) {
+      console.error("Failed to update mapping:", error);
+      toast.error(error.response?.data?.message || "Failed to update mapping");
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-gray-50 to-gray-100 py-8 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow-xl rounded-xl">
-          {/* Header */}
           <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-6 py-5 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-white">Category Mapping</h1>
             <button
@@ -401,9 +408,7 @@ const CategoryMapping = () => {
             </button>
           </div>
 
-          {/* Form Content */}
           <div className="p-6 space-y-6 h-auto">
-            {/* Master Category */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                 <List className="w-4 h-4 text-gray-600" /> Master Category
@@ -431,7 +436,6 @@ const CategoryMapping = () => {
               />
             </div>
 
-            {/* Mapped Categories Display */}
             {mappedData && (
               <div className="bg-gray-50 to-indigo-50 border-2 border-black/80 rounded-lg p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-black/70 pb-3">
@@ -446,7 +450,6 @@ const CategoryMapping = () => {
                   )}
                 </div>
 
-                {/* Assigned Users */}
                 {mappedData.assigned_users.length > 0 && (
                   <div className="bg-white/70 rounded-lg p-3">
                     <div className="text-sm font-semibold text-gray-700 mb-2">Assigned Users:</div>
@@ -463,7 +466,6 @@ const CategoryMapping = () => {
                   </div>
                 )}
 
-                {/* Mapped Portal Categories with Infinite Scroll */}
                 <div>
                   <div className="text-sm font-semibold text-gray-700 mb-2">
                     Portal Mappings ({mappedData.mappings.length}):
@@ -485,19 +487,24 @@ const CategoryMapping = () => {
                             <span className="text-gray-400">→</span>
                             <span className="text-gray-700">{mapping.portal_category_name}</span>
                           </div>
-                         <div className="flex items-center gap-2">
-                            {mapping.use_default_content && (
-                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
-                                Default Content
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleDefaultContent(mapping.id, mapping.use_default_content)}
+                              className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                                mapping.use_default_content
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {mapping.use_default_content ? 'Default Content:True' : 'Default Content: False'}
+                            </button>
+
                             {mapping.is_default && (
                               <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
                                 Default
                               </span>
                             )}
 
-                            {/* Delete Button */}
                             <button
                               onClick={() => handleDeleteMapping(mapping.id)}
                               className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-lg font-medium hover:bg-red-200 transition-colors"
@@ -505,7 +512,6 @@ const CategoryMapping = () => {
                               Delete
                             </button>
                           </div>
-
                         </div>
                       </div>
                     ))}
@@ -525,7 +531,6 @@ const CategoryMapping = () => {
               </div>
             )}
 
-            {/* Portal */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                 <Globe className="w-4 h-4 text-gray-600" /> Portal
@@ -548,7 +553,6 @@ const CategoryMapping = () => {
 
             {selectedPortal && (
               <>
-                {/* Use Default Content */}
                 <div className="bg-white/50 border border-black/80 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-semibold text-gray-700">
@@ -565,28 +569,31 @@ const CategoryMapping = () => {
                   </div>
                 </div>
 
-                {/* Portal Category */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                     <List className="w-4 h-4 text-gray-600" /> Portal Category
                   </label>
-                 <InfiniteScrollDropdown 
-                 value={selectedPortalCategory} 
-                 onChange={(cat) => setSelectedPortalCategory(cat.id)}
-                  options={portalCategories}
-                   placeholder="-- Select Portal Category --" loading={portalCategoriesLoading}
+                  <InfiniteScrollDropdown 
+                    value={selectedPortalCategory} 
+                    onChange={(cat) => setSelectedPortalCategory(cat.id)}
+                    options={portalCategories}
+                    placeholder="-- Select Portal Category --" 
+                    loading={portalCategoriesLoading}
                     hasMore={portalCategoriesHasMore} 
                     onLoadMore={() => loadPortalCategories(selectedPortal.name, portalCategoriesPage + 1)} 
-                    icon={List} renderOption={(cat) => ( <div className="text-sm"> 
-                    <span className="text-gray-600">{cat.parent_name}</span>
-                     <span className="mx-2 text-gray-400">→</span> 
-                     <span className="font-medium text-gray-900">{cat.name}</span>
-                      </div> )} />
+                    icon={List} 
+                    renderOption={(cat) => ( 
+                      <div className="text-sm"> 
+                        <span className="text-gray-600">{cat.parent_name}</span>
+                        <span className="mx-2 text-gray-400">→</span> 
+                        <span className="font-medium text-gray-900">{cat.name}</span>
+                      </div> 
+                    )} 
+                  />
                 </div>
               </>
             )}
 
-            {/* Add Button */}
             <div className="flex justify-end">
               <button
                 onClick={handleAddMapping}
@@ -596,7 +603,6 @@ const CategoryMapping = () => {
               </button>
             </div>
 
-            {/* Mapping List */}
             {mappings.length > 0 && (
               <div className="mt-8 border-t pt-6">
                 <h2 className="font-bold text-lg text-gray-800 mb-4">Recently Mapped Categories</h2>
@@ -622,7 +628,6 @@ const CategoryMapping = () => {
         </div>
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">

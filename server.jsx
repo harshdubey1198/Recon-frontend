@@ -329,6 +329,16 @@ export async function fetchCategoryHeatmap(range = "7d") {
   });
 }
 
+// Update category mapping
+export async function updateCategoryMapping(mappingId, useDefaultContent) {
+  return axiosInstance.patch(`/api/master/category/mapping/${mappingId}/`, {
+    use_default_content: useDefaultContent,
+  }, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
 
 
 export default axiosInstance;
