@@ -1011,12 +1011,12 @@ const handleViewDrafts = async () => {
                         { name: 'editing', items: ['Find', 'Replace', '-', 'SelectAll'] },
                         {
                           name: 'insert',
-                          items: ['Image', 'Table', 'HorizontalRule', 'SpecialChar', 'CodeSnippet', 'Youtube', 'Html5video']
+                          items: ['Image', 'Table', 'HorizontalRule', 'SpecialChar', 'CodeSnippet', 'Youtube', 'Html5video' , 'Link', 'Unlink', '-',]
                         },
                         { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat'] },
                         {
                           name: 'paragraph',
-                          items: ['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','JustifyLeft','JustifyCenter','JustifyRight']
+                          items: ['NumberedList','BulletedList','-','Outdent','Indent','-','Blockquote','JustifyLeft','JustifyCenter','JustifyRight','JustifyBlock',]
                         },
                         { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
                         { name: 'colors', items: ['TextColor','BGColor'] },

@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { FileText, X, Clock } from "lucide-react";
-import { fetchMyNewsPosts,fetchDistributedNews,publishNewsArticle, fetchNewsDetail, fetchMasterCategories, fetchPortals, fetchPortalCategories, } from "../../server";
+import {
+  fetchMyNewsPosts,
+  fetchDistributedNews,
+  publishNewsArticle,
+  fetchNewsDetail,
+  fetchMasterCategories,
+  fetchPortals,
+  fetchPortalCategories,
+} from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 import MasterFilter from "../components/filters/MasterFilter";
 import SearchFilter from "../components/filters/SearchFilter";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const NewsList = () => {
   const [selectedNewsIds, setSelectedNewsIds] = useState([]);
@@ -14,12 +24,16 @@ const NewsList = () => {
   const [selectedNews, setSelectedNews] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // default 10 items per page
   const [distributedList, setDistributedList] = useState([]);
   const [expandedRow, setExpandedRow] = useState(null);
   const [distributedData, setDistributedData] = useState({});
   const [publishingId, setPublishingId] = useState(null);
   const [distributionStatus, setDistributionStatus] = useState("");
-  const [counts, setCounts] = useState({ total_master_news_posts: 0, total_news_distributions: 0 });
+  const [counts, setCounts] = useState({
+    total_master_news_posts: 0,
+    total_news_distributions: 0,
+  });
   // console.log(counts)
   // 🔹 Filter States
   const [search, setSearch] = useState("");
@@ -38,6 +52,43 @@ const NewsList = () => {
   const [portals, setPortals] = useState([]);
   const [portalCategories, setPortalCategories] = useState([]);
   const [masterCategories, setMasterCategories] = useState([]);
+
+  const handleExportToExcel = () => {
+    if (!news || news.length === 0) {
+      toast.warn("No news data to export!");
+      return;
+    }
+
+    // Prepare data
+    const exportData = news.map((item, index) => ({
+      "Sr No": index + 1,
+      Headline: item.headline,
+      Category: item.category,
+      Status: item.status,
+      Date: item.date,
+      Author: item.author,
+      "Short Description": item.shortDesc,
+    }));
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "News");
+
+    // Convert to Excel file
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    // Trigger download
+    saveAs(blob, `news_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   // 🔹 Load dropdowns
   useEffect(() => {
@@ -80,7 +131,7 @@ const NewsList = () => {
 
       if (res?.data?.status) {
         toast.success("Article republished successfully!");
-        
+
         // ✅ Always reload the distribution immediately after retry
         await loadDistributedNews(item.id);
 
@@ -118,69 +169,69 @@ const NewsList = () => {
   }, [selectedPortal]);
 
   const loadNewsWithFilters = async (filters) => {
-  setIsRefreshing(true);
+    setIsRefreshing(true);
 
-  try {
-    let date_filter = "";
-    let start_date = "";
-    let end_date = "";
+    try {
+      let date_filter = "";
+      let start_date = "";
+      let end_date = "";
 
-    const df = filters.date_filter;
+      const df = filters.date_filter;
 
-    if (typeof df === "string") {
-      date_filter = df;
-    } else if (typeof df === "object" && df !== null) {
-      date_filter = df.date_filter || "custom";
-      start_date = df.start_date || "";
-      end_date = df.end_date || "";
+      if (typeof df === "string") {
+        date_filter = df;
+      } else if (typeof df === "object" && df !== null) {
+        date_filter = df.date_filter || "custom";
+        start_date = df.start_date || "";
+        end_date = df.end_date || "";
+      }
+
+      // console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
+
+      const res = await fetchMyNewsPosts({
+        search: filters.search || "",
+        status: filters.status || "",
+        distribution_status: filters.distribution_status || "",
+        portal: filters.portal_id || "",
+        master_category: filters.master_category_id || "",
+        created_by: filters.username || "",
+        username: filters.username || "",
+        date_filter, // ✅ fixed
+        start_date,
+        end_date,
+        page: filters.page || page || 1,
+        page_size: filters.page_size || pageSize, // ✅ Added line
+      });
+
+      if (res?.data?.status) {
+        const posts = res?.data?.data.results || [];
+        const countsData = res?.data?.data.counts || {};
+        setCounts(countsData);
+
+        const mapped = posts.map((item) => ({
+          id: item.id,
+          category: item.master_category_name || "N/A",
+          headline: item.title || "Untitled",
+          shortDesc: item.short_description || "",
+          longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
+          author: "You",
+          live_url: "",
+          status: item.status || "N/A",
+          date: new Date(item.created_at).toLocaleDateString(),
+          image: item.post_image
+            ? `${constant?.appBaseUrl}/${item.post_image}`
+            : "https://via.placeholder.com/150",
+        }));
+
+        setNews(mapped);
+        setTotalPages(res?.data?.pagination?.total_pages || 1);
+      }
+    } catch (err) {
+      console.error("Failed to fetch filtered news:", err);
+    } finally {
+      setIsRefreshing(false);
     }
-
-    // console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
-
-
-    const res = await fetchMyNewsPosts({
-      search: filters.search || "",
-      status: filters.status || "",
-      distribution_status: filters.distribution_status || "",
-      portal: filters.portal_id || "",
-      master_category: filters.master_category_id || "",
-      created_by: filters.username || "",
-      username: filters.username || "",
-      date_filter, // ✅ fixed
-      start_date,
-      end_date,
-      page: filters.page || page || 1,
-    });
-
-    if (res?.data?.status) {
-      const posts = res?.data?.data.results || [];
-      const countsData = res?.data?.data.counts || {};
-      setCounts(countsData);
-
-      const mapped = posts.map((item) => ({
-        id: item.id,
-        category: item.master_category_name || "N/A",
-        headline: item.title || "Untitled",
-        shortDesc: item.short_description || "",
-        longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
-        author: "You",
-        live_url: "",
-        status: item.status || "N/A",
-        date: new Date(item.created_at).toLocaleDateString(),
-        image: item.post_image
-          ? `${constant?.appBaseUrl}/${item.post_image}`
-          : "https://via.placeholder.com/150",
-      }));
-
-      setNews(mapped);
-      setTotalPages(res?.data?.pagination?.total_pages || 1);
-    }
-  } catch (err) {
-    console.error("Failed to fetch filtered news:", err);
-  } finally {
-    setIsRefreshing(false);
-  }
-};
+  };
 
   // 🔹 Selection
   const toggleSelect = (id) =>
@@ -206,7 +257,29 @@ const NewsList = () => {
     setCreatedBy("");
     loadNewsWithFilters();
   };
-{isRefreshing && <div className="text-xs text-gray-500 text-center py-1">Refreshing data...</div>}
+  {
+    isRefreshing && (
+      <div className="text-xs text-gray-500 text-center py-1">
+        Refreshing data...
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    loadNewsWithFilters({
+      page: 1,
+      page_size: pageSize,
+      search,
+      status,
+      distribution_status: distributionStatus,
+      portal_id: selectedPortal,
+      master_category_id: selectedMasterCategory,
+      username: createdBy,
+      date_filter: dateFilter,
+      start_date: startDate,
+      end_date: endDate,
+    });
+  }, [pageSize]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-6">
@@ -231,113 +304,122 @@ const NewsList = () => {
 
             {/* Right Section - Create News Button */}
             <button
-                onClick={() => {
-                  localStorage.setItem("activeTab", "Create News");
-                  window.location.reload(); 
-                }}
-                className="group relative p-3 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
-              >
-                  <span className="relative z-10 flex items-center">
-                    <FileText className="w-4 h-4 mr-2 group-hover:animate-pulse" />
-                    Create News
-                  </span>
-                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300"></div>
+              onClick={() => {
+                localStorage.setItem("activeTab", "Create News");
+                window.location.reload();
+              }}
+              className="group relative p-3 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
+            >
+              <span className="relative z-10 flex items-center">
+                <FileText className="w-4 h-4 mr-2 group-hover:animate-pulse" />
+                Create News
+              </span>
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300"></div>
+            </button>
+            <button
+              onClick={handleExportToExcel}
+              className="group relative p-3 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-all flex items-center space-x-2 border border-green-700"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Export to Excel
             </button>
           </div>
-          
-        {/* 🔍 Standalone Search Bar */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
-          <SearchFilter
-            onChange={(query) => {
-              setSearch(query);
-              const filters = {
-                search: query,
-                status,
-                portal_id: selectedPortal,
-                master_category_id: selectedMasterCategory,
-                username: createdBy,
-                date_filter: { start_date: startDate, end_date: endDate },
-              };
-              loadNewsWithFilters(filters);
-            }}
-          />
-        </div>
 
+          {/* 🔍 Standalone Search Bar */}
+          <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <SearchFilter
+              onChange={(query) => {
+                setSearch(query);
+                const filters = {
+                  search: query,
+                  status,
+                  portal_id: selectedPortal,
+                  master_category_id: selectedMasterCategory,
+                  username: createdBy,
+                  date_filter: { start_date: startDate, end_date: endDate },
+                };
+                loadNewsWithFilters(filters);
+              }}
+            />
+          </div>
 
           {/* Filters */}
           <div className="p-6">
             <MasterFilter
-                visibleFilters={[
-                  // "search",
-                  "status",
-                  "distribution_status",
-                  "portal_id",
-                  "master_category_id",
-                  // "custom_date",
-                  "username",
-                  "date_filter",
-                ]}
-                initialFilters={{
-                  search,
-                  status,
-                  distribution_status: distributionStatus,
-                  portal_id: selectedPortal,
-                  master_category_id: selectedMasterCategory,
-                  username: createdBy,
-                  date_filter: dateFilter,
-                  start_date:startDate,
-                  end_date:endDate
-                }}
-                onChange={(filters) => {
-                  setSearch(filters.search || "");
-                  setStatus(filters.status || "");
-                  setSelectedPortal(filters.portal_id || "");
-                  setSelectedMasterCategory(filters.master_category_id || "");
-                  setCreatedBy(filters.username || "");
-                  setUsername(filters.username || "");
-                  setDateFilter(filters.date_filter || "today");
-                  setStartDate(filters.date_filter?.start_date || "");
-                  setEndDate(filters.date_filter?.end_date || "");
+              visibleFilters={[
+                // "search",
+                "status",
+                "distribution_status",
+                "portal_id",
+                "master_category_id",
+                // "custom_date",
+                "username",
+                "date_filter",
+              ]}
+              initialFilters={{
+                search,
+                status,
+                distribution_status: distributionStatus,
+                portal_id: selectedPortal,
+                master_category_id: selectedMasterCategory,
+                username: createdBy,
+                date_filter: dateFilter,
+                start_date: startDate,
+                end_date: endDate,
+              }}
+              onChange={(filters) => {
+                setSearch(filters.search || "");
+                setStatus(filters.status || "");
+                setSelectedPortal(filters.portal_id || "");
+                setSelectedMasterCategory(filters.master_category_id || "");
+                setCreatedBy(filters.username || "");
+                setUsername(filters.username || "");
+                setDateFilter(filters.date_filter || "today");
+                setStartDate(filters.date_filter?.start_date || "");
+                setEndDate(filters.date_filter?.end_date || "");
 
-                  setDistributionStatus(filters.distribution_status || "");
-                  setPage(1);
+                setDistributionStatus(filters.distribution_status || "");
+                setPage(1);
 
-                  // ✅ Call loadNews AFTER states update (using callback pattern)
-                  setTimeout(() => {
-                    loadNewsWithFilters(filters);
-                  }, 0);
-                }}
-
-                onClear={() => {
-                  handleReset();
-                }}
-              />
-              {/* 🔹 Stats Overview */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-6 mt-2">
-                <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
-                  <div>
-                    <h3 className="text-sm text-gray-500 font-medium">Total Master Posts</h3>
-                    <p className="text-2xl font-bold text-blue-700 mt-1">
-                      {counts?.total_master_news_posts || 0}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-blue-200 rounded-full">
-                    <FileText className="w-5 h-5 text-blue-800" />
-                  </div>
+                // ✅ Call loadNews AFTER states update (using callback pattern)
+                setTimeout(() => {
+                  loadNewsWithFilters(filters);
+                }, 0);
+              }}
+              onClear={() => {
+                handleReset();
+              }}
+            />
+            {/* 🔹 Stats Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-6 mt-2">
+              <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                <div>
+                  <h3 className="text-sm text-gray-500 font-medium">
+                    Total Master Posts
+                  </h3>
+                  <p className="text-2xl font-bold text-blue-700 mt-1">
+                    {counts?.total_master_news_posts || 0}
+                  </p>
                 </div>
-
-                <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
-                  <div>
-                    <h3 className="text-sm text-gray-500 font-medium">Total Distributions</h3>
-                    <p className="text-2xl font-bold text-green-700 mt-1">
-                      {counts?.total_news_distributions || 0}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-green-200 rounded-full">
-                    <Clock className="w-5 h-5 text-green-800" />
-                  </div>
+                <div className="p-3 bg-blue-200 rounded-full">
+                  <FileText className="w-5 h-5 text-blue-800" />
                 </div>
               </div>
+
+              <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+                <div>
+                  <h3 className="text-sm text-gray-500 font-medium">
+                    Total Distributions
+                  </h3>
+                  <p className="text-2xl font-bold text-green-700 mt-1">
+                    {counts?.total_news_distributions || 0}
+                  </p>
+                </div>
+                <div className="p-3 bg-green-200 rounded-full">
+                  <Clock className="w-5 h-5 text-green-800" />
+                </div>
+              </div>
+            </div>
 
             {/* Table */}
             <div className="overflow-x-auto mt-4">
@@ -424,14 +506,22 @@ const NewsList = () => {
                               {item.headline}
                             </div>
                             <p className="text-xs text-gray-500">
-                              {item.shortDesc?.split(" ").slice(0, 15).join(" ") + (item.shortDesc?.split(" ").length > 15 ? "..." : "")}
+                              {item.shortDesc
+                                ?.split(" ")
+                                .slice(0, 15)
+                                .join(" ") +
+                                (item.shortDesc?.split(" ").length > 15
+                                  ? "..."
+                                  : "")}
                             </p>
                             {/* <div className="flex items-center justify-center space-x-1">
                               <Clock className="w-4 h-4" />
                               <span>{item.date}</span>
                             </div> */}
                           </td>
-                          <td className="px-4 py-2 text-sm text-center text-gray-700">{item.category}</td>
+                          <td className="px-4 py-2 text-sm text-center text-gray-700">
+                            {item.category}
+                          </td>
                           {/* <td className="px-4 py-2 text-sm text-gray-700">{item.author}</td> */}
                           {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
                             {item.live_url}
@@ -456,104 +546,120 @@ const NewsList = () => {
                             </div>
                           </td>
                           <td
-                              className="px-4 py-2 text-sm text-center "
-                              onClick={(e) => {
-                                e.stopPropagation(); // prevent row expand/collapse
-                                if (!publishingId) handleRetryPublish(item);
-                              }}
-                            >
-                              {publishingId === item.id ? (
-                                <div className="flex items-center gap-2 text-gray-600 text-sm">
-                                  <svg
-                                    className="w-4 h-4 animate-spin text-gray-600"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5a8 8 0 008 8v-4a4 4 0 01-4-4H6z"
-                                    ></path>
-                                  </svg>
-                                  <span>Publishing...</span>
-                                </div>
-                              ) : (
-                                <button
-                                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                                  title="Retry Publish"
+                            className="px-4 py-2 text-sm text-center "
+                            onClick={(e) => {
+                              e.stopPropagation(); // prevent row expand/collapse
+                              if (!publishingId) handleRetryPublish(item);
+                            }}
+                          >
+                            {publishingId === item.id ? (
+                              <div className="flex items-center gap-2 text-gray-600 text-sm">
+                                <svg
+                                  className="w-4 h-4 animate-spin text-gray-600"
+                                  viewBox="0 0 24 24"
                                 >
-                                  Retry
-                                </button>
-                              )}
-                            </td>
-
-
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  ></circle>
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5a8 8 0 008 8v-4a4 4 0 01-4-4H6z"
+                                  ></path>
+                                </svg>
+                                <span>Publishing...</span>
+                              </div>
+                            ) : (
+                              <button
+                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                title="Retry Publish"
+                              >
+                                Retry
+                              </button>
+                            )}
+                          </td>
                         </tr>
 
                         {/* COLLAPSIBLE DISTRIBUTED LIST */}
                         {expandedRow === item.id && (
-                            <tr className="bg-white border-t border-gray-200">
-                              <td colSpan="9" className="p-0">
-                                {distributedData[item.id]?.length > 0 ? (
-                                  <table className="w-full text-sm bg-gray-50">
-                                    {/* ✅ Table Header */}
-                                    <thead className="bg-gray-100 text-gray-700 text-xs uppercase tracking-wide border-b">
-                                      <tr>
-                                        <th className="w-[100px] px-3 py-2 text-left"></th>
-                                        <th className="px-3 py-2 text-left">Image</th>
-                                        <th className="px-3 py-2 text-left">Title</th>
-                                        <th className="px-3 py-2 text-left">Portal / URL</th>
-                                        <th className="px-3 py-2 text-left">Retries</th>
-                                        <th className="px-3 py-2 text-left">Time Taken</th>
-                                        <th className="px-3 py-2 text-left">Status</th>
-                                        {/* <th className="px-3 py-2 text-left">Date</th> */}
-                                        <th className="px-3 py-2 text-left">Response<br/>Messages</th>
-                                      </tr>
-                                    </thead>
+                          <tr className="bg-white border-t border-gray-200">
+                            <td colSpan="9" className="p-0">
+                              {distributedData[item.id]?.length > 0 ? (
+                                <table className="w-full text-sm bg-gray-50">
+                                  {/* ✅ Table Header */}
+                                  <thead className="bg-gray-100 text-gray-700 text-xs uppercase tracking-wide border-b">
+                                    <tr>
+                                      <th className="w-[100px] px-3 py-2 text-left"></th>
+                                      <th className="px-3 py-2 text-left">
+                                        Image
+                                      </th>
+                                      <th className="px-3 py-2 text-left">
+                                        Title
+                                      </th>
+                                      <th className="px-3 py-2 text-left">
+                                        Portal / URL
+                                      </th>
+                                      <th className="px-3 py-2 text-left">
+                                        Retries
+                                      </th>
+                                      <th className="px-3 py-2 text-left">
+                                        Time Taken
+                                      </th>
+                                      <th className="px-3 py-2 text-left">
+                                        Status
+                                      </th>
+                                      {/* <th className="px-3 py-2 text-left">Date</th> */}
+                                      <th className="px-3 py-2 text-left">
+                                        Response
+                                        <br />
+                                        Messages
+                                      </th>
+                                    </tr>
+                                  </thead>
 
-                                    <tbody>
-                                      {distributedData[item.id].map((dist) => (
-                                        <tr
-                                          key={dist.id}
-                                          className="border-t border-gray-200 hover:bg-gray-100 transition-colors"
-                                        >
-                                          <td className="w-[100px]"></td>
+                                  <tbody>
+                                    {distributedData[item.id].map((dist) => (
+                                      <tr
+                                        key={dist.id}
+                                        className="border-t border-gray-200 hover:bg-gray-100 transition-colors"
+                                      >
+                                        <td className="w-[100px]"></td>
 
-                                          {/* 🔹 Portal Image */}
-                                          <td className="w-[60px] px-2 py-3">
-                                            <img
-                                              src={dist.news_post_image}
-                                              alt={dist.portal_name}
-                                              className="w-10 h-10 object-cover rounded-md border"
-                                            />
-                                          </td>
+                                        {/* 🔹 Portal Image */}
+                                        <td className="w-[60px] px-2 py-3">
+                                          <img
+                                            src={dist.news_post_image}
+                                            alt={dist.portal_name}
+                                            className="w-10 h-10 object-cover rounded-md border"
+                                          />
+                                        </td>
 
-                                          {/* 🔹 Headline + Short Description */}
-                                          <td className="px-2 py-3 max-w-[220px]">
-                                            <div className="flex flex-col">
-                                              <span className="text-sm font-semibold text-gray-900">
-                                                {dist.news_post_title}
-                                              </span>
-                                              <span className="text-xs text-gray-500 truncate max-w-[200px]">
-                                                {dist.ai_short_description || "—"}
-                                              </span>
-                                              <span className="text-xs text-gray-500 truncate max-w-[200px]">
-                                                {new Date(dist.sent_at).toLocaleString()}
-                                              </span>
-                                            </div>
-                                          </td>
+                                        {/* 🔹 Headline + Short Description */}
+                                        <td className="px-2 py-3 max-w-[220px]">
+                                          <div className="flex flex-col">
+                                            <span className="text-sm font-semibold text-gray-900">
+                                              {dist.news_post_title}
+                                            </span>
+                                            <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                                              {dist.ai_short_description || "—"}
+                                            </span>
+                                            <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                                              {new Date(
+                                                dist.sent_at
+                                              ).toLocaleString()}
+                                            </span>
+                                          </div>
+                                        </td>
 
-                                          {/* 🔹 Portal + Live URL */}
-                                          <td className="px-2 py-3 text-gray-600 truncate max-w-[200px]">
-                                            {/* 🔹 Live URL */}
-                                            {/* <a
+                                        {/* 🔹 Portal + Live URL */}
+                                        <td className="px-2 py-3 text-gray-600 truncate max-w-[200px]">
+                                          {/* 🔹 Live URL */}
+                                          {/* <a
                                               href={dist.live_url}
                                               target="_blank"
                                               rel="noopener noreferrer"
@@ -563,98 +669,106 @@ const NewsList = () => {
                                               </a>
                                               
                                               <br /> */}
-                                            <span
-                                              onClick={() => {
-                                                if (dist.live_url) {
-                                                  window.open(dist.live_url, "_blank");
-                                                }
-                                              }}
-                                              className="px-2 font-medium text-gray-800 cursor-pointer hover:text-blue-600 hover:underline transition-all"
-                                              title={`Go to ${dist.portal_name} -> ${dist.live_url}`}
-                                            >
-                                              {dist.portal_name}
-                                            </span>
-                                          </td>
-
-
-                                          {/* 🔹 Retry Count */}
-                                          <td className="px-2 py-3 text-center text-sm font-medium">
-                                            <span
-                                              className={
-                                                dist.retry_count > 0
-                                                  ? "text-red-600"
-                                                  : "text-green-600"
+                                          <span
+                                            onClick={() => {
+                                              if (dist.live_url) {
+                                                window.open(
+                                                  dist.live_url,
+                                                  "_blank"
+                                                );
                                               }
+                                            }}
+                                            className="px-2 font-medium text-gray-800 cursor-pointer hover:text-blue-600 hover:underline transition-all"
+                                            title={`Go to ${dist.portal_name} -> ${dist.live_url}`}
+                                          >
+                                            {dist.portal_name}
+                                          </span>
+                                        </td>
+
+                                        {/* 🔹 Retry Count */}
+                                        <td className="px-2 py-3 text-center text-sm font-medium">
+                                          <span
+                                            className={
+                                              dist.retry_count > 0
+                                                ? "text-red-600"
+                                                : "text-green-600"
+                                            }
+                                          >
+                                            {dist.retry_count}
+                                          </span>
+                                        </td>
+
+                                        {/* 🔹 Time Taken */}
+                                        <td className="px-2 py-3 text-center text-sm text-gray-700">
+                                          {dist.time_taken
+                                            ? `${dist.time_taken.toFixed(2)}s`
+                                            : "0s"}
+                                        </td>
+
+                                        {/* 🔹 Status Badge */}
+                                        <td className="px-2 py-3">
+                                          <span
+                                            className={`px-2 py-1 text-xs rounded ${
+                                              dist.status === "SUCCESS"
+                                                ? "bg-green-100 text-green-700"
+                                                : dist.status === "FAILED"
+                                                ? "bg-red-100 text-red-700"
+                                                : "bg-yellow-100 text-yellow-700"
+                                            }`}
+                                          >
+                                            {dist.status}
+                                          </span>
+                                        </td>
+                                        <td className="px-2 py-3 text-center text-sm text-gray-700">
+                                          {dist.response_message ? (
+                                            <button
+                                              onClick={() =>
+                                                setSelectedResponse(
+                                                  dist.response_message
+                                                )
+                                              }
+                                              className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
+                                              title="View full response message"
                                             >
-                                              {dist.retry_count}
+                                              Check Message
+                                            </button>
+                                          ) : (
+                                            <span className="text-gray-400 text-xs">
+                                              —
                                             </span>
-                                          </td>
+                                          )}
+                                        </td>
 
-                                          {/* 🔹 Time Taken */}
-                                          <td className="px-2 py-3 text-center text-sm text-gray-700">
-                                            {dist.time_taken
-                                              ? `${dist.time_taken.toFixed(2)}s`
-                                              : "0s"}
-                                          </td>
-
-                                          {/* 🔹 Status Badge */}
-                                          <td className="px-2 py-3">
-                                            <span
-                                              className={`px-2 py-1 text-xs rounded ${
-                                                dist.status === "SUCCESS"
-                                                  ? "bg-green-100 text-green-700"
-                                                  : dist.status === "FAILED"
-                                                  ? "bg-red-100 text-red-700"
-                                                  : "bg-yellow-100 text-yellow-700"
-                                              }`}
-                                            >
-                                              {dist.status}
-                                            </span>
-                                          </td>
-                                          <td className="px-2 py-3 text-center text-sm text-gray-700">
-                                              {dist.response_message ? (
-                                                <button
-                                                  onClick={() => setSelectedResponse(dist.response_message)}
-                                                  className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
-                                                  title="View full response message"
-                                                >
-                                                  Check Message
-                                                </button>
-                                              ) : (
-                                                <span className="text-gray-400 text-xs">—</span>
-                                              )}
-                                            </td>
-
-                                          {/* 🔹 Date */}
-                                          {/* <td className="px-2 py-3 text-center text-gray-500 whitespace-nowrap">
+                                        {/* 🔹 Date */}
+                                        {/* <td className="px-2 py-3 text-center text-gray-500 whitespace-nowrap">
                                           </td> */}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                ) : (
-                                  <div className="text-center py-3 text-gray-500">
-                                    No distribution data found.
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          )}
-
-
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <div className="text-center py-3 text-gray-500">
+                                  No distribution data found.
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
                       </React.Fragment>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="9" className="text-center py-4 text-gray-500">
+                      <td
+                        colSpan="9"
+                        className="text-center py-4 text-gray-500"
+                      >
                         No news found.
                       </td>
                     </tr>
                   )}
                 </tbody>
-
               </table>
-              {totalPages > 1 && (
+              {/* {totalPages > 1 && (
                 <div className="flex justify-center items-center space-x-2 mt-4">
                   <button
                     onClick={() => setPage((p) => Math.max(p - 1, 1))}
@@ -683,6 +797,125 @@ const NewsList = () => {
                   >
                     Next
                   </button>
+                </div>
+              )} */}
+              {totalPages > 1 && (
+                <div className="flex flex-wrap justify-center items-center space-x-3 mt-4">
+                  {/* 🔹 Rows per page dropdown */}
+                  <div className="flex items-center space-x-2">
+                    <label htmlFor="pageSize" className="text-sm text-gray-600">
+                      Show:
+                    </label>
+                    <select
+                      id="pageSize"
+                      value={pageSize}
+                      onChange={(e) => {
+                        const newSize = Number(e.target.value);
+                        localStorage.setItem("pageSize", newSize);
+                        setPageSize(newSize);
+                        setPage(1);
+
+                        // ✅ Always send normalized filter values
+                        const filters = {
+                          page: 1,
+                          page_size: newSize,
+                          search: search || "",
+                          status: status || "",
+                          distribution_status: distributionStatus || "",
+                          portal_id: selectedPortal || "",
+                          master_category_id: selectedMasterCategory || "",
+                          username: createdBy || "",
+                          date_filter:
+                            typeof dateFilter === "object"
+                              ? {
+                                  date_filter:
+                                    dateFilter?.date_filter || "custom",
+                                  start_date: startDate || "",
+                                  end_date: endDate || "",
+                                }
+                              : dateFilter || "today",
+                          start_date: startDate || "",
+                          end_date: endDate || "",
+                        };
+
+                        loadNewsWithFilters(filters);
+                      }}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                    >
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+
+                    <span className="text-sm text-gray-600">per page</span>
+                  </div>
+
+                  {/* 🔹 Pagination buttons */}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        if (page > 1) {
+                          const newPage = page - 1;
+                          setPage(newPage);
+                          loadNewsWithFilters({
+                            page: newPage,
+                            page_size: pageSize,
+                            search,
+                            status,
+                            distribution_status: distributionStatus,
+                            portal_id: selectedPortal,
+                            master_category_id: selectedMasterCategory,
+                            username: createdBy,
+                            date_filter: dateFilter,
+                            start_date: startDate,
+                            end_date: endDate,
+                          });
+                        }
+                      }}
+                      disabled={page === 1}
+                      className={`px-3 py-1 rounded-md text-sm font-medium ${
+                        page === 1
+                          ? "bg-gray-200 text-gray-400"
+                          : "bg-black text-white hover:bg-gray-800"
+                      }`}
+                    >
+                      Prev
+                    </button>
+
+                    <span className="text-sm text-gray-700">
+                      Page {page} of {totalPages}
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        if (page < totalPages) {
+                          const newPage = page + 1;
+                          setPage(newPage);
+                          loadNewsWithFilters({
+                            page: newPage,
+                            page_size: pageSize,
+                            search,
+                            status,
+                            distribution_status: distributionStatus,
+                            portal_id: selectedPortal,
+                            master_category_id: selectedMasterCategory,
+                            username: createdBy,
+                            date_filter: dateFilter,
+                            start_date: startDate,
+                            end_date: endDate,
+                          });
+                        }
+                      }}
+                      disabled={page === totalPages}
+                      className={`px-3 py-1 rounded-md text-sm font-medium ${
+                        page === totalPages
+                          ? "bg-gray-200 text-gray-400"
+                          : "bg-black text-white hover:bg-gray-800"
+                      }`}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -727,7 +960,6 @@ const NewsList = () => {
             <p className="text-gray-700 whitespace-pre-line">
               {selectedNews.longDesc}
             </p>
-            
           </div>
         </div>
       )}
@@ -751,8 +983,6 @@ const NewsList = () => {
           </div>
         </div>
       )}
-
-
     </div>
   );
 };
