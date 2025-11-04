@@ -8,6 +8,8 @@ import SearchFilter from "../components/filters/SearchFilter";
 
 const NewsList = () => {
   const [selectedNewsIds, setSelectedNewsIds] = useState([]);
+  const [selectedResponse, setSelectedResponse] = useState(null);
+
   const [news, setNews] = useState([]);
   const [selectedNews, setSelectedNews] = useState(null);
   const [page, setPage] = useState(1);
@@ -75,55 +77,29 @@ const NewsList = () => {
     try {
       setPublishingId(item.id);
       const res = await publishNewsArticle(item.id);
+
       if (res?.data?.status) {
-        // console.log("✅ Re-publish success:", res.data.message);
         toast.success("Article republished successfully!");
-        loadDistributedNews(item.id); 
+        
+        // ✅ Always reload the distribution immediately after retry
+        await loadDistributedNews(item.id);
+
+        // ✅ If this row is expanded, trigger a smooth refresh
+        if (expandedRow === item.id) {
+          setTimeout(() => {
+            loadDistributedNews(item.id);
+          }, 1000); // short delay to let backend finish
+        }
       } else {
         toast.error("Failed to republish the article.");
       }
     } catch (err) {
       console.error("❌ Error while republishing:", err);
       toast.error("Something went wrong while republishing.");
-    }finally {
+    } finally {
       setPublishingId(null);
     }
   };
-  // 🔁 Auto-refresh every 20 seconds
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     console.log("🔄 Auto-refresh triggered...");
-
-  //     loadNewsWithFilters({
-  //       search,
-  //       status,
-  //       distribution_status: distributionStatus,
-  //       portal_id: selectedPortal,
-  //       master_category_id: selectedMasterCategory,
-  //       username: createdBy,
-  //       date_filter: { start_date: startDate, end_date: endDate },
-  //       page,
-  //     });
-
-  //     if (expandedRow && distributedData[expandedRow]) {
-  //       loadDistributedNews(expandedRow);
-  //     }
-  //   }, 15000);  
-
-  //   return () => clearInterval(interval);
-  // }, [
-  //   search,
-  //   status,
-  //   distributionStatus,
-  //   selectedPortal,
-  //   selectedMasterCategory,
-  //   createdBy,
-  //   startDate,
-  //   endDate,
-  //   page,
-  //   expandedRow,
-  // ]);
-
 
   useEffect(() => {
     const loadPortalCats = async () => {
@@ -412,7 +388,7 @@ const NewsList = () => {
                           onClick={() => {
                             const isOpen = expandedRow === item.id;
                             setExpandedRow(isOpen ? null : item.id);
-                            if (!isOpen && !distributedData[item.id]) {
+                            if (!isOpen) {
                               loadDistributedNews(item.id);
                             }
                           }}
@@ -447,14 +423,20 @@ const NewsList = () => {
                               </span>
                               {item.headline}
                             </div>
-                            <p className="text-xs text-gray-500">{item.shortDesc}</p>
+                            <p className="text-xs text-gray-500">
+                              {item.shortDesc?.split(" ").slice(0, 15).join(" ") + (item.shortDesc?.split(" ").length > 15 ? "..." : "")}
+                            </p>
+                            {/* <div className="flex items-center justify-center space-x-1">
+                              <Clock className="w-4 h-4" />
+                              <span>{item.date}</span>
+                            </div> */}
                           </td>
                           <td className="px-4 py-2 text-sm text-center text-gray-700">{item.category}</td>
                           {/* <td className="px-4 py-2 text-sm text-gray-700">{item.author}</td> */}
                           {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[180px]">
                             {item.live_url}
                           </td> */}
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-center">
                             <span
                               className={`px-2 py-1 text-xs rounded ${
                                 item.status === "SUCCESS"
@@ -531,7 +513,8 @@ const NewsList = () => {
                                         <th className="px-3 py-2 text-left">Retries</th>
                                         <th className="px-3 py-2 text-left">Time Taken</th>
                                         <th className="px-3 py-2 text-left">Status</th>
-                                        <th className="px-3 py-2 text-left">Date</th>
+                                        {/* <th className="px-3 py-2 text-left">Date</th> */}
+                                        <th className="px-3 py-2 text-left">Response<br/>Messages</th>
                                       </tr>
                                     </thead>
 
@@ -561,6 +544,9 @@ const NewsList = () => {
                                               <span className="text-xs text-gray-500 truncate max-w-[200px]">
                                                 {dist.ai_short_description || "—"}
                                               </span>
+                                              <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                                                {new Date(dist.sent_at).toLocaleString()}
+                                              </span>
                                             </div>
                                           </td>
 
@@ -574,9 +560,9 @@ const NewsList = () => {
                                               className="text-blue-600 hover:underline"
                                             >
                                               {dist.live_url || "—"}
-                                            </a>
-
-                                            <br /> */}
+                                              </a>
+                                              
+                                              <br /> */}
                                             <span
                                               onClick={() => {
                                                 if (dist.live_url) {
@@ -592,7 +578,7 @@ const NewsList = () => {
 
 
                                           {/* 🔹 Retry Count */}
-                                          <td className="px-2 py-3 text-sm font-medium">
+                                          <td className="px-2 py-3 text-center text-sm font-medium">
                                             <span
                                               className={
                                                 dist.retry_count > 0
@@ -605,7 +591,7 @@ const NewsList = () => {
                                           </td>
 
                                           {/* 🔹 Time Taken */}
-                                          <td className="px-2 py-3 text-sm text-gray-700">
+                                          <td className="px-2 py-3 text-center text-sm text-gray-700">
                                             {dist.time_taken
                                               ? `${dist.time_taken.toFixed(2)}s`
                                               : "0s"}
@@ -625,11 +611,23 @@ const NewsList = () => {
                                               {dist.status}
                                             </span>
                                           </td>
+                                          <td className="px-2 py-3 text-center text-sm text-gray-700">
+                                              {dist.response_message ? (
+                                                <button
+                                                  onClick={() => setSelectedResponse(dist.response_message)}
+                                                  className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
+                                                  title="View full response message"
+                                                >
+                                                  Check Message
+                                                </button>
+                                              ) : (
+                                                <span className="text-gray-400 text-xs">—</span>
+                                              )}
+                                            </td>
 
                                           {/* 🔹 Date */}
-                                          <td className="px-2 py-3 text-gray-500 whitespace-nowrap">
-                                            {new Date(dist.sent_at).toLocaleString()}
-                                          </td>
+                                          {/* <td className="px-2 py-3 text-center text-gray-500 whitespace-nowrap">
+                                          </td> */}
                                         </tr>
                                       ))}
                                     </tbody>
@@ -733,6 +731,28 @@ const NewsList = () => {
           </div>
         </div>
       )}
+
+      {/* 📨 Response Message Modal */}
+      {selectedResponse && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-[90%] max-w-lg p-6 relative">
+            <button
+              onClick={() => setSelectedResponse(null)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-black"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">
+              Full Response Message
+            </h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap max-h-[60vh] overflow-y-auto">
+              {selectedResponse}
+            </div>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 };
