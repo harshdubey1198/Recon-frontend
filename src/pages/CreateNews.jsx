@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Upload, X, Plus, Calendar, Eye, Save, RefreshCw, Image as ImageIcon, Tag, FileText, Settings, Clock, TrendingUp, AlertCircle, Star, Crop, RotateCw, ZoomIn, Maximize2, SaveAll, } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews  } from "../../server";
+import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews, fetchPortalCategories, fetchPortals  } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 
@@ -14,6 +14,13 @@ const NewsArticleForm = () => {
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
   const [tagInput, setTagInput] = useState("");
+  const [showPortalCategoryModal, setShowPortalCategoryModal] = useState(false);
+  const [portalList, setPortalList] = useState([]);
+  const [portalCategoriesModal, setPortalCategoriesModal] = useState([]);
+  const [selectedPortalForCategories, setSelectedPortalForCategories] = useState("");
+  const [portalPage, setPortalPage] = useState(1);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [hasNextCategoryPage, setHasNextCategoryPage] = useState(false);
   const [imagePreview, setImagePreview] = useState(formData.image ? `${constant.appBaseUrl}${formData?.image}` : null);
   // console.log("imagepreview",imagePreview);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +46,25 @@ const NewsArticleForm = () => {
       setShowPortalSection(false);
     }
   }, [formData.master_category]);
+
+useEffect(() => {
+  if (showPortalCategoryModal) {
+    fetchPortals(portalPage).then((res) =>
+      setPortalList(res?.data?.data || [])
+    );
+  }
+}, [showPortalCategoryModal, portalPage]);
+
+useEffect(() => {
+  if (selectedPortalForCategories) {
+    fetchPortalCategories(selectedPortalForCategories, categoryPage).then((res) => {
+      setPortalCategoriesModal(res?.data?.data || []);
+      // console.log(res.data);
+      
+      setHasNextCategoryPage(!!res?.data?.pagination?.next);
+    });
+  }
+}, [selectedPortalForCategories, categoryPage]);
 
 
 // const handleCategorySelect = async (e) => {
@@ -123,12 +149,14 @@ const handleCategorySelect = async (e, loadNext = false) => {
       const formatted = mappings.map((item) => ({
         id: item.id,
         portalId: Number(item.portal_id),
+        portalCategoryId: Number(item.portal_category),
         portalName: item.portal_name || "Unnamed Portal",
         categoryId: item.master_category,
         categoryName: item.master_category_name || "",
         portalCategoryName: item.portal_category_name || "",
-        selected: !excluded.includes(Number(item.portal_id)),
+        selected: !excluded.includes(Number(item.portal_category)),
       }));
+
 
       setMappedPortals((prev) => [...prev, ...formatted]);
       setShowPortalSection(true);
@@ -470,212 +498,214 @@ const handleViewDrafts = async () => {
   };
 
   const handleSubmit = async (e, statusType = "PUBLISHED") => {
-    // console.log(statusType);
-    e.preventDefault();
-  
-    const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
-  
-    if (!formData.meta_title.trim()) {
-      toast.warning(" Meta title is required.");
-      return;
+  e.preventDefault();
+
+  const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
+
+  if (!formData.meta_title.trim()) {
+    toast.warning("Meta title is required.");
+    return;
+  }
+
+  if (!valid_statuses.includes(statusType)) {
+    toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
+    return;
+  }
+
+  if (!formData.image) {
+    toast.warning("Please upload a post image before submitting.");
+    return;
+  }
+
+  if (formData.shortDesc.length > 160) {
+    toast.warning("Short description must be less than 160 characters.");
+    return;
+  }
+
+  const categoryId = Number(formData.master_category);
+
+  if (statusType === "PUBLISHED" && !categoryId && !formData.id) {
+    toast.warning("Please select a category.");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const formDataToSend = new FormData();
+
+    formDataToSend.append("title", formData.title || formData.headline);
+    formDataToSend.append("short_description", formData.shortDesc);
+    formDataToSend.append("content", formData.longDesc);
+    formDataToSend.append("post_image", formData.image);
+    formDataToSend.append("meta_title", formData.meta_title);
+    formDataToSend.append("slug", formData.slug);
+    formDataToSend.append("status", statusType);
+    formDataToSend.append("counter", formData.counter);
+    formDataToSend.append("order", formData.order);
+    formDataToSend.append("master_category", categoryId);
+
+    if (formData.tags && formData.tags.length > 0) {
+      const formattedTags = formData.tags
+        .map((tag) => {
+          const tagData = availableTags.find((t) => t.id === tag);
+          const tagName = tagData ? tagData.name : tag;
+          return `#${tagName}`;
+        })
+        .join(", ");
+      formDataToSend.append("post_tag", formattedTags);
     }
-  
-    if (!valid_statuses.includes(statusType)) {
-     toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
-      return;
+
+    formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
+    formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
+    formDataToSend.append("articles", formData.articles ? "true" : "false");
+    formDataToSend.append("trending", formData.trending ? "true" : "false");
+    formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
+    formDataToSend.append("upcoming_event", formData.upcomingEvents ? "true" : "false");
+
+    if (formData.eventStartDate) {
+      formDataToSend.append(
+        "Event_date",
+        new Date(formData.eventStartDate).toISOString().split("T")[0]
+      );
     }
-  
-    if (!formData.image) {
-      toast.warning(" Please upload a post image before submitting.");
-      return;
+    if (formData.eventEndDate) {
+      formDataToSend.append(
+        "Event_end_date",
+        new Date(formData.eventEndDate).toISOString().split("T")[0]
+      );
     }
-  
-    if (formData.shortDesc.length > 160) {
-      toast.warning(" Short description must be less than 160 characters.");
-      return;
-    }
-    const categoryId = Number(formData.master_category);
-
-    if (statusType === "PUBLISHED" && !categoryId && !formData.id) {
-      toast.warning("Please select a category.");
-      return;
+    if (formData.scheduleDate) {
+      formDataToSend.append("schedule_date", formData.scheduleDate);
     }
 
-        
-  
-    setIsLoading(true);
-  
-    try {
-      const formDataToSend = new FormData();
-  
-      formDataToSend.append("title", formData.title || formData.headline);
-      formDataToSend.append("short_description", formData.shortDesc);
-      formDataToSend.append("content", formData.longDesc);
-      formDataToSend.append("post_image", formData.image);
-      formDataToSend.append("meta_title", formData.meta_title);
-      formDataToSend.append("slug", formData.slug);
-      formDataToSend.append("status", statusType);
-      formDataToSend.append("counter", formData.counter);
-      formDataToSend.append("order", formData.order);
-  
-      formDataToSend.append("master_category", categoryId);
-  
-      if (formData.tags && formData.tags.length > 0) {
-        const formattedTags = formData.tags
-          .map((tag) => {
-            const tagData = availableTags.find((t) => t.id === tag);
-            const tagName = tagData ? tagData.name : tag;
-            return `#${tagName}`;
-          })
-          .join(", ");
-        formDataToSend.append("post_tag", formattedTags);
-      }
-  
-      formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
-      formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
-      formDataToSend.append("articles", formData.articles ? "true" : "false");
-      formDataToSend.append("trending", formData.trending ? "true" : "false");
-      formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
-      formDataToSend.append("upcoming_event", formData.upcomingEvents ? "true" : "false");
-      if (formData.eventStartDate) {
-        formDataToSend.append(
-          "Event_date",
-          new Date(formData.eventStartDate).toISOString().split("T")[0]
-        );
-      }
-      if (formData.eventEndDate) {
-        formDataToSend.append(
-          "Event_end_date",
-          new Date(formData.eventEndDate).toISOString().split("T")[0]
-        );
-      }
-      if (formData.scheduleDate) {
-        formDataToSend.append("schedule_date", formData.scheduleDate);
-      }
-      
-      let createdArticle;
-      if (formData.id) {
-        const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-        const changedFields = originalDraft ? buildDraftDiff(originalDraft, formData) : formData;
-        if (changedFields.longDesc) {
-          changedFields.content = changedFields.longDesc;
-          delete changedFields.longDesc;
-        }
-        changedFields.title = changedFields.title || formData.headline;
-        changedFields.content = formData.longDesc || formData.content;
-        const excludedPortals = mappedPortals
-            .filter(p => !p.selected)
-            .map(p => Number(p.portalId));
+    let createdArticle;
 
-          changedFields.excluded_portals = excludedPortals;
+    // -------------------- UPDATE EXISTING --------------------
+    if (formData.id) {
+      const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+      const changedFields = originalDraft ? buildDraftDiff(originalDraft, formData) : formData;
 
-          console.log("🟢 Wrapped excluded_portals:", changedFields);
-
-        changedFields.master_category = Number(formData.master_category);
-        await updateDraftNews(formData.id, nextStatus, changedFields);
-
-        createdArticle = { id: formData.id };
-        if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
-      } else {
-        const excludedPortals = mappedPortals.filter(p => !p.selected).map(p => p.portalId);
-        formDataToSend.append("excluded_portals", JSON.stringify( excludedPortals.map(Number) ));
-        formDataToSend.append("master_category", categoryId);
-        const response = await createNewsArticle(formDataToSend);
-        createdArticle = response.data.data;
-
+      if (changedFields.longDesc) {
+        changedFields.content = changedFields.longDesc;
+        delete changedFields.longDesc;
       }
 
+      changedFields.title = changedFields.title || formData.headline;
+      changedFields.content = formData.longDesc || formData.content;
+      changedFields.master_category = Number(formData.master_category);
 
-        if (statusType === "DRAFT") {
-        // toast.success("Draft saved successfully.");
-        resetForm();
-        setIsLoading(false);
-        return;
+      const selectedCategories = mappedPortals
+        .filter((p) => p.selected)
+        .map((p) => Number(p.portalCategoryId));
+
+      const excludedCategories = mappedPortals
+        .filter((p) => !p.selected)
+        .map((p) => Number(p.portalCategoryId));
+
+      changedFields.portal_category_ids = selectedCategories;
+      changedFields.exclude_portal_categories = excludedCategories;
+
+      console.log("🟣 Payload for UPDATE:", changedFields);
+
+      // await updateDraftNews(formData.id, nextStatus, changedFields);
+      createdArticle = { id: formData.id };
+      if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
+    }
+
+    // -------------------- CREATE NEW --------------------
+    else {
+      // 🟢 Filter new added categories from modal (manually added only)
+      const newlyAddedCategories = mappedPortals
+        .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId) // 0 means manually added
+        .map((p) => Number(p.portalCategoryId));
+
+      // 🟠 Exclude unchecked categories (existing ones only)
+      const excludedCategories = mappedPortals
+        .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
+        .map((p) => Number(p.portalCategoryId));
+
+      // ✅ Append clean lists
+      formDataToSend.append(
+        "portal_category_ids",
+        JSON.stringify(newlyAddedCategories)
+      );
+      formDataToSend.append(
+        "exclude_portal_categories",
+        JSON.stringify(excludedCategories)
+      );
+
+      // 🧾 Debug logs
+      console.log("🟢 portal_category_ids →", newlyAddedCategories);
+      console.log("🟠 exclude_portal_categories →", excludedCategories);
+
+
+      // 🟡 Log FormData cleanly
+      const logFormData = {};
+      for (let [key, value] of formDataToSend.entries()) {
+        logFormData[key] = value;
       }
-      
-      if (createdArticle?.id) {
-        const categoryId = Number(formData.master_category);
+      // console.log("🟡 Payload for CREATE (FormData):", logFormData);
 
-        // Only require category if publishing a brand-new article (not updating draft)
-        if (!categoryId && !formData.id) {
-          toast.warning("Please select a category before publishing.");
-          setIsLoading(false);
-          return;
-        }
+      const response = await createNewsArticle(formDataToSend);
+      createdArticle = response.data.data;
+    }
 
-        const excludedPortals = mappedPortals
-          .filter((p) => !p.selected)
-          .map((p) => p.portalId);
-
-        const payload = {
-          // excluded_portals: excludedPortals,
-          // master_category: categoryId || null,
-        };
-
-        if (statusType === "PUBLISHED") {
-          const res = await publishNewsArticle(createdArticle.id, payload);
-          resetForm();
-          if (res?.data?.message) toast.success(res.data.message);
-        }
-      }
-
-      
-  
+    if (statusType === "DRAFT") {
       resetForm();
-    } catch (err) {
-      if (err?.message) {
-        const backendMessage = err.message;
-
-        if (typeof backendMessage === "object") {
-          Object.keys(backendMessage).forEach((field) => {
-            const messages = backendMessage[field];
-            if (Array.isArray(messages)) {
-              messages.forEach((msg) => toast.error(`${field} : ${msg}`));
-            } else {
-              toast.error(`${field} : ${messages}`);
-            }
-          });
-        } else if (typeof backendMessage === "string") {
-          toast.error(backendMessage);
-        }
-      } else {
-        toast.error("Failed to publish article.");
-      }
-    } finally {
       setIsLoading(false);
+      return;
     }
 
-    };
-  
-  const resetForm = () => {
-    revokeIfBlob(imagePreview);
-    setFormData({
-      title: "",
-      headline: "",
-      shortDesc: "",
-      longDesc: "",
-      image: null,
-      tags: [],
-      content:"",
-      latestNews: false,
-      headlines: false,
-      articles: false,
-      trending: false,
-      breakingNews: false,
-      upcomingEvents: false,
-      eventStartDate: "",
-      eventEndDate: "",
-      scheduleDate: "",
-      counter: 0,
-      order: 0,
-      status: "PUBLISHED",
-      meta_title: "",
-      slug: "",
-      slugEdited: false,
-    });
-    setTagInput("");
-    setImagePreview(null);
-  };
+    if (createdArticle?.id && statusType === "PUBLISHED") {
+      console.log("🟢 Would now call publishNewsArticle for:", createdArticle.id);
+      // const res = await publishNewsArticle(createdArticle.id, {});
+      resetForm();
+      // if (res?.data?.message) toast.success(res.data.message);
+    }
+
+    resetForm();
+  } catch (err) {
+    console.error("❌ Error:", err);
+    toast.error("Failed to process form.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const [editorKey, setEditorKey] = useState(Date.now());
+const resetForm = () => {
+  revokeIfBlob(imagePreview);
+  setFormData({
+    headline: "",
+    title: "",
+    shortDesc: "",
+    longDesc: "",
+    image: null,
+    tags: [],
+    content: "",
+    latestNews: false,
+    headlines: false,
+    articles: false,
+    trending: false,
+    breakingNews: false,
+    upcomingEvents: false,
+    eventStartDate: "",
+    eventEndDate: "",
+    scheduleDate: "",
+    counter: 0,
+    order: 0,
+    status: "PUBLISHED",
+    meta_title: "",
+    slug: "",
+    slugEdited: false,
+  });
+  setTagInput("");
+  setImagePreview(null);
+  setEditorKey(Date.now()); // 🔑 Force CKEditor remount
+};
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
@@ -899,12 +929,154 @@ const handleViewDrafts = async () => {
                           </button>
                         </div> 
                       )}
+                    <div className="flex justify-end mt-3">
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+                          onClick={() => setShowPortalCategoryModal(true)}
+                        >
+                          Manage Portal Categories
+                        </button>
+                      </div>
 
                   </section>
                 )}
-
-
             </div>
+
+            {showPortalCategoryModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-2xl p-6 relative">
+                  <button
+                    className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                    onClick={() => setShowPortalCategoryModal(false)}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+
+                  <h3 className="text-lg font-semibold mb-4">Manage Portal Categories</h3>
+
+                  {/* Portal selector */}
+                  <select
+                    className="border p-2 rounded w-full mb-3"
+                    value={selectedPortalForCategories}
+                    onChange={(e) => {
+                      setSelectedPortalForCategories(e.target.value);
+                      setCategoryPage(1);
+                    }}
+                  >
+                    <option value="">Select Portal</option>
+                    {portalList.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Category list */}
+                  {portalCategoriesModal.length > 0 ? (
+                    <ul className="max-h-60 overflow-y-auto border rounded p-2">
+                      {portalCategoriesModal.map((cat) => (
+                        <li
+                          key={cat.id}
+                          className="p-2 border-b text-sm flex items-center justify-between"
+                        >
+                          <label className="flex items-center gap-2 cursor-pointer w-full">
+                            <input
+                              type="checkbox"
+                              checked={!!cat.selected}
+                              onChange={(e) => {
+                                setPortalCategoriesModal((prev) =>
+                                  prev.map((c) =>
+                                    c.id === cat.id ? { ...c, selected: e.target.checked } : c
+                                  )
+                                );
+                              }}
+                              className="w-4 h-4 accent-gray-900"
+                            />
+                            <span className="flex-1">
+                              {cat.name}{" "}
+                              <span className="text-gray-400">({cat.parent_name})</span>
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500 text-sm text-center mt-2">
+                      {selectedPortalForCategories
+                        ? "No categories found."
+                        : "Select a portal to view categories."}
+                    </p>
+                  )}
+
+                  {/* Pagination */}
+                  <div className="flex justify-between items-center mt-4">
+                    <button
+                      disabled={categoryPage === 1}
+                      onClick={() => setCategoryPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1 bg-gray-200 rounded text-sm disabled:opacity-50"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-sm text-gray-700">Page {categoryPage}</span>
+                    <button
+                      disabled={!hasNextCategoryPage}
+                      onClick={() => setCategoryPage((p) => p + 1)}
+                      className="px-3 py-1 bg-gray-200 rounded text-sm disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+
+                  {/* Save button */}
+                  <div className="flex justify-end mt-5">
+                    <button
+                      className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
+                      onClick={() => {
+                        const selectedCats = portalCategoriesModal.filter((c) => c.selected);
+                        if (selectedCats.length === 0) {
+                          toast.warning("Please select at least one category.");
+                          return;
+                        }
+
+                        setMappedPortals((prev) => {
+                          const updated = [...prev];
+                          selectedCats.forEach((cat) => {
+                            const exists = updated.some(
+                              (p) =>
+                                p.portalName === selectedPortalForCategories &&
+                                p.portalCategoryName === cat.name
+                            );
+                            if (!exists) {
+                              updated.push({
+                                id: Date.now() + Math.random(),
+                                portalId: 0,
+                                portalName: selectedPortalForCategories,
+                                portalCategoryName: cat.name,
+                                portalCategoryId: cat.id, // ✅ assign portal_category ID
+                                selected: true,
+                              });
+                            }
+                          });
+                          return updated;
+                        });
+
+
+                        toast.success(
+                          `${selectedCats.length} categor${
+                            selectedCats.length > 1 ? "ies" : "y"
+                          } added for ${selectedPortalForCategories}`
+                        );
+                        setShowPortalCategoryModal(false);
+                      }}
+                    >
+                      Save Selected
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* <div>
@@ -994,6 +1166,7 @@ const handleViewDrafts = async () => {
                 </label>
                 <div className="border border-gray-300 rounded-lg overflow-hidden">
                   <CKEditor
+                    key={editorKey} 
                     scriptUrl="/ckeditor/ckeditor.js" 
                     initData={formData.longDesc} onBeforeLoad={(CKEDITOR) => { CKEDITOR.disableAutoInline = true; }}
                     config={{
