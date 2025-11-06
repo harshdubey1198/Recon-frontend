@@ -4,6 +4,7 @@ import { fetchUserPostStats } from "../../server";
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 import MasterFilter from "../components/filters/MasterFilter";
+import UserDetailPanel from "../components/UserDetailPanel";
 
 const UserStats = () => {
   const [stats, setStats] = useState([]);
@@ -15,6 +16,21 @@ const UserStats = () => {
   const [dateFilter, setDateFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserDetail, setSelectedUserDetail] = useState(null);
+  const [showDetailPanel, setShowDetailPanel] = useState(false);
+
+  const handleUserClick = (user) => {
+    setSelectedUserDetail({
+      id: user.created_by_id,
+      name: formatUsername(user.created_by__username),
+    });
+    setShowDetailPanel(true);
+  };
+
+  const handleClosePanel = () => {
+    setShowDetailPanel(false);
+    setSelectedUserDetail(null);
+  };
 
   // 🔹 Load user stats
   const loadStats = async (filters = {}) => {
@@ -138,6 +154,7 @@ const UserStats = () => {
                     {stats.map((user) => (
                       <tr
                         key={user.created_by_id}
+                        onClick={() => handleUserClick(user)}
                         className="border-t hover:bg-gray-50 transition-colors"
                       >
                         <td className="px-4 py-2 font-medium text-gray-900">
@@ -202,6 +219,14 @@ const UserStats = () => {
               </div>
             )}
           </div>
+          {showDetailPanel && selectedUserDetail && (
+            <UserDetailPanel
+              userId={selectedUserDetail.id}
+              username={selectedUserDetail.name}
+              onClose={handleClosePanel}
+            />
+          )}
+
         </div>
       </div>
     </div>

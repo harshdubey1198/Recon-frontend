@@ -184,6 +184,9 @@ export async function fetchPortals(page = 1)  {
 export async function fetchUnassignedUsers() {
   return axiosInstance.get("/account/unassigned/users/");
 }
+export async function fetchUserPerformance(userId, range = "1m") {
+  return axiosInstance.get(`/api/user/performance/${userId}?range=${range}`);
+}
 
 export async function fetchAllUsersList(page = 1, search = "") {
   const searchParam = search ? `&search=${search}` : "";
