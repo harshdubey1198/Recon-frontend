@@ -1,13 +1,6 @@
 import React from 'react';
 
-export default function HeatmapFilter({ 
-  range, 
-  setRange, 
-  customRange, 
-  setCustomRange, 
-  onApplyCustomRange,
-  apiData 
-}) {
+export default function HeatmapFilter({ range, setRange, customRange, setCustomRange, onApplyCustomRange,apiData }) {
   return (
     <div className="flex items-center space-x-4">
       {/* Time Range Selector */}
@@ -47,7 +40,6 @@ export default function HeatmapFilter({
               className="px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
             />
 
-            {/* Apply Button */}
             <button
               onClick={onApplyCustomRange}
               disabled={!customRange.start || !customRange.end}

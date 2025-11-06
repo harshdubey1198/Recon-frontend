@@ -4,17 +4,7 @@ import { fetchMasterCategories, fetchPortals, fetchPortalCategories, mapMasterCa
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 
-const InfiniteScrollDropdown = ({ 
-  value, 
-  onChange, 
-  options, 
-  placeholder, 
-  loading, 
-  hasMore, 
-  onLoadMore,
-  icon: Icon,
-  renderOption 
-}) => {
+const InfiniteScrollDropdown = ({ value, onChange, options, placeholder, loading, hasMore, onLoadMore,icon: Icon,renderOption }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState('bottom');
   const dropdownRef = useRef(null);

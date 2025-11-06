@@ -247,8 +247,12 @@ export  async function fetchCategoryMappings(page = 1){
 };
 
 
-export async function fetchUserDetails(page = 1) {
-  return axiosInstance.get(`/account/user/details/list/?page=${page}`);
+export async function fetchUserDetails(page = 1, search = "") {
+  const params = { page };
+  if (search && search.trim()) {
+    params.search = search.trim();
+  }
+  return axiosInstance.get("/account/user/details/list/", { params });
 }
 // export async function fetchMasterCategories() {
 //   return axiosInstance.get("/api/master/category/");
