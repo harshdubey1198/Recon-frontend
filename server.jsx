@@ -320,9 +320,17 @@ export async function fetchInactivityAlerts(range = "7d", page = 1) {
 }
 
 // hitmap data
-export async function fetchCategoryHeatmap(range = "7d") {
+export async function fetchCategoryHeatmap(range = "7d", customDates = null) {
+  const params = { range };
+  
+  // If custom range is selected and dates are provided
+  if (range === "custom" && customDates) {
+    params.start_date = customDates.start;
+    params.end_date = customDates.end;
+  }
+  
   return axiosInstance.get("/api/category/heatmap/", {
-    params: { range },
+    params,
     headers: {
       "Content-Type": "application/json",
     },
