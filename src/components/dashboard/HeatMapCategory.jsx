@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Grid3x3,X,TrendingUp, Loader2, TrendingDown, Minus } from 'lucide-react';
+import { Grid3x3, X, TrendingUp, Loader2, TrendingDown, Minus } from 'lucide-react';
 import { fetchCategoryHeatmap } from '../../../server';
+import HeatmapFilter from '../filters/HeatmapFilter';
 
 export default function HeatMapCategory() {
   const [heatmapData, setHeatmapData] = useState([]);
@@ -10,7 +11,8 @@ export default function HeatMapCategory() {
   const [selectedCell, setSelectedCell] = useState(null);
   const [apiData, setApiData] = useState(null);
   const [range, setRange] = useState('7d');
-  
+  const [customRange, setCustomRange] = useState({ start: "", end: "" });
+
   // Helper function to determine heatmap cell color based on post count
   const getHeatmapColor = (postCount, maxPosts) => {
     if (maxPosts === 0) return 'bg-gray-100';
@@ -34,7 +36,10 @@ export default function HeatMapCategory() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetchCategoryHeatmap(range);
+      
+      // Pass custom dates if range is custom
+      const customDates = range === "custom" ? customRange : null;
+      const response = await fetchCategoryHeatmap(range, customDates);
       
       if (response.data.success) {
         const { data } = response.data;
@@ -62,6 +67,14 @@ export default function HeatMapCategory() {
       setLoading(false);
     }
   };
+
+  // Handle custom range apply
+  const handleApplyCustomRange = () => {
+    if (customRange.start && customRange.end) {
+      console.log("Applying custom range:", customRange);
+      loadHeatmapData();
+    }
+  };
   
   // Handle cell click to open modal
   const handleCellClick = (cellData) => {
@@ -70,8 +83,12 @@ export default function HeatMapCategory() {
     setShowArticleModal(true);
   };
   
-useEffect(() => {
-    loadHeatmapData();
+  useEffect(() => {
+    // Only load data when range changes to non-custom values
+    // For custom range, wait for Apply button click
+    if (range !== "custom") {
+      loadHeatmapData();
+    }
   }, [range]);
 
   // Calculate grid dimensions (aim for roughly square grid)
@@ -132,27 +149,16 @@ useEffect(() => {
                 <p className="text-gray-300">Publishing activity by master category</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              {/* Time Range Selector */}
-              <div className="flex items-center space-x-2">
-                <label className="text-sm text-gray-300 font-medium">Period:</label>
-                <select 
-                  value={range}
-                  onChange={(e) => setRange(e.target.value)}
-                  className="px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/50 hover:bg-white/20 transition-colors"
-                >
-                  <option value="1d" className="bg-gray-800">Last 1 Days</option>
-                  <option value="7d" className="bg-gray-800">Last 7 Days</option>
-                  <option value="30d" className="bg-gray-800">Last 30 Days</option>
-                </select>
-              </div>
-              {apiData && (
-                <div className="text-right">
-                  <p className="text-sm text-gray-300">Date Range</p>
-                  <p className="text-white font-semibold text-sm">{apiData.current_start} to {apiData.current_end}</p>
-                </div>
-              )}
-            </div>
+            
+            {/* Using HeatmapFilter Component */}
+            <HeatmapFilter
+              range={range}
+              setRange={setRange}
+              customRange={customRange}
+              setCustomRange={setCustomRange}
+              onApplyCustomRange={handleApplyCustomRange}
+              apiData={apiData}
+            />
           </div>
         </div>
 
@@ -219,7 +225,7 @@ useEffect(() => {
                                 )}
                               </div>
                             </div>
-                            </div>
+                          </div>
                         );
                       })}
                     </div>
@@ -228,9 +234,8 @@ useEffect(() => {
               </div>
             </div>
           )}
-
         </div>
       </div>
-      </div>
+    </div>
   );
 }
