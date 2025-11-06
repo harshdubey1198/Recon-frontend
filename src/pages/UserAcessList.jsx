@@ -143,7 +143,7 @@ const handleScroll = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              User Portal Access
+              User Portal Sync
             </h1>
             <p className="text-gray-600">Manage user permissions and portal access</p>
           </div>
