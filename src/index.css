@@ -2,6 +2,8 @@
 
 
 @tailwind utilities;
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 .neo-toggle-container {
   --toggle-width: 60px; /* smaller width */
