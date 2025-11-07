@@ -149,7 +149,10 @@ export async function fetchMasterCategories(page = 1, search = "") {
   const query = search ? `&search=${encodeURIComponent(search)}` : "";
   return axiosInstance.get(`/api/master/category/?page=${page}${query}`);
 }
- 
+export async function fetchCategoryStats(categoryId, range = "1m") {
+  return axiosInstance.get(`/api/category/stats/${categoryId}/?range=${range}`);
+}
+
 export async function fetchDistributionRate(mode = "daily") {
   return axiosInstance.get(`/api/news/distribution/rate/?mode=${mode}`);
 }
