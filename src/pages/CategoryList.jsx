@@ -59,7 +59,7 @@ export default function CategoryList() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -71,10 +71,7 @@ export default function CategoryList() {
               Review performance and analytics for each master category
             </p>
           </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-4 py-2 mb-6 max-w-md">
+        <div className="flex items-center bg-white shadow-sm border border-gray-200 rounded-lg px-4 py-2 max-w-md">
           <Search className="w-4 h-4 text-gray-500 mr-2" />
           <input
             type="text"
@@ -84,6 +81,9 @@ export default function CategoryList() {
             className="w-full bg-transparent focus:outline-none text-gray-700"
           />
         </div>
+        </div>
+
+        {/* Search Bar */}
 
         {/* Loader Overlay */}
         {isLoading && (
