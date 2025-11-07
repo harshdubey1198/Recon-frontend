@@ -50,8 +50,8 @@
             apiUserAccess[username] = (u.assigned_portals || []).map((portal) => ({
               domain: { name: portal.name || portal.domain || '' },
               categories: (portal.categories || []).map((c) => typeof c === 'string' ? c : (c.name || '')),
-              totalPosts: portal.total_posts || portal.totalPosts || 0,
-              todaysPosts: portal.todays_posts || portal.todaysPosts || 0,
+              totalPosts: portal.total_success_posts || portal.total_success_posts || 0,
+              todaysPosts: portal.todays_success_posts || portal.todays_success_posts || 0,
             }));
           });
 

@@ -21,29 +21,30 @@ export default function HeatmapFilter({ range, setRange, customRange, setCustomR
         {range === "custom" && (
           <div className="flex items-center space-x-2">
             <input
-              type="date"
-              value={customRange.start}
-              onChange={(e) =>
-                setCustomRange((prev) => ({ ...prev, start: e.target.value }))
-              }
-              className="px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-            />
+                type="date"
+                value={customRange.start}
+                onChange={(e) =>
+                  setCustomRange((prev) => ({ ...prev, start: e.target.value }))
+                }
+                className="px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50 [&::-webkit-calendar-picker-indicator]:invert"
+              />
 
-            <span className="text-gray-300">to</span>
+              <span className="text-gray-300">to</span>
 
-            <input
-              type="date"
-              value={customRange.end}
-              onChange={(e) =>
-                setCustomRange((prev) => ({ ...prev, end: e.target.value }))
-              }
-              className="px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-            />
+              <input
+                type="date"
+                value={customRange.end}
+                onChange={(e) =>
+                  setCustomRange((prev) => ({ ...prev, end: e.target.value }))
+                }
+                className="px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50 [&::-webkit-calendar-picker-indicator]:invert"
+              />
 
             <button
               onClick={onApplyCustomRange}
               disabled={!customRange.start || !customRange.end}
               className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium disabled:opacity-50 transition-colors"
+              
             >
               Apply
             </button>

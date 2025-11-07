@@ -323,11 +323,11 @@ const NewsList = () => {
                 <FileText className="w-4 h-4 mr-2 group-hover:animate-pulse" />
                 Create News
               </span>
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300"></div>
+              <div className="absolute inset-0 rounded-lg  opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300"></div>
             </button>
             <button
               onClick={handleExportToExcel}
-              className="group relative p-3 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-all flex items-center space-x-2 border border-green-700"
+              className="group relative p-3 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
             >
               <FileText className="w-4 h-4 mr-2" />
               Export to Excel
@@ -401,31 +401,31 @@ const NewsList = () => {
             />
             {/* 🔹 Stats Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-6 mt-2">
-              <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+              <div className="flex items-center justify-between bg-black border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
                 <div>
-                  <h3 className="text-sm text-gray-500 font-medium">
+                  <h3 className="text-sm text-white font-medium">
                     Total Master Posts
                   </h3>
-                  <p className="text-2xl font-bold text-blue-700 mt-1">
+                  <p className="text-2xl font-bold text-white mt-1">
                     {counts?.total_master_news_posts || 0}
                   </p>
                 </div>
-                <div className="p-3 bg-blue-200 rounded-full">
-                  <FileText className="w-5 h-5 text-blue-800" />
+                <div className="p-3 bg-white rounded-full">
+                  <FileText className="w-5 h-5 text-black" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+              <div className="flex items-center justify-between bg-black border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
                 <div>
-                  <h3 className="text-sm text-gray-500 font-medium">
+                  <h3 className="text-sm text-white font-medium">
                     Total Distributions
                   </h3>
-                  <p className="text-2xl font-bold text-green-700 mt-1">
+                  <p className="text-2xl font-bold text-white mt-1">
                     {counts?.total_news_distributions || 0}
                   </p>
                 </div>
-                <div className="p-3 bg-green-200 rounded-full">
-                  <Clock className="w-5 h-5 text-green-800" />
+                <div className="p-3 bg-white rounded-full">
+                  <Clock className="w-5 h-5 text-black" />
                 </div>
               </div>
             </div>
