@@ -157,7 +157,7 @@ const UserStats = () => {
                         onClick={() => handleUserClick(user)}
                         className="border-t hover:bg-gray-50 transition-colors"
                       >
-                        <td className="px-4 py-2 font-medium text-gray-900">
+                        <td className="px-4 py-2 font-medium text-gray-900 cursor-pointer">
                           {formatUsername(user.created_by__username)}
                         </td>
                         <td className="px-4 py-2 text-gray-700">
