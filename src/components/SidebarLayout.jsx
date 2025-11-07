@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,BarChart3,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers, AreaChart} from "lucide-react";
+import {Home,User,Settings,Menu,X,Bell,Search,FileText,LogOut,BarChart3,List,ListTree, Users2, FilePlus2, Newspaper, ShieldCheck, FolderTree, Network, Building2, Layers, AreaChart, BarChart2} from "lucide-react";
 import Dashboard from "../pages/Dashboard";
 import CreateNews from "../pages/CreateNews";
 import NewsList from "../pages/NewsList";
@@ -15,6 +15,8 @@ import NewsReports from "../pages/NewsReports";
 import formatUsername from "../utils/formateName";
 import AnalyticsOverview from "./dashboard/AnalyticsOverview";
 import UserStats from "../pages/UserStats";
+import PortalList from "../pages/PortalList";
+import CategoryList from "../pages/CategoryList";
 
 
 
@@ -40,14 +42,15 @@ const menuItems = [
   // { name: "News Analytics", icon: AreaChart },
   ...(isMaster
     ? [ 
+       { name: "Portal List", icon: Building2 },
        { name: "Category Mapping", icon: Network },
        { name: "All Categories", icon: FolderTree },
+       { name: "Category Insights", icon: BarChart2 },
        { name: "User Access Control", icon: ShieldCheck },
        { name: "User Categories", icon: Layers },
        { name: "User Stats", icon: BarChart3 }, 
        { name: "User Portal Access", icon: Users2 },
-       { name: "Portal Management", icon: Building2 },
-       
+       { name: "User Portal Sync", icon: Building2 }, 
       ]
     : []),
 ];
@@ -297,13 +300,16 @@ const menuItems = [
             {activeItem === "News List" && <NewsList />}
             {activeItem === "Portal Management" && <PortalManagement />}
             {activeItem === "User Access Control" && <AccessControl />}
-            {activeItem === "User Portal Access" && <UserAccessList />}
+            {activeItem === "User Portal Sync" && <UserAccessList />}
             {activeItem === "Category Mapping" && <CategoryMapping />}
             {activeItem === "All Categories" && <AllCategories />}
             {activeItem === "User Categories" && <UserCategories />}
             {activeItem === "News Reports" && <NewsReports />}
             {activeItem === "User Stats" && <UserStats />}
+            {activeItem === "Category Insights" && <CategoryList />} 
+            {activeItem === "Portal List" && <PortalList />}
             {activeItem === "News Analytics" && <AnalyticsOverview />}
+
           </div>
         </div>
       </main>
