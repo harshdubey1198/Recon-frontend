@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Grid3x3, AlertTriangle, Clock, Plus, CheckCircle2, Tag, X, Eye, Calendar, User, TrendingUp, Loader2 } from 'lucide-react';
-import { fetchInactivityAlerts } from '../../../server';
+import { fetchFailureStats, fetchInactivityAlerts } from '../../../server';
 import { useNavigate } from "react-router-dom";
 import HeatMapCategory from './HeatMapCategory';
 
@@ -14,6 +14,11 @@ export default function AnalyticsComponent({ categories }) {
     '48h': { data: [], pagination: null },
     '7d': { data: [], pagination: null }
   });
+  const [failureRange, setFailureRange] = useState("24h");
+  const [failureStats, setFailureStats] = useState([]);
+  const [failPage, setFailPage] = useState(1);
+  const [failPerPage] = useState(5); 
+
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -39,6 +44,20 @@ export default function AnalyticsComponent({ categories }) {
     
     setHeatmapData(heatmap);
   };
+  useEffect(() => {
+    const loadFailureStats = async () => {
+      try {
+        const res = await fetchFailureStats(failureRange);
+        if (res?.data?.success) {
+          setFailureStats(res.data.data || []);
+          setFailPage(1);
+        }
+      } catch (err) {
+        console.error("Error loading failure stats:", err);
+      }
+    };
+    loadFailureStats();
+  }, [failureRange]);
 
   // Fetch Inactivity Alerts from API
   const loadInactivityAlerts = async (resetData = true) => {
@@ -165,6 +184,111 @@ export default function AnalyticsComponent({ categories }) {
     <div className="space-y-8">
        {/* hitmap category */}
        <HeatMapCategory/>
+       
+      {/* Failure Stats Section */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-black via-gray-800 to-gray-900 p-6 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-yellow-400" />
+            <div>
+              <h3 className="text-2xl font-bold text-white">Failure Stats</h3>
+              <p className="text-gray-300 text-sm">Most common failure reasons in news distribution</p>
+            </div>
+          </div>
+          <select
+            value={failureRange}
+            onChange={(e) => setFailureRange(e.target.value)}
+            className="px-3 py-2 rounded-md bg-white text-gray-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          >
+            <option value="24h">Last 24h</option>
+            <option value="7d">Last 7 days</option>
+            <option value="all_time">All Time</option>
+          </select>
+        </div>
+
+        <div className="p-6">
+          {failureStats.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
+              <p className="font-semibold">No failures recorded</p>
+              <p className="text-sm text-gray-400">Everything looks good across all portals!</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="w-full text-sm text-left text-gray-700">
+                  <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                    <tr>
+                      <th className="px-6 py-3 w-3/4">Failure Reason</th>
+                      <th className="px-6 py-3 text-right">Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {failureStats
+                      .slice((failPage - 1) * failPerPage, failPage * failPerPage)
+                      .map((item, i) => (
+                        <tr
+                          key={i}
+                          className="border-t hover:bg-gray-50 transition-all"
+                        >
+                          <td className="px-6 py-3 text-gray-800 text-sm break-all">
+                            {item.reason.length > 250
+                              ? `${item.reason.slice(0, 250)}...`
+                              : item.reason}
+                          </td>
+                          <td className="px-6 py-3 text-right font-semibold text-red-600">
+                            {item.count}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex justify-between items-center mt-4 text-sm">
+                <p className="text-gray-600">
+                  Showing {(failPage - 1) * failPerPage + 1}–
+                  {Math.min(failPage * failPerPage, failureStats.length)} of{" "}
+                  {failureStats.length}
+                </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setFailPage((p) => Math.max(p - 1, 1))}
+                    disabled={failPage === 1}
+                    className={`px-3 py-1 rounded-md border ${
+                      failPage === 1
+                        ? "bg-gray-200 text-gray-400"
+                        : "bg-gray-900 text-white hover:bg-gray-800"
+                    }`}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    onClick={() =>
+                      setFailPage((p) =>
+                        p < Math.ceil(failureStats.length / failPerPage)
+                          ? p + 1
+                          : p
+                      )
+                    }
+                    disabled={failPage === Math.ceil(failureStats.length / failPerPage)}
+                    className={`px-3 py-1 rounded-md border ${
+                      failPage === Math.ceil(failureStats.length / failPerPage)
+                        ? "bg-gray-200 text-gray-400"
+                        : "bg-gray-900 text-white hover:bg-gray-800"
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+
      {/* Inactivity Alerts */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-black p-6">

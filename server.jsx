@@ -196,6 +196,10 @@ export async function fetchUserPortalPerformance(userId, range = "1m") {
   return axiosInstance.get(`/api/user/portal/performance/${userId}?range=${range}`);
 }
 
+export async function fetchFailureStats(range = "24h") {
+  return axiosInstance.get(`/api/failure/news/distribution/stats?range=${range}`);
+}
+
 export async function fetchAllUsersList(page = 1, search = "") {
   const searchParam = search ? `&search=${search}` : "";
   return axiosInstance.get(`/account/all/users/list/?page=${page}${searchParam}`);
