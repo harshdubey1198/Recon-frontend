@@ -38,7 +38,8 @@ const isMaster = role === "master";
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="create-news" element={<CreateNews />} />
+<Route path="/create-news" element={<CreateNews />} />
+<Route path="/edit-news/:id" element={<CreateNews />} />
         <Route path="news-list" element={<NewsList />} />
         <Route path="news/:id" element={<NewsDetail />} />
         <Route path="/portal-management" element={<PortalManagement />} />

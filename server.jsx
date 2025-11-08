@@ -355,4 +355,12 @@ export async function updateCategoryMapping(mappingId, useDefaultContent) {
 }
 
 
+export async function editNews(id, formData) {
+  return axiosInstance.put(`/api/edit/news/${id}/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
+
 export default axiosInstance;
