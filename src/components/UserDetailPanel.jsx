@@ -4,6 +4,7 @@ import { fetchUserPerformance , fetchUserPortalPerformance} from "../../server";
 import { toast } from "react-toastify";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
+import DownloadButton from "../components/DownLoad/DownloadButton";
 
 const UserDetailPanel = ({ userId, username, onClose }) => {
   const [userData, setUserData] = useState(null);
@@ -43,7 +44,27 @@ const loadUserData = async () => {
   }
 };
 
-  
+  // 🔹 Portal Performance columns for download
+  const portalColumns = [
+    { key: "portal_name", label: "Portal" },
+    { key: "total_distributed", label: "Total" },
+    { key: "success_distributed", label: "Success" },
+    { key: "failed_distributed", label: "Failed" },
+    { 
+      key: "success_ratio", 
+      label: "Success %",
+      getValue: (row) => row.success_ratio.toFixed(1) + "%"
+    }
+  ];
+
+  // 🔹 Daily Breakdown columns for download
+  const dailyColumns = [
+    { key: "date", label: "Date" },
+    { key: "created_count", label: "Created" },
+    { key: "distributed_count", label: "Distributed" },
+    { key: "success_count", label: "Success" },
+    { key: "failed_count", label: "Failed" }
+  ];
 
   // 🌀 Loading State
   if (loading) {
@@ -211,12 +232,20 @@ const loadUserData = async () => {
           </div>
         )}
 
+        {/* Portal Performance Table */}
         {portalStats.length > 0 && (
-          <div className="bg-white border rounded-lg shadow-sm mt-6 p-4">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-blue-600" />
-              Portal Performance
-            </h3>
+          <div className="bg-white border rounded-lg shadow-sm mt-6">
+            <div className=" bg-black flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold flex items-center gap-2 text-white">
+                <BarChart3 className="w-4 h-4 text-white" />
+                Portal Performance
+              </h3>
+              <DownloadButton 
+                data={portalStats}
+                columns={portalColumns}
+                filename={`${username}_portal_performance`}
+              />
+            </div>
             <div className="overflow-x-auto scrollbar-hide">
               <table className="w-full text-sm text-left text-gray-700">
                 <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
@@ -246,10 +275,18 @@ const loadUserData = async () => {
           </div>
         )}
 
-        {/* Daily Table */}
+        {/* Daily Breakdown Table */}
         {timeline_of_actions && timeline_of_actions.length > 0 && (
           <div className="bg-white border rounded-lg shadow-sm mt-6">
-            <h3 className="font-semibold p-4 border-b">Daily Breakdown</h3>
+            <div className=" bg-black flex items-center justify-between p-4 border-b">
+             <h3 className="font-semibold flex items-center gap-2 text-white">
+                <BarChart3 className="w-4 h-4 text-white" /> Daily Breakdown</h3>
+              <DownloadButton 
+                data={timeline_of_actions}
+                columns={dailyColumns}
+                filename={`${username}_daily_breakdown`}
+              />
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left text-gray-700">
                 <thead className="bg-gray-100 text-gray-600 uppercase text-xs">

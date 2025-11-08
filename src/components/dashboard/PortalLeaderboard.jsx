@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats } from "../../../server";
 import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Users, FolderOpen, Tag } from "lucide-react";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 import formatUsername from "../../utils/formateName";
 import PortalDetailModal from "../Modal/PortalDetailModal";
+import DownloadButton from "../DownLoad/DownloadButton"; 
 
 export default function PortalLeaderboard() {
   const [domains, setDomains] = useState([]);
@@ -14,7 +13,6 @@ export default function PortalLeaderboard() {
   const [selectedPortal, setSelectedPortal] = useState(null);
   const [showPortalModal, setShowPortalModal] = useState(false);
   const [portalDetailData, setPortalDetailData] = useState(null);
-  const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const [filterLimit, setFilterLimit] = useState("ALL");
   const [globalContributorsPage, setGlobalContributorsPage] = useState(1);
   const globalContributorsRef = useRef(null);
@@ -119,59 +117,6 @@ export default function PortalLeaderboard() {
     return 'text-red-600 bg-red-50';
   };
 
-  const handleDownload = (format) => {
-    let exportData = [];
-    let fileName = "";
-
-    if (showPortalModal && portalDetailData) {
-      exportData = [
-        {
-          Portal: portalDetailData.name,
-          Total_Publications: portalDetailData.success,
-          Total_Distributions: portalDetailData.total,
-          Failed: portalDetailData.failed,
-          Success_Rate: `${portalDetailData.publishedPercent}%`,
-          Avg_Publish_Time: portalDetailData.avgPublishTime ? portalDetailData.avgPublishTime.toFixed(2) : 0,
-          Today_Total: portalDetailData.todayTotal,
-          Today_Success: portalDetailData.todaySuccess,
-          Today_Failed: portalDetailData.todayFailed,
-          Today_Retry: portalDetailData.todayRetry,
-          Today_Avg_Time: portalDetailData.todayAverageTime,
-        },
-      ];
-      fileName = `Portal_Performance_Report_${portalDetailData.name}`;
-    } else {
-      exportData = domains.map((portal, index) => ({
-        Rank: index + 1,
-        Portal: portal.name,
-        Total_Publications: portal.success,
-        Total_Distributions: portal.total,
-        Failed: portal.failed,
-        Success_Rate: `${portal.publishedPercent}%`,
-        Avg_Publish_Time: portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0,
-        Today_Total: portal.todayTotal,
-        Today_Success: portal.todaySuccess,
-        Today_Failed: portal.todayFailed,
-        Today_Pending: portal.todayPending,
-        Today_Retry: portal.todayRetry,
-        Today_Avg_Time: portal.todayAverageTime,
-      }));
-      fileName = `Portal_Performance_Report_All_Portals`;
-    }
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Portal Report");
-
-    if (format === "csv") {
-      const csvData = XLSX.utils.sheet_to_csv(ws);
-      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-      saveAs(blob, `${fileName}.csv`);
-    } else {
-      XLSX.writeFile(wb, `${fileName}.xlsx`);
-    }
-  };
-
   useEffect(() => {
     loadDomains();
     loadWeeklyPerformanceData();
@@ -189,6 +134,29 @@ export default function PortalLeaderboard() {
   const filteredDomains = filterLimit === "ALL" 
     ? domains 
     : domains.slice(0, parseInt(filterLimit));
+
+  // Define columns for DownloadButton component
+  // Data to pass to DownloadButton (use filtered or all domains)
+  const downloadData = filteredDomains.map((portal, index) => ({
+    rank: index + 1,
+    ...portal
+  }));
+
+  const portalColumns = [
+    { key: 'rank', label: 'Rank' },
+    { key: 'name', label: 'Portal' },
+    { key: 'success', label: 'Total_Publications' },
+    { key: 'total', label: 'Total_Distributions' },
+    { key: 'failed', label: 'Failed' },
+    { key: 'publishedPercent', label: 'Success_Rate', getValue: (row) => `${row.publishedPercent}%` },
+    { key: 'avgPublishTime', label: 'Avg_Publish_Time', getValue: (row) => row.avgPublishTime ? row.avgPublishTime.toFixed(2) : 0 },
+    { key: 'todayTotal', label: 'Today_Total' },
+    { key: 'todaySuccess', label: 'Today_Success' },
+    { key: 'todayFailed', label: 'Today_Failed' },
+    { key: 'todayPending', label: 'Today_Pending' },
+    { key: 'todayRetry', label: 'Today_Retry' },
+    { key: 'todayAverageTime', label: 'Today_Avg_Time' }
+  ];
 
   return (
     <>
@@ -301,37 +269,12 @@ export default function PortalLeaderboard() {
                 </select>
               </div>
 
-              <div className="relative">
-                <button
-                  onClick={() => setShowDownloadOptions(!showDownloadOptions)}
-                  className="px-4 py-1.5 bg-white/20 text-white text-sm rounded-md hover:bg-white/30 backdrop-blur-sm transition"
-                >
-                  Download ▼
-                </button>
-
-                {showDownloadOptions && (
-                  <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                    <button
-                      onClick={() => {
-                        handleDownload("csv");
-                        setShowDownloadOptions(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      CSV
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleDownload("xlsx");
-                        setShowDownloadOptions(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      XLSX
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Replace old download button with DownloadButton component */}
+              <DownloadButton 
+                data={downloadData}
+                columns={portalColumns}
+                filename="Portal_Performance_Report_All_Portals"
+              />
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@ export default function SearchFilter({ onChange }) {
     >
       <input
         type="text"
-        placeholder="Search headline, URL, or ID..."
+        placeholder="Search  headline, URL, or ID..."
         className="flex-1 outline-none text-sm"
         value={query}
         onChange={(e) => setQuery(e.target.value)}

@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 import MasterFilter from "../components/filters/MasterFilter";
 import UserDetailPanel from "../components/UserDetailPanel";
+import DownloadButton from "../components/DownLoad/DownloadButton";
 
 const UserStats = () => {
   const [stats, setStats] = useState([]);
@@ -94,6 +95,38 @@ const UserStats = () => {
     loadStats();
   };
 
+  // 🔹 Define columns for download
+  const downloadColumns = [
+    { 
+      key: "user", 
+      label: "User",
+      getValue: (row) => formatUsername(row.created_by__username)
+    },
+    { 
+      key: "num_master_posts", 
+      label: "Master Posts" 
+    },
+    { 
+      key: "num_total_distributions", 
+      label: "Distributions" 
+    },
+    { 
+      key: "num_successful_distributions", 
+      label: "Successful" 
+    },
+    { 
+      key: "num_failed_distributions", 
+      label: "Failed" 
+    },
+    { 
+      key: "categories", 
+      label: "Categories",
+      getValue: (row) => row.assigned_master_categories?.length 
+        ? row.assigned_master_categories.join(", ") 
+        : "—"
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 py-6">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -111,6 +144,21 @@ const UserStats = () => {
                 </p>
               </div>
             </div>
+
+            {/* Download Button Component */}
+                <DownloadButton 
+                data={stats}
+                columns={downloadColumns}
+                filename={`User_Stats_${new Date().toISOString().split('T')[0]}${
+                  dateFilter && dateFilter !== 'all' 
+                    ? typeof dateFilter === 'string' 
+                      ? `_${dateFilter}` 
+                      : dateFilter.start_date && dateFilter.end_date
+                        ? `_${dateFilter.start_date}_to_${dateFilter.end_date}`
+                        : '_custom'
+                    : ''
+                }`}
+              />
           </div>
 
           {/* Filters */}
@@ -155,9 +203,9 @@ const UserStats = () => {
                       <tr
                         key={user.created_by_id}
                         onClick={() => handleUserClick(user)}
-                        className="border-t hover:bg-gray-50 transition-colors"
+                        className="border-t hover:bg-gray-50 transition-colors cursor-pointer"
                       >
-                        <td className="px-4 py-2 font-medium text-gray-900 cursor-pointer">
+                        <td className="px-4 py-2 font-medium text-gray-900">
                           {formatUsername(user.created_by__username)}
                         </td>
                         <td className="px-4 py-2 text-gray-700">
