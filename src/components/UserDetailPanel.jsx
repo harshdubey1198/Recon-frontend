@@ -211,37 +211,6 @@ const loadUserData = async () => {
           </div>
         )}
 
-        {/* Daily Table */}
-        {timeline_of_actions && timeline_of_actions.length > 0 && (
-          <div className="bg-white border rounded-lg shadow-sm mt-6">
-            <h3 className="font-semibold p-4 border-b">Daily Breakdown</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left text-gray-700">
-                <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
-                  <tr>
-                    <th className="px-4 py-2">Date</th>
-                    <th className="px-4 py-2">Created</th>
-                    <th className="px-4 py-2">Distributed</th>
-                    <th className="px-4 py-2">Success</th>
-                    <th className="px-4 py-2">Failed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeline_of_actions.map((row, index) => (
-                    <tr key={index} className="border-t hover:bg-gray-50">
-                      <td className="px-4 py-2">{row.date}</td>
-                      <td className="px-4 py-2 text-black font-medium">{row.created_count}</td>
-                      <td className="px-4 py-2 text-indigo-600 font-medium">{row.distributed_count}</td>
-                      <td className="px-4 py-2 text-green-600 font-medium">{row.success_count}</td>
-                      <td className="px-4 py-2 text-red-600 font-medium">{row.failed_count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {portalStats.length > 0 && (
           <div className="bg-white border rounded-lg shadow-sm mt-6 p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
@@ -269,6 +238,37 @@ const loadUserData = async () => {
                       <td className="px-4 py-2 font-semibold">
                         {p.success_ratio.toFixed(1)}%
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Daily Table */}
+        {timeline_of_actions && timeline_of_actions.length > 0 && (
+          <div className="bg-white border rounded-lg shadow-sm mt-6">
+            <h3 className="font-semibold p-4 border-b">Daily Breakdown</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-gray-700">
+                <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-2">Date</th>
+                    <th className="px-4 py-2">Created</th>
+                    <th className="px-4 py-2">Distributed</th>
+                    <th className="px-4 py-2">Success</th>
+                    <th className="px-4 py-2">Failed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeline_of_actions.map((row, index) => (
+                    <tr key={index} className="border-t hover:bg-gray-50">
+                      <td className="px-4 py-2">{row.date}</td>
+                      <td className="px-4 py-2 text-black font-medium">{row.created_count}</td>
+                      <td className="px-4 py-2 text-indigo-600 font-medium">{row.distributed_count}</td>
+                      <td className="px-4 py-2 text-green-600 font-medium">{row.success_count}</td>
+                      <td className="px-4 py-2 text-red-600 font-medium">{row.failed_count}</td>
                     </tr>
                   ))}
                 </tbody>
