@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FileText, X, Clock } from "lucide-react";
 import {
   fetchMyNewsPosts,
@@ -8,6 +9,7 @@ import {
   fetchMasterCategories,
   fetchPortals,
   fetchPortalCategories,
+  editNews,
 } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
@@ -17,6 +19,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const NewsList = () => {
+  const navigate = useNavigate();
   const [selectedNewsIds, setSelectedNewsIds] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
 
@@ -553,14 +556,28 @@ const NewsList = () => {
                               <Clock className="w-4 h-4" />
                               <span>{item.date}</span>
                             </div>
+                            
                           </td>
+                          
                           <td
-                            className="px-4 py-2 text-sm text-center "
+                            className="px-4 py-2 text-sm text-center  space-x-3 "
                             onClick={(e) => {
                               e.stopPropagation(); // prevent row expand/collapse
                               if (!publishingId) handleRetryPublish(item);
                             }}
                           >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // prevent expanding the row
+                                localStorage.setItem("activeTab", "Edit News"); // optional
+                                navigate(`/edit-news/${item.id}`); // ✅ smooth SPA navigation
+                              }}
+                              className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                              title="Edit News"
+                            >
+                              Edit
+                            </button>
+
                             {publishingId === item.id ? (
                               <div className="flex items-center gap-2 text-gray-600 text-sm">
                                 <svg

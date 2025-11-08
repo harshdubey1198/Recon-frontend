@@ -5,8 +5,12 @@ import { CKEditor } from "ckeditor4-react";
 import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews, fetchPortalCategories, fetchPortals  } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
+import { useParams } from "react-router-dom";
+
 
 const NewsArticleForm = () => {
+    const { id } = useParams();
+    const isEditMode = Boolean(id);
   const [formData, setFormData] = useState({ headline: "",title:"", master_category: "",excluded_portals:[],  shortDesc: "", longDesc: "", image: null, tags: [], latestNews: true, headlines: false, articles: false, trending: false, breakingNews: false, upcomingEvents: false, eventStartDate: "", eventEndDate: "", scheduleDate: "", counter: 0, order: 0, status: "PUBLISHED", meta_title: "", slug: "", slugEdited: false, });
   // console.log("formData",formData);
   const [originalDraft, setOriginalDraft] = useState(null);
@@ -65,6 +69,16 @@ useEffect(() => {
     });
   }
 }, [selectedPortalForCategories, categoryPage]);
+
+
+useEffect(() => {
+    if (isEditMode) {
+      console.log("🟣 Edit mode enabled for ID:", id);
+      // For now just show that edit mode is active
+    } else {
+      console.log("🟢 Create mode active");
+    }
+  }, [isEditMode, id]);
 
 
 // const handleCategorySelect = async (e) => {

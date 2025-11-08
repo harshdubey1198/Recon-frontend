@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {
-  X,
-  Loader2,
-  BarChart3,
-  Clock3,
-  TrendingUp,
-  FileWarning,
-} from "lucide-react";
-import { fetchUserPerformance } from "../../server";
+import { X, Loader2, BarChart3, Clock3, TrendingUp, FileWarning, } from "lucide-react";
+import { fetchUserPerformance , fetchUserPortalPerformance} from "../../server";
 import { toast } from "react-toastify";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
@@ -16,39 +9,46 @@ const UserDetailPanel = ({ userId, username, onClose }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [noData, setNoData] = useState(false);
+  const [portalStats, setPortalStats] = useState([]);
 
   useEffect(() => {
     if (userId) loadUserData();
   }, [userId]);
 
-  const loadUserData = async () => {
-    try {
-      setLoading(true);
-      setNoData(false);
-      const res = await fetchUserPerformance(userId, "1m");
+const loadUserData = async () => {
+  try {
+    setLoading(true);
+    setNoData(false);
 
-      if (res?.data?.status) {
-        const data = res.data.data;
-        if (data && Object.keys(data).length > 0) {
-          setUserData(data);
-        } else {
-          setNoData(true);
-        }
-      } else {
-        toast.error("Failed to fetch user details.");
-      }
-    } catch (err) {
-      console.error("Error loading user details:", err);
-      toast.error("Error fetching user details.");
-    } finally {
-      setLoading(false);
+    const [userRes, portalRes] = await Promise.all([
+      fetchUserPerformance(userId, "1m"),
+      fetchUserPortalPerformance(userId, "1m"),
+    ]);
+
+    if (userRes?.data?.status) {
+      const data = userRes.data.data;
+      if (data && Object.keys(data).length > 0) {
+        setUserData(data);
+      } else setNoData(true);
     }
-  };
+
+    if (portalRes?.data?.status) {
+      setPortalStats(portalRes.data.data?.portals || []);
+    }
+  } catch (err) {
+    console.error("Error loading user details:", err);
+    toast.error("Error fetching user details.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+  
 
   // 🌀 Loading State
   if (loading) {
     return (
-      <div className="fixed top-0 right-0 w-full sm:w-[480px] h-full bg-white shadow-2xl border-l border-gray-200 z-50 flex items-center justify-center">
+    <div className="fixed top-0 right-0 w-full sm:w-[480px] h-full bg-white shadow-2xl border-l border-gray-200 transform transition-transform duration-300 ease-in-out z-50 overflow-y-scroll scrollbar-hide">
         <Loader2 className="w-8 h-8 text-gray-600 animate-spin" />
       </div>
     );
@@ -57,9 +57,9 @@ const UserDetailPanel = ({ userId, username, onClose }) => {
   // ⚠️ No Data Case
   if (noData) {
     return (
-      <div className="fixed top-0 right-0 w-full sm:w-[480px] h-full bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col">
+    <div className="fixed top-0 right-0 w-full sm:w-[480px] h-full bg-white shadow-2xl border-l border-gray-200 transform transition-transform duration-300 ease-in-out z-50 overflow-y-scroll scrollbar-hide">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 bg-black text-white">
+        <div className="flex items-center justify-between px-5 py-4 bg-black text-white sticky top-0 z-10">
           <div className="flex items-center space-x-2">
             <BarChart3 className="w-5 h-5" />
             <h2 className="text-lg font-semibold">{username}'s Performance</h2>
@@ -139,9 +139,9 @@ const UserDetailPanel = ({ userId, username, onClose }) => {
   };
 
   return (
-    <div className="fixed top-0 right-0 w-full sm:w-[480px] h-full bg-white shadow-2xl border-l border-gray-200 transform transition-transform duration-300 ease-in-out z-50 overflow-y-auto">
+  <div className="fixed top-0 right-0 w-full sm:w-[480px] h-full bg-white shadow-2xl border-l border-gray-200 transform transition-transform duration-300 ease-in-out z-50 overflow-y-scroll scrollbar-hide">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 bg-black text-white">
+       <div className="flex items-center justify-between px-5 py-4 bg-black text-white sticky top-0 z-10">
         <div className="flex items-center space-x-2">
           <BarChart3 className="w-5 h-5" />
           <h2 className="text-lg font-semibold">{username}'s Performance</h2>
@@ -211,6 +211,41 @@ const UserDetailPanel = ({ userId, username, onClose }) => {
           </div>
         )}
 
+        {portalStats.length > 0 && (
+          <div className="bg-white border rounded-lg shadow-sm mt-6 p-4">
+            <h3 className="font-semibold mb-3 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-600" />
+              Portal Performance
+            </h3>
+            <div className="overflow-x-auto scrollbar-hide">
+              <table className="w-full text-sm text-left text-gray-700">
+                <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-2">Portal</th>
+                    <th className="px-4 py-2">Total</th>
+                    <th className="px-4 py-2 text-green-600">Success</th>
+                    <th className="px-4 py-2 text-red-600">Failed</th>
+                    <th className="px-4 py-2">Success %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portalStats.map((p, index) => (
+                    <tr key={index} className="border-t hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium">{p.portal_name}</td>
+                      <td className="px-4 py-2">{p.total_distributed}</td>
+                      <td className="px-4 py-2 text-green-600">{p.success_distributed}</td>
+                      <td className="px-4 py-2 text-red-600">{p.failed_distributed}</td>
+                      <td className="px-4 py-2 font-semibold">
+                        {p.success_ratio.toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Daily Table */}
         {timeline_of_actions && timeline_of_actions.length > 0 && (
           <div className="bg-white border rounded-lg shadow-sm mt-6">
@@ -241,6 +276,7 @@ const UserDetailPanel = ({ userId, username, onClose }) => {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
