@@ -49,7 +49,7 @@ const menuItems = [
        { name: "User Access Control", icon: ShieldCheck },
        { name: "User Categories", icon: Layers },
        { name: "User Stats", icon: BarChart3 }, 
-       { name: "User Portal Access", icon: Users2 },
+       { name: "Portal Management", icon: Users2 },
        { name: "User Portal Sync", icon: Building2 }, 
       ]
     : []),

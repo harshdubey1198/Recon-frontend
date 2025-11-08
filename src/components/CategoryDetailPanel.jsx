@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  X,
-  BarChart3,
-  Users,
-  AlertTriangle,
-  Clock,
-} from "lucide-react";
+import { X, BarChart3, Users, AlertTriangle, Clock, } from "lucide-react";
 import { Line, Bar } from "react-chartjs-2";
 import "chart.js/auto";
 import { toast } from "react-toastify";
@@ -111,8 +105,8 @@ const CategoryDetailPanel = ({ categoryId, categoryName, onClose }) => {
   };
 
   return (
-    <div className="fixed top-0 right-0 w-full sm:w-[550px] h-full bg-white shadow-2xl border-l border-gray-200 overflow-y-auto z-50">
-      {/* Header */}
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden scrollbar-hide relative animate-fadeIn">      {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 bg-black text-white sticky top-0">
         <h2 className="text-lg font-semibold">{categoryName} Analytics</h2>
         <button onClick={onClose}>
@@ -220,6 +214,7 @@ const CategoryDetailPanel = ({ categoryId, categoryName, onClose }) => {
         </div>
       </div>
     </div>
+   </div>
   );
 };
 
