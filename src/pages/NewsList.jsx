@@ -404,7 +404,7 @@ const NewsList = () => {
             />
             {/* 🔹 Stats Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-6 mt-2">
-              <div className="flex items-center justify-between bg-black border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+              <div className="flex items-center justify-between bg-black border border-blue-200 rounded-xl p-4 shadow-sm    hover:shadow-md transition-all duration-200">
                 <div>
                   <h3 className="text-sm text-white font-medium">
                     Total Master Posts
@@ -417,7 +417,6 @@ const NewsList = () => {
                   <FileText className="w-5 h-5 text-black" />
                 </div>
               </div>
-
               <div className="flex items-center justify-between bg-black border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
                 <div>
                   <h3 className="text-sm text-white font-medium">

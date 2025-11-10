@@ -138,7 +138,7 @@ export default function Dashboard() {
         console.error("Failed to parse user:", err);
       }
     }
-  }, []);
+  }, []);      
 
   const refreshAllData = async () => {
     setIsRefreshing(true);
