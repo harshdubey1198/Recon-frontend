@@ -163,8 +163,7 @@ export default function AnalyticsComponent({ categories }) {
 
   return (
     <div className="space-y-8">
-       {/* hitmap category */}
-       <HeatMapCategory/>
+       
      {/* Inactivity Alerts */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="bg-black p-6">

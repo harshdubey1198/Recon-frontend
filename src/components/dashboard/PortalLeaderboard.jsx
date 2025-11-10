@@ -17,6 +17,7 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
   const [globalContributorsPage, setGlobalContributorsPage] = useState(1);
   const globalContributorsRef = useRef(null);
   const ITEMS_PER_PAGE = 8;
+const [isPaused, setIsPaused] = useState(false);
 
   const loadDomains = async () => {
     try {
@@ -172,11 +173,8 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
         if (res?.data?.data) {
           if (res.data.data.performance_trend) {
            const trend = res.data.data.performance_trend;
-            const limitedTrend =
-              (effectiveRange === "1m" || effectiveRange === "custom")
-                ? trend.slice(-7)
-                : trend;
-            setPortalDetailDataGlobal(limitedTrend);
+          const limitedTrend = trend;
+           setPortalDetailDataGlobal(limitedTrend);
           }
           if (res.data.data.top_contributors) {
             setGlobalTopContributors(res.data.data.top_contributors);
@@ -217,6 +215,41 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
     { key: 'todayRetry', label: 'Today_Retry' },
     { key: 'todayAverageTime', label: 'Today_Avg_Time' }
   ];
+
+  const scrollContainerRef = useRef(null);
+
+useEffect(() => {
+  if (range !== "1m" || !scrollContainerRef.current) return;
+
+  const container = scrollContainerRef.current;
+  const totalWeeks = Math.ceil(portalDetailDataGlobal.length / 7);
+  const scrollWidth = container.clientWidth;
+  let currentWeek = 0;
+
+  const interval = setInterval(() => {
+    if (!container || isPaused) return;
+
+    currentWeek++;
+    container.scrollTo({
+      left: currentWeek * scrollWidth,
+      behavior: "smooth",
+    });
+
+    // 👇 when we’re almost at the end of duplicate track, jump back silently
+    const maxScroll = scrollWidth * (totalWeeks * 2 - 1);
+    if (container.scrollLeft >= maxScroll - 10) {
+      setTimeout(() => {
+        container.scrollTo({ left: 0, behavior: "auto" });
+        currentWeek = 0;
+      }, 500); // short delay after last smooth move
+    }
+  }, 2000);
+
+  return () => clearInterval(interval);
+}, [range, portalDetailDataGlobal.length, isPaused]);
+
+
+
 
   return (
     <>
@@ -456,45 +489,140 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
         </div>
       </div>
 
-      {/* Weekly Performance */}
-      <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-purple-100 p-4 sm:p-6 mb-6 sm:mb-8">
-        <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-          <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-          <h3 className="text-base sm:text-lg font-bold text-gray-900">Weekly Performance</h3>
-        </div>
-        <div className="space-y-1.5 sm:space-y-2">
-          {portalDetailDataGlobal.map((day, idx) => (
-            <div key={idx} className="flex items-center space-x-2 sm:space-x-3">
-              <span className="text-xs sm:text-sm font-semibold text-gray-600 w-8 sm:w-12">{day.day}</span>
-              <div className="flex-1 flex items-center space-x-1">
-                <div className="flex-1 bg-white rounded-full h-6 sm:h-8 relative overflow-hidden">
+     {/* Weekly Performance */}
+          <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-purple-100 p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+              <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">Weekly Performance</h3>
+            </div>
+
+        {/* Auto-scroll for 1 month range */}
+            <div
+              ref={scrollContainerRef}
+              onMouseEnter={() => setIsPaused(true)}   // ⏸️ pause on hover
+              onMouseLeave={() => setIsPaused(false)}  // ▶️ resume scroll
+              className={`${
+                range === "1m"
+                  ? "flex overflow-x-hidden w-full pb-2 scroll-smooth snap-x snap-mandatory"
+                  : "space-y-1.5 sm:space-y-2"
+              }`}
+              style={{ scrollBehavior: "smooth", width: "100%", overflow: "hidden" }}
+            >
+              {/* Render actual weeks + duplicate for smooth looping */}
+              <>
+               {range === "1m" &&
+                  Array.from({ length: Math.ceil(portalDetailDataGlobal.length / 7) }).map((_, weekIdx) => (
                   <div
-                    className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-2"
-                    style={{ width: `${day.success > 0 ? (day.success / (day.success + day.failed)) * 100 : 0}%` }}
+                    key={`week-${weekIdx}`}
+                    className="min-w-full snap-center bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex-shrink-0"
                   >
-                    <span className="text-xs font-bold text-white">{day.success}</span>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                      Week {weekIdx + 1}
+                    </h4>
+                    {portalDetailDataGlobal
+                      .slice(weekIdx * 7, (weekIdx + 1) * 7)
+                      .map((day, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center space-x-2 sm:space-x-3 mb-1.5"
+                        >
+                          <span className="text-xs sm:text-sm font-semibold text-gray-600 w-8 sm:w-12">
+                            {day.day}
+                          </span>
+                          <div className="flex-1 flex items-center space-x-1">
+                            <div className="flex-1 bg-gray-100 rounded-full h-5 sm:h-6 relative overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-2"
+                                style={{
+                                  width: `${
+                                    day.success > 0
+                                      ? (day.success / (day.success + day.failed)) * 100
+                                      : 0
+                                  }%`,
+                                }}
+                              >
+                                <span className="text-[10px] font-bold text-white">
+                                  {day.success}
+                                </span>
+                              </div>
+                            </div>
+                            {day.failed > 0 && (
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-100 rounded-full flex items-center justify-center">
+                                <span className="text-[10px] font-bold text-red-600">
+                                  {day.failed}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                   </div>
-                </div>
-                {day.failed > 0 && (
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <span className="text-[10px] sm:text-xs font-bold text-red-600">{day.failed}</span>
+                ))}
+
+                {/* Duplicate for smooth infinite scroll */}
+                {Array.from({ length: Math.ceil(portalDetailDataGlobal.length / 7) }).map((_, weekIdx) => (
+                  <div
+                    key={`clone-${weekIdx}`}
+                    className="min-w-full snap-center bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex-shrink-0 opacity-80"
+                  >
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                      Week {weekIdx + 1}
+                    </h4>
+                    {portalDetailDataGlobal
+                      .slice(weekIdx * 7, (weekIdx + 1) * 7)
+                      .map((day, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center space-x-2 sm:space-x-3 mb-1.5"
+                        >
+                          <span className="text-xs sm:text-sm font-semibold text-gray-600 w-8 sm:w-12">
+                            {day.day}
+                          </span>
+                          <div className="flex-1 flex items-center space-x-1">
+                            <div className="flex-1 bg-gray-100 rounded-full h-5 sm:h-6 relative overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-green-400 to-green-500 h-full rounded-full flex items-center justify-end pr-2"
+                                style={{
+                                  width: `${
+                                    day.success > 0
+                                      ? (day.success / (day.success + day.failed)) * 100
+                                      : 0
+                                  }%`,
+                                }}
+                              >
+                                <span className="text-[10px] font-bold text-white">
+                                  {day.success}
+                                </span>
+                              </div>
+                            </div>
+                            {day.failed > 0 && (
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-100 rounded-full flex items-center justify-center">
+                                <span className="text-[10px] font-bold text-red-600">
+                                  {day.failed}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                   </div>
-                )}
+                ))}
+              </>
+            </div>
+
+
+            <div className="flex items-center space-x-3 sm:space-x-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-purple-100">
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full"></div>
+                <span className="text-[10px] sm:text-xs text-gray-600">Success</span>
+              </div>
+              <div className="flex items-center space-x-1.5 sm:space-x-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
+                <span className="text-[10px] sm:text-xs text-gray-600">Failed</span>
               </div>
             </div>
-          ))}
-        </div>
-        <div className="flex items-center space-x-3 sm:space-x-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-purple-100">
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full"></div>
-            <span className="text-[10px] sm:text-xs text-gray-600">Success</span>
           </div>
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
-            <span className="text-[10px] sm:text-xs text-gray-600">Failed</span>
-          </div>
-        </div>
-      </div>
+
 
       {/* Portal Detail Modal */}
       <PortalDetailModal
