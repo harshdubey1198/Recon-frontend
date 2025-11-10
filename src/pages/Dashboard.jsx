@@ -239,7 +239,7 @@ export default function Dashboard() {
                 setShowCustomDateInputs(false);
                 refreshAllData("7d", null);
               }}
-              className="bg-black text-xs text-white border border-gray-300 rounded-md px-2 py-1 hover:bg-gray-100 transition"
+              className="bg-black text-xs text-white border border-gray-300 rounded-md px-2 py-1 hover:bg-black/50 transition"
             >
               Clear Filter
             </button>
