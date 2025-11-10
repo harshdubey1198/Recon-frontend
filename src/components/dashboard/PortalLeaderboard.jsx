@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { fetchDomainDistribution, fetchWeeklyPerformanceData, fetchPortalStats } from "../../../server";
 import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Users, FolderOpen, Tag } from "lucide-react";
 import formatUsername from "../../utils/formateName";
 import PortalDetailModal from "../Modal/PortalDetailModal";
-import DownloadButton from "../DownLoad/DownloadButton"; 
+import DownloadButton from "../DownLoad/DownloadButton";
 
-export default function PortalLeaderboard() {
+const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref) => {
   const [domains, setDomains] = useState([]);
   const [portalDetailDataGlobal, setPortalDetailDataGlobal] = useState([]);
   const [globalTopContributors, setGlobalTopContributors] = useState([]);
@@ -20,9 +20,12 @@ export default function PortalLeaderboard() {
 
   const loadDomains = async () => {
     try {
-      const res = await fetchDomainDistribution();
+      const customDates = range === "custom" ? customRange : null;
+      const res = await fetchDomainDistribution(range, customDates);
+      console.log("portalData",res.data.data);
+      
       if (res?.data?.status) {
-        const mapped = res.data.data.map((d) => ({
+        const mapped = res.data.data.portals.map((d) => ({
           id: d.portal_id,
           name: d.portal_name,
           total: d.total_distributions,
@@ -56,12 +59,18 @@ export default function PortalLeaderboard() {
 
   const loadWeeklyPerformanceData = async () => {
     try {
-      const res = await fetchWeeklyPerformanceData();
-      console.log("weekly data ", res.data.data);
+      const customDates = range === "custom" ? customRange : null;
+      const res = await fetchWeeklyPerformanceData(range, customDates);
       
       if (res?.data?.data) {
-        if (res.data.data.weekly_performance) {
-          setPortalDetailDataGlobal(res.data.data.weekly_performance);
+        if (res.data.data.performance_trend) {
+            const trend = res.data.data.performance_trend;
+          // Limit to 7 recent days if range is longer (1m/custom)
+          const limitedTrend =
+            (range === "1m" || range === "custom")
+              ? trend.slice(-7)
+              : trend;
+          setPortalDetailDataGlobal(limitedTrend);
         }
         if (res.data.data.top_contributors) {
           setGlobalTopContributors(res.data.data.top_contributors);
@@ -78,7 +87,6 @@ export default function PortalLeaderboard() {
   const openPortalDetailModal = async (portal) => {
     try {
       const res = await fetchPortalStats(portal.id);
-      console.log("Portal stats response:", res.data);
 
       if (res?.data?.success) {
         const detailData = {
@@ -117,26 +125,78 @@ export default function PortalLeaderboard() {
     return 'text-red-600 bg-red-50';
   };
 
-  useEffect(() => {
-    loadDomains();
-    loadWeeklyPerformanceData();
-  }, []);
+  // Load data whenever range changes
+ useEffect(() => {
+   loadDomains();
+   loadWeeklyPerformanceData();
+ }, []);
 
-  const refreshData = async () => {
-    await Promise.all([loadDomains(), loadWeeklyPerformanceData()]);
+  const refreshData = async (newRange, newCustomRange) => {
+    const effectiveRange = newRange || range;
+    const effectiveCustomRange = newCustomRange || customRange;
+    
+    const customDates = effectiveRange === "custom" ? effectiveCustomRange : null;
+    
+    await Promise.all([
+      fetchDomainDistribution(effectiveRange, customDates).then(res => {
+        if (res?.data?.status) {
+          const mapped = res.data.data.portals.map((d) => ({
+            id: d.portal_id,
+            name: d.portal_name,
+            total: d.total_distributions,
+            success: d.successful_distributions,
+            failed: d.failed_distributions,
+            publishedPercent: d.success_percentage,
+            avgPublishTime: d.average_time_taken,
+            pending: d.pending_distributions,
+            retry: d.retry_counts,
+            todayTotal: d.today_total_distributions,
+            todaySuccess: d.today_successful_distributions,
+            todayFailed: d.today_failed_distributions,
+            todayPending: d.today_pending_distributions,
+            todayRetry: d.today_retry_counts,
+            todayAverageTime: d.today_average_time_taken,
+            traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
+            todayTraffic: `${d.today_successful_distributions} success / ${d.today_failed_distributions} failed`,
+            status:
+              d.failed_distributions > 0
+                ? "Partial"
+                : d.successful_distributions > 0
+                ? "Active"
+                : "Idle",
+          }));
+          setDomains(mapped);
+        }
+      }),
+      fetchWeeklyPerformanceData(effectiveRange, customDates).then(res => {
+        if (res?.data?.data) {
+          if (res.data.data.performance_trend) {
+           const trend = res.data.data.performance_trend;
+            const limitedTrend =
+              (effectiveRange === "1m" || effectiveRange === "custom")
+                ? trend.slice(-7)
+                : trend;
+            setPortalDetailDataGlobal(limitedTrend);
+          }
+          if (res.data.data.top_contributors) {
+            setGlobalTopContributors(res.data.data.top_contributors);
+          }
+          if (res.data.data.top_performing_categories) {
+            setGlobalTopCategories(res.data.data.top_performing_categories);
+          }
+        }
+      })
+    ]);
   };
 
-  React.useImperativeHandle(React.forwardRef(() => {}), () => ({
+  useImperativeHandle(ref, () => ({
     refreshData
   }));
 
-  // Filter domains based on limit
   const filteredDomains = filterLimit === "ALL" 
     ? domains 
     : domains.slice(0, parseInt(filterLimit));
 
-  // Define columns for DownloadButton component
-  // Data to pass to DownloadButton (use filtered or all domains)
   const downloadData = filteredDomains.map((portal, index) => ({
     rank: index + 1,
     ...portal
@@ -160,87 +220,6 @@ export default function PortalLeaderboard() {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Top Contributors */}
-        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-orange-100 p-4 sm:p-6">
-          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Contributors</h3>
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {globalTopContributors?.length > 0 ? (
-              <div 
-                ref={globalContributorsRef}
-                onScroll={handleGlobalScroll}
-                className="space-y-2 sm:space-y-3 max-h-[400px] overflow-y-auto pr-2"
-                style={{
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#d1d5db #f3f4f6'
-                }}
-              >
-                {globalTopContributors.slice(0, globalContributorsPage * ITEMS_PER_PAGE).map((user, idx) => (
-                  <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white font-bold text-xs sm:text-sm">
-                            {user.news_post__created_by__username?.[0]?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                            {formatUsername(user.news_post__created_by__username || 'Unknown User')}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="text-lg sm:text-2xl font-bold text-black">{user.total_distributions || 0}</p>
-                        <p className="text-[10px] sm:text-xs text-gray-500">articles</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {globalContributorsPage * ITEMS_PER_PAGE < globalTopContributors.length && (
-                  <div className="text-center py-2">
-                    <p className="text-xs text-gray-500">load more...</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-xs sm:text-sm">No contributors found.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Top Performing Categories */}
-        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-black/50 p-4 sm:p-6">
-          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-black/80" />
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Performing Categories</h3>
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {globalTopCategories?.length > 0 ? (
-              globalTopCategories.map((cat, idx) => (
-                <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                      </div>
-                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{cat.master_category__name || 'Unknown'}</span>
-                    </div>
-                    <span className="text-xs sm:text-sm font-bold text-blue-600 flex-shrink-0 ml-2">{cat.total_posts || 0} posts</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-xs sm:text-sm">No categories available.</p>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Portal Output Leaderboard */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8 overflow-hidden">
         <div className="bg-black p-4 sm:p-6">
@@ -269,7 +248,6 @@ export default function PortalLeaderboard() {
                 </select>
               </div>
 
-              {/* Replace old download button with DownloadButton component */}
               <DownloadButton 
                 data={downloadData}
                 columns={portalColumns}
@@ -397,6 +375,87 @@ export default function PortalLeaderboard() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Top Contributors */}
+        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-orange-100 p-4 sm:p-6">
+          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Contributors</h3>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {globalTopContributors?.length > 0 ? (
+              <div 
+                ref={globalContributorsRef}
+                onScroll={handleGlobalScroll}
+                className="space-y-2 sm:space-y-3 max-h-[400px] overflow-y-auto pr-2"
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#d1d5db #f3f4f6'
+                }}
+              >
+                {globalTopContributors.slice(0, globalContributorsPage * ITEMS_PER_PAGE).map((user, idx) => (
+                  <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-black rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-bold text-xs sm:text-sm">
+                            {user.news_post__created_by__username?.[0]?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                            {formatUsername(user.news_post__created_by__username || 'Unknown User')}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <p className="text-lg sm:text-2xl font-bold text-black">{user.total_distributions || 0}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500">articles</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {globalContributorsPage * ITEMS_PER_PAGE < globalTopContributors.length && (
+                  <div className="text-center py-2">
+                    <p className="text-xs text-gray-500">load more...</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-xs sm:text-sm">No contributors found.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Top Performing Categories */}
+        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-black/50 p-4 sm:p-6">
+          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-black/80" />
+            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Performing Categories</h3>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {globalTopCategories?.length > 0 ? (
+              globalTopCategories.map((cat, idx) => (
+                <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 flex-1 min-w-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                      </div>
+                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{cat.master_category__name || 'Unknown'}</span>
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-blue-600 flex-shrink-0 ml-2">{cat.total_posts || 0} posts</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-xs sm:text-sm">No categories available.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Weekly Performance */}
       <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-purple-100 p-4 sm:p-6 mb-6 sm:mb-8">
         <div className="flex items-center space-x-2 mb-3 sm:mb-4">
@@ -445,4 +504,8 @@ export default function PortalLeaderboard() {
       />
     </>
   );
-}
+});
+
+PortalLeaderboard.displayName = 'PortalLeaderboard';
+
+export default PortalLeaderboard;

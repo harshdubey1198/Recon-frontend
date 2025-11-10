@@ -137,12 +137,19 @@ export async function fetchNewsDetail(id) {
   return axiosInstance.get(`/api/news/distributed/detail/${id}/`);
 }
 
-export async function fetchAdminStats() {
-  return axiosInstance.get("/api/admin/stats/");
+export async function fetchAdminStats(range = "7d", customDates = null) {
+  return axiosInstance.get("/api/admin/stats/", {
+    params: buildParams(range, customDates),
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
-export async function fetchDomainDistribution() {
-  return axiosInstance.get("/api/domain/distribution/");
+// domain distribution data
+export async function fetchDomainDistribution(range = "7d", customDates = null) {
+  return axiosInstance.get("/api/domain/distribution/", {
+    params: buildParams(range, customDates),
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 export async function fetchMasterCategories(page = 1, search = "") {
@@ -208,6 +215,17 @@ export async function fetchPortalStatusByUsername(username, page = 1) {
   return axiosInstance.get(`/account/check/username/?username=${username}&page=${page}`);
 }
 
+function buildRangeParams(range = "7d", customDates = null) {
+  const params = { range };
+  
+  // If custom range is selected and dates are provided
+  if (range === "custom" && customDates) {
+    params.start_date = customDates.start;
+    params.end_date = customDates.end;
+  }
+  
+  return params;
+}
 
 export async function mapPortalUser(username, user_id) {
   const formData = new FormData();
@@ -227,7 +245,15 @@ export async function fetchMappedCategoriesById(id,page=1) {
   return axiosInstance.get(`/api/master/categories/mapped/${id}/?page=${page}`);
 }
 
-
+// filter pramas section 
+function buildParams(range = "7d", customDates = null) {
+  const params = { range };
+  if (range === "custom" && customDates) {
+    params.start_date = customDates.start;
+    params.end_date = customDates.end;
+  }
+  return params;
+}
 /**
  * Fetch categories for a given portal
  * @param {string} portalName - e.g., "newsableasia"
@@ -315,10 +341,8 @@ export async function fetchUserPostStats(params = {}) {
   return axiosInstance.get(`/api/user/posts/stats/?${query.toString()}`);
 }
 
-// weakly performance data global
-export async function fetchWeeklyPerformanceData() {
-  return axiosInstance.get("/api/global/stats/");
-}
+
+
 // portal stats
 export async function fetchPortalStats(portalId) {
   return axiosInstance.get("/api/portal/stats/", {
@@ -334,23 +358,21 @@ export async function fetchInactivityAlerts(range = "7d", page = 1) {
   });
 }
 
-// hitmap data
 export async function fetchCategoryHeatmap(range = "7d", customDates = null) {
-  const params = { range };
-  
-  // If custom range is selected and dates are provided
-  if (range === "custom" && customDates) {
-    params.start_date = customDates.start;
-    params.end_date = customDates.end;
-  }
-  
   return axiosInstance.get("/api/category/heatmap/", {
-    params,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    params: buildParams(range, customDates),
+    headers: { "Content-Type": "application/json" },
   });
 }
+
+export async function fetchWeeklyPerformanceData(range = "7d", customDates = null) {
+  return axiosInstance.get("/api/global/stats/", {
+    params: buildParams(range, customDates),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+
 
 // Update category mapping
 export async function updateCategoryMapping(mappingId, useDefaultContent) {

@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Grid3x3, X, TrendingUp, Loader2, TrendingDown, Minus } from 'lucide-react';
 import { fetchCategoryHeatmap } from '../../../server';
 import HeatmapFilter from '../filters/HeatmapFilter';
 
-export default function HeatMapCategory() {
+const HeatMapCategory = forwardRef(({ range = "7d", customRange = null }, ref) => {
   const [heatmapData, setHeatmapData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showArticleModal, setShowArticleModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
   const [apiData, setApiData] = useState(null);
-  const [range, setRange] = useState('7d');
-  const [customRange, setCustomRange] = useState({ start: "", end: "" });
 
   // Helper function to determine heatmap cell color based on post count
   const getHeatmapColor = (postCount, maxPosts) => {
@@ -37,7 +35,6 @@ export default function HeatMapCategory() {
       setLoading(true);
       setError(null);
       
-      // Pass custom dates if range is custom
       const customDates = range === "custom" ? customRange : null;
       const response = await fetchCategoryHeatmap(range, customDates);
       
@@ -68,14 +65,6 @@ export default function HeatMapCategory() {
     }
   };
 
-  // Handle custom range apply
-  const handleApplyCustomRange = () => {
-    if (customRange.start && customRange.end) {
-      console.log("Applying custom range:", customRange);
-      loadHeatmapData();
-    }
-  };
-  
   // Handle cell click to open modal
   const handleCellClick = (cellData) => {
     if (cellData.currentPosts === 0) return;
@@ -83,13 +72,53 @@ export default function HeatMapCategory() {
     setShowArticleModal(true);
   };
   
-  useEffect(() => {
-    // Only load data when range changes to non-custom values
-    // For custom range, wait for Apply button click
-    if (range !== "custom") {
-      loadHeatmapData();
+  // Load data whenever range changes
+ useEffect(() => {
+   loadHeatmapData();
+ }, []);
+
+  const refreshData = async (newRange, newCustomRange) => {
+    const effectiveRange = newRange || range;
+    const effectiveCustomRange = newCustomRange || customRange;
+    
+    const customDates = effectiveRange === "custom" ? effectiveCustomRange : null;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetchCategoryHeatmap(effectiveRange, customDates);
+      
+      if (response.data.success) {
+        const { data } = response.data;
+        setApiData(data);
+        
+        // Transform API data for heatmap
+        const categories = data.categories || [];
+        const maxPosts = Math.max(...categories.map(cat => cat.current_period_posts), 1);
+        const transformedData = categories.map(cat => ({
+          masterCategoryId: cat.master_category_id,
+          masterCategoryName: cat.master_category_name,
+          currentPosts: cat.current_period_posts,
+          previousPosts: cat.previous_period_posts,
+          changeRatio: cat.change_ratio,
+          trend: cat.trend,
+          intensity: cat.current_period_posts / maxPosts
+        }));
+        
+        setHeatmapData(transformedData);
+      }
+    } catch (err) {
+      console.error('Error fetching heatmap data:', err);
+      setError('Failed to load heatmap data');
+    } finally {
+      setLoading(false);
     }
-  }, [range]);
+  };
+
+  useImperativeHandle(ref, () => ({
+    refreshData
+  }));
 
   // Calculate grid dimensions (aim for roughly square grid)
   const getGridDimensions = () => {
@@ -149,16 +178,6 @@ export default function HeatMapCategory() {
                 <p className="text-gray-300">Publishing activity by master category</p>
               </div>
             </div>
-            
-            {/* Using HeatmapFilter Component */}
-            <HeatmapFilter
-              range={range}
-              setRange={setRange}
-              customRange={customRange}
-              setCustomRange={setCustomRange}
-              onApplyCustomRange={handleApplyCustomRange}
-              apiData={apiData}
-            />
           </div>
         </div>
 
@@ -238,4 +257,8 @@ export default function HeatMapCategory() {
       </div>
     </div>
   );
-}
+});
+
+HeatMapCategory.displayName = 'HeatMapCategory';
+
+export default HeatMapCategory;
