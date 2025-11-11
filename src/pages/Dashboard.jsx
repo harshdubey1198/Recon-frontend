@@ -378,9 +378,20 @@ export default function Dashboard() {
         <KPIOverview data={stats} />
         <StatusOverview data={stats} />
         <PortalLeaderboard ref={portalLeaderboardRef} range={range} customRange={customRange} />
-        <HeatMapCategory ref={heatmapCategoryRef} range={range} customRange={customRange} />
-        <SuccessRateChart height={520} />
-        <AnalyticsComponent />
+        <div className="space-y-10">   {/* yahan 10 = 2.5rem space */}
+              <HeatMapCategory
+                ref={heatmapCategoryRef}
+                range={range}
+                customRange={customRange}
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+              />
+              <SuccessRateChart
+                height={520}
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+              />
+              <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" />
+            </div>
+        
       </div>
     </div>
   );

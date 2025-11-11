@@ -509,19 +509,23 @@ useEffect(() => {
               style={{ scrollBehavior: "smooth", width: "100%", overflow: "hidden" }}
             >
               {/* Render actual weeks + duplicate for smooth looping */}
-              <>
-               {range === "1m" &&
-                  Array.from({ length: Math.ceil(portalDetailDataGlobal.length / 7) }).map((_, weekIdx) => (
-                  <div
-                    key={`week-${weekIdx}`}
-                    className="min-w-full snap-center bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex-shrink-0"
-                  >
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                      Week {weekIdx + 1}
-                    </h4>
-                    {portalDetailDataGlobal
-                      .slice(weekIdx * 7, (weekIdx + 1) * 7)
-                      .map((day, idx) => (
+             <>
+                    {range === "1m"|| range === "custom" &&
+                        Array.from({ length: Math.ceil(portalDetailDataGlobal.length / 7) }).map((_, weekIdx) => (
+                          <div
+                            key={`week-${weekIdx}`}
+                            className="min-w-full snap-center bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex-shrink-0"
+                          >
+                           
+                          {(range === "1m" || range === "custom") && (
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                              Week {weekIdx + 1}
+                            </h4>
+                          )}
+                   
+                            {portalDetailDataGlobal
+                              .slice(weekIdx * 7, (weekIdx + 1) * 7)
+                              .map((day, idx) => (
                         <div
                           key={idx}
                           className="flex items-center space-x-2 sm:space-x-3 mb-1.5"
@@ -560,14 +564,19 @@ useEffect(() => {
                 ))}
 
                 {/* Duplicate for smooth infinite scroll */}
+                
                 {Array.from({ length: Math.ceil(portalDetailDataGlobal.length / 7) }).map((_, weekIdx) => (
                   <div
                     key={`clone-${weekIdx}`}
                     className="min-w-full snap-center bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex-shrink-0 opacity-80"
                   >
+                     {(range === "1m" || range === "custom") && (
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">
                       Week {weekIdx + 1}
                     </h4>
+                  )}
+
+                    
                     {portalDetailDataGlobal
                       .slice(weekIdx * 7, (weekIdx + 1) * 7)
                       .map((day, idx) => (
