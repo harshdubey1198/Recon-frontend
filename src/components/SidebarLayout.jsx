@@ -65,7 +65,7 @@ const menuItems = [
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-4 z-50">
         <button
           onClick={toggleMobileMenu}
           className="p-2 rounded-lg bg-white shadow-md hover:shadow-lg transition-shadow duration-200"
