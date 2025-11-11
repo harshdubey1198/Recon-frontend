@@ -13,12 +13,15 @@ import CategoryMapping from "./pages/CategoryMapping";
 import AllCategories from "./pages/AllCategories";
 import PortalManagement from "./pages/PortalManagement";
 import UserCategories from "./pages/UserCategories";
-import { ToastContainer } from "react-toastify";
+import NewsReports from "./pages/NewsReports";
+import UserStats from "./pages/UserStats";
+import PortalList from "./pages/PortalList";
+import CategoryList from "./pages/CategoryList";
 
 export default function AppRoutes() {
   const authUser = JSON.parse(localStorage.getItem("auth_data") || "{}");
   const role = authUser?.data?.role || null;
-const isMaster = role === "master";
+  const isMaster = role === "master";
 
   return (
     <Routes>
@@ -38,23 +41,22 @@ const isMaster = role === "master";
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
-<Route path="/create-news" element={<CreateNews />} />
-<Route path="/edit-news/:id" element={<CreateNews />} />
-        <Route path="news-list" element={<NewsList />} />
-        <Route path="news/:id" element={<NewsDetail />} />
+        <Route path="/create-news" element={<CreateNews />} />
+        <Route path="/edit-news/:id" element={<CreateNews />} />
+        <Route path="/news-list" element={<NewsList />} />
+        <Route path="/news/:id" element={<NewsDetail />} />
+        <Route path="/news-reports" element={<NewsReports />} />
         <Route path="/portal-management" element={<PortalManagement />} />
-
-        {/* Master-only routes */}
-        {isMaster && (
-          <>
-            <Route path="/access-control" element={<AccessControl />} />
-            <Route path="/user-access-list" element={<UserAccessList />} />
-            <Route path="/all-categories" element={<AllCategories />} />
-            <Route path="/category-mapping" element={<CategoryMapping />} />
-            <Route path="/portal-management" element={<PortalManagement />} />
-            <Route path="/user-categories" element={<UserCategories />} />
-          </>
-        )}
+        <Route path="/access-control" element={<AccessControl />} />
+        <Route path="/user-access-list" element={<UserAccessList />} />
+        <Route path="/all-categories" element={<AllCategories />} />
+        <Route path="/category-mapping" element={<CategoryMapping />} />
+        <Route path="/user-categories" element={<UserCategories />} />
+        <Route path="/user-stats" element={<UserStats />} />
+        <Route path="/portal-list" element={<PortalList />} />
+        <Route path="/category-insights" element={<CategoryList />} />
+       
+     
       </Route>
 
       {/* Catch-all */}

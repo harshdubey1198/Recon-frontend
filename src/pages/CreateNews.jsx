@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Upload, X, Plus, Calendar, Eye, Save, RefreshCw, Image as ImageIcon, Tag, FileText, Settings, Clock, TrendingUp, AlertCircle, Star, Crop, RotateCw, ZoomIn, Maximize2, SaveAll, } from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews, fetchPortalCategories, fetchPortals  } from "../../server";
+import { createNewsArticle, publishNewsArticle, fetchAllTags, fetchAssignedCategories, fetchMappedCategoriesById, fetchDraftNews, updateDraftNews, fetchPortalCategories, fetchPortals, fetchNewsSingle   } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 import { useParams } from "react-router-dom";
@@ -72,13 +72,109 @@ useEffect(() => {
 
 
 useEffect(() => {
-    if (isEditMode) {
-      console.log("🟣 Edit mode enabled for ID:", id);
-      // For now just show that edit mode is active
-    } else {
-      console.log("🟢 Create mode active");
+  const loadNewsDetails = async () => {
+    if (!isEditMode || !id) return;
+
+    try {
+      setIsLoading(true);
+      const res = await fetchNewsSingle(id);
+      const data = res?.data?.data;
+
+      if (!data) {
+        toast.error("Failed to load article details.");
+        return;
+      }
+
+      console.log("🟣 Loaded news detail:", data);
+
+      // ✅ Set form data with safe defaults and proper fallbacks
+      setFormData((prev) => ({
+        ...prev,
+        id: data?.id ?? "",
+        headline: data?.ai_title ?? data?.news_post_title ?? "",
+        title: data?.ai_title ?? data?.news_post_title ?? "",
+        shortDesc: data?.ai_short_description ?? data?.response_message ?? "",
+        longDesc: data?.ai_content ?? "",
+        meta_title: data?.ai_meta_title ?? "",
+        slug: data?.ai_slug ?? "",
+        slugEdited: true,
+        status: data?.post_status ?? data?.status ?? "DRAFT",
+        image: data?.news_post_image ?? null,
+        latestNews: data?.is_active === 1,
+        headlines: data?.Head_Lines === 1,
+        articles: data?.articles === 1,
+        trending: data?.trending === 1,
+        breakingNews: data?.BreakingNews === 1,
+        upcomingEvents: data?.Event === 1,
+        eventStartDate: data?.Event_date ?? "",
+        eventEndDate: data?.Event_end_date ?? "",
+        scheduleDate: data?.schedule_date ?? "",
+        counter: data?.edit_count ?? 0,
+        order: data?.retry_count ?? 0,
+        master_category: data?.master_category ?? "",
+        excluded_portals: Array.isArray(data?.excluded_portals)
+          ? data.excluded_portals
+          : [],
+        tags:
+          typeof data?.post_tag === "string" && data.post_tag.length > 0
+            ? data.post_tag
+                .split(",")
+                .map((tag) => tag.replace("#", "").trim())
+                .filter(Boolean)
+            : [],
+      }));
+
+      // ✅ Preview image if available
+      if (data.news_post_image) {
+        setImagePreview(data.news_post_image);
+      }
+
+      console.log("✅ Loaded & processed article data:", data);
+
+      // ✅ Fetch mapped categories if a master category exists
+      if (data.master_category) {
+        try {
+          const res2 = await fetchMappedCategoriesById(data.master_category);
+          const mappings = res2?.data?.data?.mappings || [];
+
+          if (Array.isArray(mappings) && mappings.length > 0) {
+            const excluded = Array.isArray(data.excluded_portals)
+              ? data.excluded_portals.map(Number)
+              : [];
+
+            const formatted = mappings.map((item) => ({
+              id: item.id,
+              portalId: Number(item.portal_id),
+              portalCategoryId: Number(item.portal_category),
+              portalName: item.portal_name || "Unnamed Portal",
+              categoryId: item.master_category,
+              categoryName: item.master_category_name || "",
+              portalCategoryName: item.portal_category_name || "",
+              selected: !excluded.includes(Number(item.portal_category)),
+            }));
+
+            setMappedPortals(formatted);
+            setShowPortalSection(true);
+          } else {
+            setShowPortalSection(false);
+          }
+        } catch (err) {
+          console.error("❌ Error loading mapped portals:", err);
+          toast.error("Error loading mapped portals.");
+        }
+      }
+    } catch (err) {
+      console.error("❌ Failed to load news detail:", err);
+      toast.error("Failed to load article data.");
+    } finally {
+      setIsLoading(false);
     }
-  }, [isEditMode, id]);
+  };
+
+  loadNewsDetails();
+}, [isEditMode, id]);
+
+
 
 
 // const handleCategorySelect = async (e) => {
@@ -744,11 +840,14 @@ const resetForm = () => {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-white">
-                    Create News Article
+                    {isEditMode ? "Edit News Article" : "Create News Article"}
                   </h1>
                   <p className="text-gray-300 text-sm">
-                    Fill in the details to publish your article
+                    {isEditMode
+                      ? "Update the existing article details below"
+                      : "Fill in the details to publish your article"}
                   </p>
+
                 </div>
               </div>
               <div className="flex space-x-2">

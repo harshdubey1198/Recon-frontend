@@ -430,7 +430,7 @@ const NewsList = () => {
                   <Clock className="w-5 h-5 text-black" />
                 </div>
               </div>
-            </div>
+            </div> 
 
             {/* Table */}
             <div className="overflow-x-auto mt-4">
@@ -565,7 +565,7 @@ const NewsList = () => {
                               if (!publishingId) handleRetryPublish(item);
                             }}
                           >
-                            <button
+                            {/* <button
                               onClick={(e) => {
                                 e.stopPropagation(); // prevent expanding the row
                                 localStorage.setItem("activeTab", "Edit News"); // optional
@@ -575,7 +575,7 @@ const NewsList = () => {
                               title="Edit News"
                             >
                               Edit
-                            </button>
+                            </button> */}
 
                             {publishingId === item.id ? (
                               <div className="flex items-center gap-2 text-gray-600 text-sm">
@@ -744,25 +744,36 @@ const NewsList = () => {
                                             {dist.status}
                                           </span>
                                         </td>
-                                        <td className="px-2 py-3 text-center text-sm text-gray-700">
+                                        <td className="px-2 py-3 text-center text-sm text-gray-700 flex justify-center items-center gap-3">
                                           {dist.response_message ? (
-                                            <button
-                                              onClick={() =>
-                                                setSelectedResponse(
-                                                  dist.response_message
-                                                )
-                                              }
-                                              className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
-                                              title="View full response message"
-                                            >
-                                              Check Message
-                                            </button>
+                                            <>
+                                              <button
+                                                onClick={() => setSelectedResponse(dist.response_message)}
+                                                className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
+                                                title="View full response message"
+                                              >
+                                                Check Message
+                                              </button>
+
+                                              <button
+                                                onClick={() => navigate(`/edit-news/${item.id}`)}
+                                                className="text-xs text-purple-600 hover:text-purple-800 font-medium underline"
+                                                title="Edit this news"
+                                              >
+                                                Edit
+                                              </button>
+                                            </>
                                           ) : (
-                                            <span className="text-gray-400 text-xs">
-                                              —
-                                            </span>
+                                            <button
+                                              onClick={() => navigate(`/edit-news/${item.id}`)}
+                                              className="text-xs text-purple-600 hover:text-purple-800 font-medium underline"
+                                              title="Edit this news"
+                                            >
+                                              Edit
+                                            </button>
                                           )}
                                         </td>
+
 
                                         {/* 🔹 Date */}
                                         {/* <td className="px-2 py-3 text-center text-gray-500 whitespace-nowrap">

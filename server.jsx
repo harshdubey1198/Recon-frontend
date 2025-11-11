@@ -137,6 +137,10 @@ export async function fetchNewsDetail(id) {
   return axiosInstance.get(`/api/news/distributed/detail/${id}/`);
 }
 
+export async function fetchNewsSingle(id) {
+  return axiosInstance.get(`/api/news//${id}/`);
+}
+
 export async function fetchAdminStats() {
   return axiosInstance.get("/api/admin/stats/");
 }
