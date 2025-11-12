@@ -247,9 +247,7 @@ export default function Dashboard() {
              
             
             <div className="flex flex-wrap items-center gap-3">
-              {/* Date Range Filter */}
            
-
               {/* Custom Date Inputs */}
               {showCustomDateInputs && (
                 <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">

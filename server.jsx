@@ -344,9 +344,13 @@ export async function fetchUserPostStats(params = {}) {
 
 
 // portal stats
-export async function fetchPortalStats(portalId) {
+export async function fetchPortalStats(portalId, range = "7d", customDates = null) {
   return axiosInstance.get("/api/portal/stats/", {
-    params: { portal_id: portalId },
+    params: {
+      portal_id: portalId,
+      ...buildParams(range, customDates),
+    },
+    headers: { "Content-Type": "application/json" },
   });
 }
 export async function fetchInactivityAlerts(range = "7d", page = 1) {

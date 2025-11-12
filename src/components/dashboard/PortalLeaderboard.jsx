@@ -36,12 +36,7 @@ const [isPaused, setIsPaused] = useState(false);
           avgPublishTime: d.average_time_taken,
           pending: d.pending_distributions,
           retry: d.retry_counts,
-          todayTotal: d.today_total_distributions,
-          todaySuccess: d.today_successful_distributions,
-          todayFailed: d.today_failed_distributions,
-          todayPending: d.today_pending_distributions,
-          todayRetry: d.today_retry_counts,
-          todayAverageTime: d.today_average_time_taken,
+          
           traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
           todayTraffic: `${d.today_successful_distributions} success / ${d.today_failed_distributions} failed`,
           status:
@@ -151,12 +146,7 @@ const [isPaused, setIsPaused] = useState(false);
             avgPublishTime: d.average_time_taken,
             pending: d.pending_distributions,
             retry: d.retry_counts,
-            todayTotal: d.today_total_distributions,
-            todaySuccess: d.today_successful_distributions,
-            todayFailed: d.today_failed_distributions,
-            todayPending: d.today_pending_distributions,
-            todayRetry: d.today_retry_counts,
-            todayAverageTime: d.today_average_time_taken,
+            
             traffic: `${d.successful_distributions} success / ${d.failed_distributions} failed`,
             todayTraffic: `${d.today_successful_distributions} success / ${d.today_failed_distributions} failed`,
             status:
@@ -208,12 +198,8 @@ const [isPaused, setIsPaused] = useState(false);
     { key: 'failed', label: 'Failed' },
     { key: 'publishedPercent', label: 'Success_Rate', getValue: (row) => `${row.publishedPercent}%` },
     { key: 'avgPublishTime', label: 'Avg_Publish_Time', getValue: (row) => row.avgPublishTime ? row.avgPublishTime.toFixed(2) : 0 },
-    { key: 'todayTotal', label: 'Today_Total' },
-    { key: 'todaySuccess', label: 'Today_Success' },
-    { key: 'todayFailed', label: 'Today_Failed' },
-    { key: 'todayPending', label: 'Today_Pending' },
-    { key: 'todayRetry', label: 'Today_Retry' },
-    { key: 'todayAverageTime', label: 'Today_Avg_Time' }
+    { key: 'retry', label: 'retry_counts' },
+    
   ];
 
   const scrollContainerRef = useRef(null);
@@ -319,7 +305,7 @@ useEffect(() => {
                   </div>
                 </th>
                 <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Today (T/S/F/R/Avg)
+                  Retry
                 </th>
               </tr>
             </thead>
@@ -361,7 +347,7 @@ useEffect(() => {
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
-                    <span className="text-base sm:text-lg font-bold text-gray-900">
+                    <span className="text-base sm:text-lg font-bold text-gray-600">
                       {portal.success.toLocaleString()}
                     </span>
                   </td>
@@ -381,19 +367,17 @@ useEffect(() => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-700 text-sm sm:text-base">{portal.total}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
+                    <span className="text-base sm:text-lg font-bold text-gray-600">{portal.total}</span>
+
+                    </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-red-600 text-sm sm:text-base">{portal.failed}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
                     <span className="text-gray-700 font-medium text-sm sm:text-base">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}s</span>
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-[13px] font-medium">
-                      <span className="text-gray-900 bg-gray-100 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Total: {portal.todayTotal}</span>
-                      <span className="text-green-700 bg-green-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Success: {portal.todaySuccess}</span>
-                      <span className="text-red-700 bg-red-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Failed: {portal.todayFailed}</span>
-                      <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Retry: {portal.todayRetry}</span>
-                      <span className="text-purple-700 bg-purple-50 px-1.5 sm:px-2 py-1 rounded-md whitespace-nowrap">Avg T: {portal.todayAverageTime}s</span>
-                    </div>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
+                    <span className="text-base sm:text-lg font-bold text-gray-600">{portal.retry}</span>
+                     
                   </td>
                 </tr>
               ))}
@@ -635,10 +619,14 @@ useEffect(() => {
 
       {/* Portal Detail Modal */}
       <PortalDetailModal
-        isOpen={showPortalModal}
-        onClose={() => setShowPortalModal(false)}
-        portalData={portalDetailData}
-      />
+          isOpen={showPortalModal}
+          onClose={() => setShowPortalModal(false)}
+          portalData={portalDetailData}
+          portalId={selectedPortal?.id}
+          portalName={selectedPortal?.name}
+          initialRange={range}
+          initialCustomRange={customRange}
+        />
     </>
   );
 });
