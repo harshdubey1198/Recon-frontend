@@ -190,8 +190,89 @@ export default function Dashboard() {
                   onClick={refreshAllData}
                   className="ml-3 px-3 py-1 bg-gray-900 text-white text-sm rounded-md hover:bg-gray-800"
                 >
+<<<<<<< Updated upstream
                   Refresh Stats
                 </button>
+=======
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="7d">Last 7 Days</option>
+                  <option value="1m">Last Month</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              <button
+              onClick={() => {
+                setRange("7d");
+                setCustomRange({ start: "", end: "" });
+                setShowCustomDateInputs(false);
+                refreshAllData("7d", null);
+              }}
+              className="bg-black text-sm text-white border border-gray-300 rounded-md px-2 py-1 hover:bg-black/50 transition"
+            >
+              Clear Filter
+            </button>
+            </div>
+             
+            
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Date Range Filter */}
+           
+
+              {/* Custom Date Inputs */}
+              {showCustomDateInputs && (
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
+                  <input
+                    type="date"
+                    value={customRange.start}
+                    onChange={(e) => setCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={customRange.end}
+                    onChange={(e) => setCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleApplyCustomRange}
+                    disabled={!customRange.start || !customRange.end}
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+
+              {range === "today" && (
+                <>
+                  {isRefreshing && (
+                    <span className="text-xs text-gray-500 animate-pulse">
+                      🔄 Refreshing data…
+                    </span>
+                  )}
+
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={autoRefresh}
+                      onChange={(e) => setAutoRefresh(e.target.checked)}
+                      className="h-4 w-4 accent-blue-600 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Auto-Refresh</span>
+                  </label>
+
+                  {!autoRefresh && (
+                    <button
+                      onClick={refreshAllData}
+                      className="px-3 py-1 bg-gray-900 text-white text-sm rounded-md hover:bg-gray-800 transition-colors"
+                    >
+                      Refresh Stats
+                    </button>
+                  )}
+                </>
+>>>>>>> Stashed changes
               )}
             </div>
           </p>
