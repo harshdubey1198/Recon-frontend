@@ -9,7 +9,7 @@ export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) 
 
   // ✅ Default filter options
   const baseOptions = [
-    { label: "All", value: "All" }, 
+    { label: "All Time", value: "All" }, 
     { label: "Today", value: "today" },
     { label: "Yesterday", value: "yesterday" },
     { label: "Last 7 Days", value: "7d" },

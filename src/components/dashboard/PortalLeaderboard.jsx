@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { fetchDomainDistribution, fetchWeeklyPerformanceData } from "../../../server";
-import { Award, BarChart3, Clock, Users, FolderOpen, Tag } from "lucide-react";
+import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Users, FolderOpen, Tag } from "lucide-react";
 import formatUsername from "../../utils/formateName";
 import PortalDetailModal from "../Modal/PortalDetailModal";
 import DownloadButton from "../DownLoad/DownloadButton";
@@ -242,43 +242,45 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100">
               {filteredDomains.map((portal, index) => (
                 <tr
                   key={index}
                   className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                  onClick={() => openPortalDetailModal(portal)}
                 >
-                  <td className=" sm:px-6 py-3 sm:py-4 align-top">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       <div className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${
-                        index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' : 
-                        index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600' : 
-                        index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' : 
-                        'bg-gradient-to-br from-blue-400 to-blue-600'
+                        index === 0 ? 'bg-yellow-100' : index === 1 ? 'bg-gray-100' : index === 2 ? 'bg-orange-100' : 'bg-blue-50'
                       }`}>
-                        <span className="font-bold text-sm text-white">
+                        <span className={`font-bold text-sm ${
+                          index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-600' : index === 2 ? 'text-orange-600' : 'text-blue-600'
+                        }`}>
                           {index + 1}
                         </span>
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors text-sm sm:text-base">
+                        <p
+                          className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer text-sm sm:text-base"
+                          onClick={() => openPortalDetailModal(portal)}
+                        >
                           {portal.name}
                         </p>
                         <div className="flex items-center text-xs text-gray-500 mt-1">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                            portal.status === 'Active' ? 'bg-green-100 text-green-700' :
-                            portal.status === 'Partial' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {portal.status}
+                          {portal.success === 'up' ? (
+                            <ArrowUpRight className="w-3 h-3 text-green-500 mr-1" />
+                          ) : (
+                            <ArrowDownRight className="w-3 h-3 text-red-500 mr-1" />
+                          )}
+                          <span className={portal.success === 'up' ? 'text-green-600' : 'text-red-600'}>
+                            {portal.success}
                           </span>
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
-                    <span className="text-base sm:text-lg font-bold text-gray-900">
+                    <span className="text-base sm:text-lg font-bold text-gray-600">
                       {portal.success.toLocaleString()}
                     </span>
                   </td>
@@ -287,9 +289,8 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
                       <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[60px] sm:max-w-[80px]">
                         <div
                           className={`h-2 rounded-full transition-all ${
-                            portal.publishedPercent >= 80 ? 'bg-gradient-to-r from-green-500 to-green-600' :
-                            portal.publishedPercent >= 60 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' : 
-                            'bg-gradient-to-r from-red-500 to-red-600'
+                            portal.publishedPercent >= 80 ? 'bg-green-500' :
+                            portal.publishedPercent >= 60 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${portal.publishedPercent}%` }}
                         ></div>
@@ -300,18 +301,17 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
-                    <span className="text-base sm:text-lg font-bold text-gray-700">{portal.total}</span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">
-                    <span className="text-sm sm:text-base font-semibold text-red-600">{portal.failed}</span>
-                  </td>
+                    <span className="text-base sm:text-lg font-bold text-gray-600">{portal.total}</span>
+
+                    </td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-red-600 text-sm sm:text-base">{portal.failed}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
-                    <span className="text-gray-700 font-medium text-sm sm:text-base">
-                      {portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}s
-                    </span>
+                    <span className="text-gray-700 font-medium text-sm sm:text-base">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}s</span>
                   </td>
+                   
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
-                    <span className="text-base sm:text-lg font-bold text-purple-600">{portal.retry}</span>
+                    <span className="text-base sm:text-lg font-bold text-gray-600">{portal.retry}</span>
+                     
                   </td>
                 </tr>
               ))}

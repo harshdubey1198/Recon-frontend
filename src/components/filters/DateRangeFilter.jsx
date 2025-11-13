@@ -43,7 +43,7 @@ const DateRangeFilter = ({
             variant === 'modal' ? 'text-white' : 'text-gray-700'
           }`}
         >
-          {showAllOption && <option value="All" className="text-black">All</option>}
+          {showAllOption && <option value="All" className="text-black">All Time</option>}
           <option value="today" className="text-black">Today</option>
           <option value="yesterday" className="text-black">Yesterday</option>
           <option value="7d" className="text-black">Last 7 Days</option>
