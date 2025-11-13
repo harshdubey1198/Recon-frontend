@@ -20,9 +20,11 @@ import CategoryList from "./pages/CategoryList";
 import { ToastContainer } from "react-toastify";
 
 export default function AppRoutes() {
-  // const authUser = JSON.parse(localStorage.getItem("auth_data") || "{}");
-  // const role = authUser?.data?.role || null;
-  // const isMaster = role === "master";
+  const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
+ const role = user?.role || "";
+  console.log(role);
+  
+  const isMaster = role === "master";
 
   return (
     <Routes>
@@ -49,7 +51,7 @@ export default function AppRoutes() {
         <Route path="/news/:id" element={<NewsDetail />} />
 
         {/* Master-only routes */}
-        
+         {isMaster && (
           <>
             <Route path="/category-mapping" element={<CategoryMapping />} />
             <Route path="/category-insights" element={<CategoryList />} />
@@ -62,7 +64,7 @@ export default function AppRoutes() {
             <Route path="/all-categories" element={<AllCategories />} />
             <Route path="/user-categories" element={<UserCategories />} />
           </>
-       
+           )}
       </Route>
 
       {/* Catch-all */}
