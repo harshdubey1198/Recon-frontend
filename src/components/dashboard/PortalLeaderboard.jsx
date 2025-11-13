@@ -249,7 +249,7 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
                   className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                   onClick={() => openPortalDetailModal(portal)}
                 >
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">
+                  <td className=" sm:px-6 py-3 sm:py-4 align-top">
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       <div className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${
                         index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' : 

@@ -59,11 +59,12 @@ export default function PortalDetailModal({
         
         setPortalData({
           name: portalName,
-          success: apiData.total_publications || 0,
-          publishedPercent: apiData.success_rate || 0,
-          avgPublishTime: apiData.average_publish_time || 0,
-          failed: apiData.failed_distributions || 0,
-          topContributors: apiData.top_contributors || [],
+           success: apiData.kpi_summary?.total_posts || 0,
+           successPost:apiData.kpi_summary?.success_posts || 0,
+            publishedPercent: apiData.kpi_summary?.success_ratio || 0,
+            avgPublishTime: apiData.kpi_summary?.average_time_to_publish || 0,
+            failed: apiData.kpi_summary?.failed_posts || 0,
+           topContributors: apiData.top_contributors || [],
           weeklyPerformance: apiData.performance_trend || [],
           topCategories: apiData.top_performing_categories || [],
           dateRange: apiData.date_range
@@ -268,10 +269,14 @@ export default function PortalDetailModal({
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mt-6">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
               <p className="text-gray-300 text-sm">Total Publications</p>
               <p className="text-3xl font-bold text-white mt-1">{portalData.success}</p>
+            </div>
+             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+              <p className="text-gray-300 text-sm">Success Post</p>
+              <p className="text-3xl font-bold text-white mt-1">{portalData.successPost}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
               <p className="text-gray-300 text-sm">Success Rate</p>
