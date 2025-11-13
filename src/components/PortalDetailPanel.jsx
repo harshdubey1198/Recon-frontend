@@ -71,17 +71,17 @@ const PortalDetailModal = ({ portalId, portalName, onClose }) => {
     portalData;
 
   const weeklyData = {
-    labels: weekly_performance.map((w) => w.day),
+     labels: (weekly_performance || []).map((w) => w.day),
     datasets: [
       {
         label: "Success",
-        data: weekly_performance.map((w) => w.success),
+        data: (weekly_performance || []).map((w) => w.success),
         backgroundColor: "#22c55e",
         borderColor: "#22c55e",
       },
       {
         label: "Failed",
-        data: weekly_performance.map((w) => w.failed),
+         data: (weekly_performance || []).map((w) => w.failed),
         backgroundColor: "#ef4444",
         borderColor: "#ef4444",
       },
