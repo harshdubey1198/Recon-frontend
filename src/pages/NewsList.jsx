@@ -322,8 +322,7 @@ const NewsList = () => {
             {/* Right Section - Create News Button */}
             <button
               onClick={() => {
-                localStorage.setItem("activeTab", "Create News");
-                window.location.reload();
+                navigate("/create-news")
               }}
               className="group relative p-3 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-all flex items-center space-x-2 border border-white/20"
             >

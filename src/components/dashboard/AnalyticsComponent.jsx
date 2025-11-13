@@ -328,9 +328,8 @@ export default function AnalyticsComponent({ categories }) {
                         <button
                             className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors"
                             onClick={() => {
-                            localStorage.setItem("activeTab", "Create News");
-                            window.dispatchEvent(new Event("storage"));
-                            navigate("/"); // Adjust path if needed (where SidebarLayout is rendered)
+                           
+                            navigate("/create-news"); // Adjust path if needed (where SidebarLayout is rendered)
                             }}
                         >
                             <Plus className="w-4 h-4 mr-1" />
