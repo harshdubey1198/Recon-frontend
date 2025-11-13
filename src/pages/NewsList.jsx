@@ -583,7 +583,7 @@ const NewsList = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation(); // prevent expanding the row
-                                localStorage.setItem("activeTab", "Edit News"); // optional
+                                
                                 navigate(`/edit-news/${item.id}`); // ✅ smooth SPA navigation
                               }}
                               className="text-sm text-purple-600 hover:text-purple-800 font-medium"

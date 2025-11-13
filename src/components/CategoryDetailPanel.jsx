@@ -4,11 +4,12 @@ import { Line, Bar } from "react-chartjs-2";
 import "chart.js/auto";
 import { toast } from "react-toastify";
 import { fetchCategoryStats } from "../../server";
+import { useNavigate } from "react-router-dom";
 
 const CategoryDetailPanel = ({ categoryId, categoryName, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
-
+ const navigate = useNavigate();
   useEffect(() => {
     if (categoryId) loadCategoryStats();
   }, [categoryId]);
@@ -208,7 +209,9 @@ const CategoryDetailPanel = ({ categoryId, categoryName, onClose }) => {
                 : "Active recently"}
             </span>
           </div>
-          <button className="px-3 py-1 bg-black text-white text-sm rounded-md hover:bg-gray-800">
+          <button className="px-3 py-1 bg-black text-white text-sm rounded-md hover:bg-gray-800"
+           onClick={() => navigate("/create-news")}
+          >
             Create New Article
           </button>
         </div>
