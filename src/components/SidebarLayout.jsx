@@ -38,20 +38,19 @@ const menuItems = [
   { name: "Dashboard", icon: Home },
   { name: "Create News", icon: FilePlus2 },
   { name: "News List", icon: Newspaper },
-  { name: "News Reports", icon: BarChart3 },
-  // { name: "News Analytics", icon: AreaChart },
   ...(isMaster
     ? [ 
-       { name: "Portal List", icon: Building2 },
-       { name: "Category Mapping", icon: Network },
-       { name: "All Categories", icon: FolderTree },
-       { name: "Category Insights", icon: BarChart2 },
-       { name: "User Access Control", icon: ShieldCheck },
-       { name: "User Categories", icon: Layers },
-       { name: "User Stats", icon: BarChart3 }, 
-       { name: "Portal Management", icon: Users2 },
-       { name: "User Portal Sync", icon: Building2 }, 
-      ]
+      { name: "Category Mapping", icon: Network },
+      { name: "Category Insights", icon: BarChart2 },
+      { name: "Portal Insights", icon: Building2 },
+      // { name: "All Categories", icon: FolderTree },
+      { name: "User Category Mapping", icon: ShieldCheck },
+      { name: "User Stats", icon: BarChart3 }, 
+      // { name: "User Categories", icon: Layers },
+      { name: "Portal Management", icon: Users2 },
+      { name: "User Data", icon: Building2 }, 
+      { name: "News Reports", icon: BarChart3 },
+    ]
     : []),
 ];
 
@@ -299,15 +298,15 @@ const menuItems = [
             {activeItem === "Create News" && <CreateNews />}
             {activeItem === "News List" && <NewsList />}
             {activeItem === "Portal Management" && <PortalManagement />}
-            {activeItem === "User Access Control" && <AccessControl />}
-            {activeItem === "User Portal Sync" && <UserAccessList />}
+            {activeItem === "User Category Mapping" && <AccessControl />}
+            {activeItem === "User Data" && <UserAccessList />}
             {activeItem === "Category Mapping" && <CategoryMapping />}
             {activeItem === "All Categories" && <AllCategories />}
             {activeItem === "User Categories" && <UserCategories />}
             {activeItem === "News Reports" && <NewsReports />}
             {activeItem === "User Stats" && <UserStats />}
             {activeItem === "Category Insights" && <CategoryList />} 
-            {activeItem === "Portal List" && <PortalList />}
+            {activeItem === "Portal Insights" && <PortalList />}
             {activeItem === "News Analytics" && <AnalyticsOverview />}
 
           </div>
