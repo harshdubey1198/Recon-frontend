@@ -9,7 +9,6 @@ export default function SidebarLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  
   const isMaster = user?.role === "master";
 
   const menuItems = [
@@ -71,7 +70,9 @@ export default function SidebarLayout() {
         {/* Logo/Brand - Fixed at top */}
         <div className="flex items-center justify-center h-20 px-6 border-b border-gray-100 bg-white flex-shrink-0 mr-[80px]">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center shadow-md cursor-pointer"
+            onClick={() => navigate("/dashboard")}
+            >
               <span className="text-white font-bold text-lg">R</span>
             </div>
             <h1 className="text-2xl font-bold text-black">Recon</h1>
