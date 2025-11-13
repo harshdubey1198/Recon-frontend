@@ -191,15 +191,19 @@ const NewsList = () => {
       const df = filters.date_filter;
 
       if (typeof df === "string") {
+      // ✅ ADD THIS CONDITION
+      if (df === "All") {
+        date_filter = "custom";
+        start_date = "2024-01-01";
+        end_date = new Date().toISOString().split('T')[0];
+      } else {
         date_filter = df;
-      } else if (typeof df === "object" && df !== null) {
-        date_filter = df.date_filter || "custom";
-        start_date = df.start_date || "";
-        end_date = df.end_date || "";
       }
-
-      // console.log("📤 Sending to backend:", { date_filter, start_date, end_date });
-
+    } else if (typeof df === "object" && df !== null) {
+      date_filter = df.date_filter || "custom";
+      start_date = df.start_date || "";
+      end_date = df.end_date || "";
+    }
       const res = await fetchMyNewsPosts({
         search: filters.search || "",
         status: filters.status || "",
@@ -267,6 +271,7 @@ const NewsList = () => {
     setStartDate("");
     setEndDate("");
     setCreatedBy("");
+    setDateFilter("today");
     loadNewsWithFilters();
   };
   {
@@ -386,10 +391,20 @@ const NewsList = () => {
                 setSelectedMasterCategory(filters.master_category_id || "");
                 setCreatedBy(filters.username || "");
                 setUsername(filters.username || "");
-                setDateFilter(filters.date_filter || "today");
-                setStartDate(filters.date_filter?.start_date || "");
-                setEndDate(filters.date_filter?.end_date || "");
-
+               if (filters.date_filter === "All") {
+                  setDateFilter("All");
+                  const today = new Date().toISOString().split('T')[0];
+                  setStartDate("2024-01-01");
+                  setEndDate(today);
+                } else if (typeof filters.date_filter === "object") {
+                  setDateFilter(filters.date_filter?.date_filter || "custom");
+                  setStartDate(filters.date_filter?.start_date || "");
+                  setEndDate(filters.date_filter?.end_date || "");
+                } else {
+                  setDateFilter(filters.date_filter || "today");
+                  setStartDate("");
+                  setEndDate("");
+                }
                 setDistributionStatus(filters.distribution_status || "");
                 setPage(1);
 
@@ -851,21 +866,22 @@ const NewsList = () => {
                           portal_id: selectedPortal || "",
                           master_category_id: selectedMasterCategory || "",
                           username: createdBy || "",
-                          date_filter:
-                            typeof dateFilter === "object"
-                              ? {
-                                  date_filter:
-                                    dateFilter?.date_filter || "custom",
-                                  start_date: startDate || "",
-                                  end_date: endDate || "",
-                                }
-                              : dateFilter || "today",
-                          start_date: startDate || "",
-                          end_date: endDate || "",
-                        };
+                           date_filter: dateFilter === "All" 
+                                ? { 
+                                    date_filter: "custom", 
+                                    start_date: "2024-01-01", 
+                                    end_date: new Date().toISOString().split('T')[0] 
+                                  }
+                                : typeof dateFilter === "object"
+                                ? dateFilter
+                                : dateFilter || "today",
+                              start_date: startDate || "",
+                              end_date: endDate || "",
+                            };
 
-                        loadNewsWithFilters(filters);
-                      }}
+                            loadNewsWithFilters(filters);
+                          }}
+
                       className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-black"
                     >
                       <option value="10">10</option>

@@ -1,9 +1,10 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { X, Award, Users, FolderOpen, Tag, Calendar, Filter } from 'lucide-react';
+import { X, Award, Users, FolderOpen, Tag } from 'lucide-react';
 import { toast } from "react-toastify";
 import { fetchPortalStats } from "../../../server";
 import formatUsername from '../../utils/formateName';
-import WeeklyPerformance from '../Modal/WeeklyPerformance';
+import WeeklyPerformance from './WeeklyPerformance';
+import DateRangeFilter from '../filters/DateRangeFilter';
 
 export default function PortalDetailModal({ 
   isOpen, 
@@ -33,20 +34,24 @@ export default function PortalDetailModal({
       setModalCustomRange(initialCustomRange || { start: "", end: "" });
       setShowCustomDateInputs(initialRange === "custom");
       setModalContributorsPage(1);
-      setLoading(true);
     }
   }, [isOpen, initialRange, initialCustomRange]);
 
   // Load portal stats
-  useEffect(() => {
-    if (portalId && isOpen && modalRange !== "custom") {
-      loadPortalStats();
-    }
-  }, [portalId, modalRange, isOpen]);
+ useEffect(() => {
+  if (!portalId || !isOpen) return;
+
+  if (modalRange === "All") {
+    fetchAllData(); 
+  } else if (modalRange === "custom" && modalCustomRange?.start && modalCustomRange?.end) {
+    handleApplyCustomRange(); 
+  } else {
+    loadPortalStats(); 
+  }
+}, [portalId, isOpen, modalRange, modalCustomRange]);
 
   const loadPortalStats = async () => {
     try {
-      setLoading(true);
       const customDates = modalRange === "custom" && modalCustomRange?.start && modalCustomRange?.end ? {
         start: modalCustomRange.start,
         end: modalCustomRange.end
@@ -59,12 +64,65 @@ export default function PortalDetailModal({
         
         setPortalData({
           name: portalName,
-           success: apiData.kpi_summary?.total_posts || 0,
-           successPost:apiData.kpi_summary?.success_posts || 0,
-            publishedPercent: apiData.kpi_summary?.success_ratio || 0,
-            avgPublishTime: apiData.kpi_summary?.average_time_to_publish || 0,
-            failed: apiData.kpi_summary?.failed_posts || 0,
-           topContributors: apiData.top_contributors || [],
+          success: apiData.kpi_summary?.total_posts || 0,
+          successPost: apiData.kpi_summary?.success_posts || 0,
+          publishedPercent: apiData.kpi_summary?.success_ratio || 0,
+          avgPublishTime: apiData.kpi_summary?.average_time_to_publish || 0,
+          failed: apiData.kpi_summary?.failed_posts || 0,
+          topContributors: apiData.top_contributors || [],
+          weeklyPerformance: apiData.performance_trend || [],
+          topCategories: apiData.top_performing_categories || [],
+          dateRange: apiData.date_range
+        });
+      } else {
+        toast.error("Failed to load portal stats.");
+        setPortalData(null);
+      }
+    } catch (err) {
+      console.error("Error fetching portal stats:", err);
+      toast.error("Server error while fetching portal stats.");
+      setPortalData(null);
+    } 
+  };
+
+  const handleModalRangeChange = (newRange) => {
+    if (newRange === "custom") {
+      setShowCustomDateInputs(true);
+    } else if (newRange === "All") {
+      const today = new Date().toISOString().split('T')[0];
+      setModalCustomRange({ start: "2024-01-01", end: today });
+      setShowCustomDateInputs(false);
+      setModalRange("All");
+      fetchAllData();
+    } else {
+      setShowCustomDateInputs(false);
+      setModalCustomRange({ start: "", end: "" });
+      setModalRange(newRange);
+    }
+  };
+
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().split('T')[0];
+      const customDates = {
+        start: "2024-01-01",
+        end: today
+      };
+      
+      const res = await fetchPortalStats(portalId, "custom", customDates);
+      
+      if (res?.data?.success && res.data.data) {
+        const apiData = res.data.data;
+        
+        setPortalData({
+          name: portalName,
+          success: apiData.kpi_summary?.total_posts || 0,
+          successPost: apiData.kpi_summary?.success_posts || 0,
+          publishedPercent: apiData.kpi_summary?.success_ratio || 0,
+          avgPublishTime: apiData.kpi_summary?.average_time_to_publish || 0,
+          failed: apiData.kpi_summary?.failed_posts || 0,
+          topContributors: apiData.top_contributors || [],
           weeklyPerformance: apiData.performance_trend || [],
           topCategories: apiData.top_performing_categories || [],
           dateRange: apiData.date_range
@@ -82,14 +140,8 @@ export default function PortalDetailModal({
     }
   };
 
-  const handleModalRangeChange = (newRange) => {
-    if (newRange === "custom") {
-      setShowCustomDateInputs(true);
-    } else {
-      setShowCustomDateInputs(false);
-      setModalCustomRange({ start: "", end: "" });
-      setModalRange(newRange);
-    }
+  const handleModalCustomRangeChange = (newCustomRange) => {
+    setModalCustomRange(newCustomRange);
   };
 
   const handleApplyCustomRange = async () => {
@@ -98,7 +150,6 @@ export default function PortalDetailModal({
       setModalRange("custom");
       
       try {
-        setLoading(true);
         const customDates = {
           start: modalCustomRange.start,
           end: modalCustomRange.end
@@ -111,10 +162,11 @@ export default function PortalDetailModal({
           
           setPortalData({
             name: portalName,
-            success: apiData.total_publications || 0,
-            publishedPercent: apiData.success_rate || 0,
-            avgPublishTime: apiData.average_publish_time || 0,
-            failed: apiData.failed_distributions || 0,
+            success: apiData.kpi_summary?.total_posts || 0,
+            successPost: apiData.kpi_summary?.success_posts || 0,
+            publishedPercent: apiData.kpi_summary?.success_ratio || 0,
+            avgPublishTime: apiData.kpi_summary?.average_time_to_publish || 0,
+            failed: apiData.kpi_summary?.failed_posts || 0,
             topContributors: apiData.top_contributors || [],
             weeklyPerformance: apiData.performance_trend || [],
             topCategories: apiData.top_performing_categories || [],
@@ -128,10 +180,14 @@ export default function PortalDetailModal({
         console.error("Error fetching portal stats:", err);
         toast.error("Server error while fetching portal stats.");
         setPortalData(null);
-      } finally {
-        setLoading(false);
-      }
+      } 
     }
+  };
+
+  const handleClearFilter = () => {
+    setModalRange("7d");
+    setModalCustomRange({ start: "", end: "" });
+    setShowCustomDateInputs(false);
   };
 
   const handleModalScroll = useCallback(() => {
@@ -148,7 +204,18 @@ export default function PortalDetailModal({
 
   if (!isOpen) return null;
 
-  
+  // Loading State
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center w-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-lg font-medium text-gray-700">Loading portal details...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Empty State
   if (!portalData) {
     return (
@@ -195,41 +262,19 @@ export default function PortalDetailModal({
 
             {/* Right Side: Filter + Close */}
             <div className="flex flex-col gap-3 mt-4 md:mt-0">
-              {/* Filter Row */}
               <div className="flex items-center gap-3 justify-end">
-                {/* Filter Icon & Label */}
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-white" />
-                  <span className="text-white text-sm sm:text-base font-medium">Filter:</span>
-                </div>
-
-                {/* Filter Dropdown */}
-                <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
-                  <Calendar className="w-4 h-4 text-white" />
-                  <select
-                    value={modalRange}
-                    onChange={(e) => handleModalRangeChange(e.target.value)}
-                    className="text-sm font-medium text-white bg-transparent border-none outline-none cursor-pointer"
-                  >
-                    <option value="today" className="text-black">Today</option>
-                    <option value="yesterday" className="text-black">Yesterday</option>
-                    <option value="7d" className="text-black">Last 7 Days</option>
-                    <option value="1m" className="text-black">Last Month</option>
-                    <option value="custom" className="text-black">Custom Range</option>
-                  </select>
-                </div>
-
-                {/* Clear Filter Button */}
-                <button
-                  onClick={() => {
-                    setModalRange("7d");
-                    setModalCustomRange({ start: "", end: "" });
-                    setShowCustomDateInputs(false);
-                  }}
-                  className="bg-white/10 text-sm text-white border border-white/20 rounded-md px-3 py-2 hover:bg-white/20 transition backdrop-blur-sm"
-                >
-                  Clear
-                </button>
+                {/* Date Range Filter Component */}
+                <DateRangeFilter
+                  range={modalRange}
+                  customRange={modalCustomRange}
+                  showCustomDateInputs={showCustomDateInputs}
+                  onRangeChange={handleModalRangeChange}
+                  onCustomRangeChange={handleModalCustomRangeChange}
+                  onApplyCustomRange={handleApplyCustomRange}
+                  onClearFilter={handleClearFilter}
+                  showAllOption={true}
+                  variant="modal"
+                />
 
                 {/* Close Button */}
                 <button
@@ -239,32 +284,6 @@ export default function PortalDetailModal({
                   <X className="w-5 h-5 text-white" />
                 </button>
               </div>
-
-              {/* Custom Date Inputs Row */}
-              {showCustomDateInputs && (
-                <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
-                  <input
-                    type="date"
-                    value={modalCustomRange.start}
-                    onChange={(e) => setModalCustomRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-                  />
-                  <span className="text-white">to</span>
-                  <input
-                    type="date"
-                    value={modalCustomRange.end}
-                    onChange={(e) => setModalCustomRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
-                  />
-                  <button
-                    onClick={handleApplyCustomRange}
-                    disabled={!modalCustomRange.start || !modalCustomRange.end}
-                    className="px-3 py-1 bg-white text-black text-sm rounded-md hover:bg-gray-200 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
@@ -274,7 +293,7 @@ export default function PortalDetailModal({
               <p className="text-gray-300 text-sm">Total Publications</p>
               <p className="text-3xl font-bold text-white mt-1">{portalData.success}</p>
             </div>
-             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
               <p className="text-gray-300 text-sm">Success Post</p>
               <p className="text-3xl font-bold text-white mt-1">{portalData.successPost}</p>
             </div>

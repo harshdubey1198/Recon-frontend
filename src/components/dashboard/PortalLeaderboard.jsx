@@ -94,10 +94,10 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
     return 'text-red-600 bg-red-50';
   };
 
-  useEffect(() => {
-    loadDomains();
-    loadWeeklyPerformanceData();
-  }, [range, customRange]);
+  // useEffect(() => {
+  //   loadDomains();
+  //   loadWeeklyPerformanceData();
+  // }, [range, customRange]);
 
   const refreshData = async (newRange, newCustomRange) => {
     const effectiveRange = newRange || range;

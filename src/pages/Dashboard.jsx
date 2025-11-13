@@ -1,23 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
-import { fetchAdminStats, fetchMasterCategories, fetchNewsList } from "../../server";
+import { fetchAdminStats } from "../../server";
 import KPIOverview from "../components/dashboard/KpiOverview";
 import StatusOverview from "../components/dashboard/StatusOverview";
 import PortalLeaderboard from "../components/dashboard/PortalLeaderboard";
 import HeatMapCategory from "../components/dashboard/HeatMapCategory";
 import AnalyticsComponent from "../components/dashboard/AnalyticsComponent";
 import SuccessRateChart from "../components/dashboard/SuccessRateChart";
-import { Calendar,Filter } from "lucide-react";
+import DateRangeFilter from "../components/filters/DateRangeFilter";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
-  // const [categories, setCategories] = useState([]);
-  // const [recentPosts, setRecentPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
   const scrollContainerRef = useRef(null);
   const portalLeaderboardRef = useRef(null);
   const heatmapCategoryRef = useRef(null);
+  
   const [stats, setStats] = useState({
     totalPosts: 0,
     totaltodayPosts: 0,
@@ -42,6 +41,7 @@ export default function Dashboard() {
       today: { total: 0, successful: 0, failed: 0 }
     }
   });
+  
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(15000);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,35 +50,6 @@ export default function Dashboard() {
   const [range, setRange] = useState("7d");
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
   const [showCustomDateInputs, setShowCustomDateInputs] = useState(false);
-
-  // const loadNews = async (pageNumber = 1) => {
-  //   if (isFetching) return;
-  //   setIsFetching(true);
-  //   try {
-  //     const res = await fetchNewsList(pageNumber);
-  //     if (res?.data?.status) {
-  //       const mapped = res.data.data.map((item) => ({
-  //         id: item.id,
-  //         title: item.news_post_title,
-  //         category: item.portal_category_name || item.master_category_name,
-  //         status: item.status === "SUCCESS" ? "Published" : "Draft",
-  //         views: item.retry_count || 0,
-  //         date: new Date(item.sent_at).toLocaleDateString(),
-  //         image: item.news_post_image,
-  //       }));
-
-  //       setRecentPosts((prev) =>
-  //         pageNumber === 1 ? mapped : [...prev, ...mapped]
-  //       );
-  //       setPagination(res.data.pagination);
-  //       setPage(pageNumber);
-  //     }
-  //   } catch (err) {
-  //     console.error("Failed to fetch news list:", err);
-  //   } finally {
-  //     setIsFetching(false);
-  //   }
-  // };
 
   const handleScroll = () => {
     const container = scrollContainerRef.current;
@@ -95,12 +66,13 @@ export default function Dashboard() {
     }
   };
 
- const loadStats = async (rangeParam = null, customRangeParam = null) => {
+  const loadStats = async (rangeParam = null, customRangeParam = null) => {
     try {
       const effectiveRange = rangeParam || range;
       const effectiveCustomRange = customRangeParam || customRange;
       const customDates = effectiveRange === "custom" ? effectiveCustomRange : null;
       const res = await fetchAdminStats(effectiveRange, customDates);
+      
       if (res?.data?.status) {
         setStats({
           totalPosts: res.data.data.total_posts,
@@ -125,53 +97,64 @@ export default function Dashboard() {
     }
   };
 
-
-  // const loadCategories = async () => {
-  //   try {
-  //     const res = await fetchMasterCategories();
-  //     if (res?.data?.status) {
-  //       const mapped = res.data.data.map((cat, idx) => ({
-  //         name: cat.name,
-  //         posts: Math.floor(Math.random() * 500),
-  //         color: [
-  //           "bg-blue-500",
-  //           "bg-purple-500",
-  //           "bg-green-500",
-  //           "bg-orange-500",
-  //           "bg-red-500",
-  //           "bg-indigo-500",
-  //         ][idx % 6],
-  //       }));
-  //       setCategories(mapped);
-  //     }
-  //   } catch (err) {
-  //     console.error("Failed to fetch categories:", err);
-  //   }
-  // };
-
   const handleRangeChange = (newRange) => {
-    setRange(newRange);
     if (newRange === "custom") {
       setShowCustomDateInputs(true);
+    } else if (newRange === "All") {
+      const today = new Date().toISOString().split('T')[0];
+      setCustomRange({ start: "2024-01-01", end: today });
+      setShowCustomDateInputs(false);
+      setRange("All");
+      fetchAllData();
     } else {
       setShowCustomDateInputs(false);
-       // Use the freshly chosen range directly
-     refreshAllData(newRange, null);
+      setCustomRange({ start: "", end: "" });
+      setRange(newRange);
+      refreshAllData(newRange, null);
     }
+  };
+
+  const handleCustomRangeChange = (newCustomRange) => {
+    setCustomRange(newCustomRange);
   };
 
   const handleApplyCustomRange = () => {
     if (customRange.start && customRange.end) {
-     // Ensure 'custom' range + picked dates are used in all API calls
-    refreshAllData("custom", { ...customRange });
+      refreshAllData("custom", { ...customRange });
       setShowCustomDateInputs(false);
+    }
+  };
+
+  const handleClearFilter = () => {
+    setRange("7d");
+    setCustomRange({ start: "", end: "" });
+    setShowCustomDateInputs(false);
+    refreshAllData("7d", null);
+  };
+
+  const fetchAllData = async () => {
+    setIsRefreshing(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const customDates = {
+        start: "2024-01-01",
+        end: today
+      };
+      
+      await Promise.all([
+        loadStats("custom", customDates),
+        portalLeaderboardRef.current?.refreshData?.("custom", customDates),
+        heatmapCategoryRef.current?.refreshData?.("custom", customDates)
+      ]);
+    } catch (error) {
+      console.error("Error fetching all data:", error);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
   useEffect(() => {
     loadStats();
-    // loadCategories();
-    // loadNews(1);
   }, []);
 
   useEffect(() => {
@@ -188,13 +171,11 @@ export default function Dashboard() {
 
   const refreshAllData = async (r = range, cr = customRange) => {
     setIsRefreshing(true);
-     const dates = r === "custom" ? cr : null;
+    const dates = r === "custom" ? cr : null;
     await Promise.all([
-     loadStats(r, dates),
-      // loadCategories(),
-      // loadNews(1),
-       portalLeaderboardRef.current?.refreshData?.(r, dates),
-    heatmapCategoryRef.current?.refreshData?.(r, dates)
+      loadStats(r, dates),
+      portalLeaderboardRef.current?.refreshData?.(r, dates),
+      heatmapCategoryRef.current?.refreshData?.(r, dates)
     ]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
@@ -212,68 +193,24 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="p-6">
-        {/* Welcome Section */}
+        {/* Welcome Section with Filter */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-2 text-gray-800 font-semibold text-base">
-              <Filter className="w-4 h-4 text-gray-600" />
-              <span>Filter:</span>
-               <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <select
-                  value={range}
-                  onChange={(e) => handleRangeChange(e.target.value)}
-                  className="text-sm font-medium text-gray-700 bg-transparent border-none outline-none cursor-pointer"
-                >
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="7d">Last 7 Days</option>
-                  <option value="1m">Last Month</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-              </div>
-              <button
-              onClick={() => {
-                setRange("7d");
-                setCustomRange({ start: "", end: "" });
-                setShowCustomDateInputs(false);
-                refreshAllData("7d", null);
-              }}
-              className="bg-black text-sm text-white border border-gray-300 rounded-md px-2 py-1 hover:bg-black/50 transition"
-            >
-              Clear Filter
-            </button>
-            </div>
-             
+            {/* Date Range Filter Component */}
+            <DateRangeFilter
+              range={range}
+              customRange={customRange}
+              showCustomDateInputs={showCustomDateInputs}
+              onRangeChange={handleRangeChange}
+              onCustomRangeChange={handleCustomRangeChange}
+              onApplyCustomRange={handleApplyCustomRange}
+              onClearFilter={handleClearFilter}
+              showAllOption={true}
+              variant="default"
+            />
             
+            {/* Auto-refresh Controls */}
             <div className="flex flex-wrap items-center gap-3">
-           
-              {/* Custom Date Inputs */}
-              {showCustomDateInputs && (
-                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
-                  <input
-                    type="date"
-                    value={customRange.start}
-                    onChange={(e) => setCustomRange(prev => ({ ...prev, start: e.target.value }))}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-gray-500">to</span>
-                  <input
-                    type="date"
-                    value={customRange.end}
-                    onChange={(e) => setCustomRange(prev => ({ ...prev, end: e.target.value }))}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={handleApplyCustomRange}
-                    disabled={!customRange.start || !customRange.end}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
-
               {range === "today" && (
                 <>
                   {isRefreshing && (
@@ -376,20 +313,20 @@ export default function Dashboard() {
         <KPIOverview data={stats} />
         <StatusOverview data={stats} />
         <PortalLeaderboard ref={portalLeaderboardRef} range={range} customRange={customRange} />
-        <div className="space-y-10">   {/* yahan 10 = 2.5rem space */}
-              <HeatMapCategory
-                ref={heatmapCategoryRef}
-                range={range}
-                customRange={customRange}
-                className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
-              />
-              <SuccessRateChart
-                height={520}
-                className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
-              />
-              <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" />
-            </div>
         
+        <div className="space-y-10">
+          <HeatMapCategory
+            ref={heatmapCategoryRef}
+            range={range}
+            customRange={customRange}
+            className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+          />
+          <SuccessRateChart
+            height={520}
+            className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+          />
+          <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" />
+        </div>
       </div>
     </div>
   );

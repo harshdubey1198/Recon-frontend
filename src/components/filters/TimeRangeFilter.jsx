@@ -9,9 +9,11 @@ export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) 
 
   // ✅ Default filter options
   const baseOptions = [
+    { label: "All", value: "All" }, 
     { label: "Today", value: "today" },
     { label: "Yesterday", value: "yesterday" },
     { label: "Last 7 Days", value: "7d" },
+    { label: "Last 1 month", value: "1m" },
     { label: "Custom Range", value: "custom" },
   ];
 
@@ -37,18 +39,30 @@ export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) 
   }, [value]);
 
   const handleSelect = (val) => {
-    setRange(val);
+  setRange(val);
 
-    onChange({
-      date_filter: val || "",
-      start_date: "",
-      end_date: "",
-    });
-
-    if (val === "custom") {
-      setCustomDates({ start_date: "", end_date: "" });
-    }
+  // ✅ ADD THIS BLOCK
+  if (val === "All") {
+  const today = new Date().toISOString().split('T')[0];
+  const allRangeDates = {
+    date_filter: "All",
+    start_date: "2024-01-01",
+    end_date: today
   };
+  setCustomDates({ start_date: "", end_date: "" });
+  onChange(allRangeDates);
+  return;
+}
+  onChange({
+    date_filter: val || "",
+    start_date: "",
+    end_date: "",
+  });
+
+  if (val === "custom") {
+    setCustomDates({ start_date: "", end_date: "" });
+  }
+};
 
   const handleCustomChange = (key, val) => {
     const updated = { ...customDates, [key]: val };
@@ -77,7 +91,8 @@ export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) 
         ))}
       </select>
 
-      {range === "custom" && (
+      {range === "custom" && range !== "All" && (
+
         <div className="flex gap-2 w-full">
           <input
             type="date"

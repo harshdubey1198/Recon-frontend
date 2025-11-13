@@ -12,7 +12,7 @@ const WeeklyPerformance = ({
   const scrollContainerRef = useRef(null);
 
   const totalWeeks = Math.ceil(performanceData.length / 7);
-  const shouldScroll = (range === "1m" || range === "custom") && performanceData.length > 7;
+  const shouldScroll = (range === "1m" || range === "custom" || range === "All") && performanceData.length > 7;
 
   // Auto-scroll effect for 1m/custom range
   useEffect(() => {
