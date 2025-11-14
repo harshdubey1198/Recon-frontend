@@ -652,7 +652,8 @@ const handleViewDrafts = async () => {
       // 🧾 Debug logs
       console.log("🟢 portal_category_ids →", newlyAddedCategories);
       console.log("🟠 exclude_portal_categories →", excludedCategories);
-
+      
+       
 
       // 🟡 Log FormData cleanly
       const logFormData = {};
@@ -671,16 +672,30 @@ const handleViewDrafts = async () => {
       return;
     }
 
-    if (createdArticle?.id && statusType === "PUBLISHED") {
-      console.log("🟢 Would now call publishNewsArticle for:", createdArticle.id);
-      // const res = await publishNewsArticle(createdArticle.id, {});
-      resetForm();
-      // if (res?.data?.message) toast.success(res.data.message);
-    }
+    // if (createdArticle?.id && statusType === "PUBLISHED") {
+    //   console.log("🟢 Would now call publishNewsArticle for:", createdArticle.id);
+    //   // const res = await publishNewsArticle(createdArticle.id, {});
+    //   resetForm();
+    //   // if (res?.data?.message) toast.success(res.data.message);
+    // }
+     if (statusType === "PUBLISHED") {
+  // Build the payload with selected/excluded portal categories
+  const payload = {
+    portal_category_ids: mappedPortals
+      .filter((p) => p.selected)
+      .map((p) => Number(p.portalCategoryId)),
+    exclude_portal_categories: mappedPortals
+      .filter((p) => !p.selected)
+      .map((p) => Number(p.portalCategoryId))
+  };
 
-    resetForm();
+  const res = await publishNewsArticle(createdArticle.id, payload);
+  resetForm();
+  if (res?.data?.message) toast.success(res.data.message);
+}
+
+resetForm();
   } catch (err) {
-    console.error("❌ Error:", err);
     toast.error("Failed to process form.");
   } finally {
     setIsLoading(false);
