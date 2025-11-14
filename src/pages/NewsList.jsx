@@ -756,7 +756,7 @@ const NewsList = () => {
                                               </button>
 
                                               <button
-                                                onClick={() => navigate(`/edit-news/${item.id}`)}
+                                                onClick={() => navigate(`/edit-news/${dist.id}`)}
                                                 className="text-xs text-purple-600 hover:text-purple-800 font-medium underline"
                                                 title="Edit this news"
                                               >

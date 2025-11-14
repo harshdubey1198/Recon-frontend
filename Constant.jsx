@@ -1,5 +1,6 @@
 const constant = {
-  appBaseUrl: "http://127.0.0.1:8000",
+  // appBaseUrl: "http://127.0.0.1:8000",
+  appBaseUrl: "http://192.168.100.96:8009",  
   // appBaseUrl: "http://192.168.29.247:8001/",
   // appBaseUrl: "https://recon.gccn24.com/",
   // imageBaseUrl: "https://recon.gccn24.com/",

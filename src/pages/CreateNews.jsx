@@ -77,80 +77,94 @@ useEffect(() => {
 
     try {
       setIsLoading(true);
-      const res = await fetchNewsSingle(id);
-      const data = res?.data?.data;
 
-      if (!data) {
+      const res = await fetchNewsSingle(id);
+      const portal = res?.data?.data?.portal_response;
+
+      if (!portal) {
         toast.error("Failed to load article details.");
         return;
       }
 
-      console.log("🟣 Loaded news detail:", data);
+      console.log("🟣 Loaded portal news detail:", portal);
 
-      // ✅ Set form data with safe defaults and proper fallbacks
+      // ✅ Fill the form with portal news values
       setFormData((prev) => ({
         ...prev,
-        id: data?.id ?? "",
-        headline: data?.ai_title ?? data?.news_post_title ?? "",
-        title: data?.ai_title ?? data?.news_post_title ?? "",
-        shortDesc: data?.ai_short_description ?? data?.response_message ?? "",
-        longDesc: data?.ai_content ?? "",
-        meta_title: data?.ai_meta_title ?? "",
-        slug: data?.ai_slug ?? "",
+
+        id: portal?.id ?? "",
+
+        headline: portal?.post_title ?? "",
+        title: portal?.post_title ?? "",
+
+        shortDesc: portal?.post_short_des ?? "",
+        longDesc: portal?.post_des ?? "",
+
+        meta_title: portal?.meta_title ?? "",
+        slug: portal?.slug ?? "",
         slugEdited: true,
-        status: data?.post_status ?? data?.status ?? "DRAFT",
-        image: data?.news_post_image ?? null,
-        latestNews: data?.is_active === 1,
-        headlines: data?.Head_Lines === 1,
-        articles: data?.articles === 1,
-        trending: data?.trending === 1,
-        breakingNews: data?.BreakingNews === 1,
-        upcomingEvents: data?.Event === 1,
-        eventStartDate: data?.Event_date ?? "",
-        eventEndDate: data?.Event_end_date ?? "",
-        scheduleDate: data?.schedule_date ?? "",
-        counter: data?.edit_count ?? 0,
-        order: data?.retry_count ?? 0,
-        master_category: data?.master_category ?? "",
-        excluded_portals: Array.isArray(data?.excluded_portals)
-          ? data.excluded_portals
-          : [],
+
+        image: portal?.post_image ?? null,
+
+        // Boolean flags
+        latestNews: portal?.is_active === true,
+        headlines: portal?.Head_Lines === true,
+        articles: portal?.articles === true,
+        trending: portal?.trending === true,
+        breakingNews: portal?.BreakingNews === true,
+        upcomingEvents: portal?.Event === true,
+
+        // Dates
+        eventStartDate: portal?.Event_date ?? "",
+        eventEndDate: portal?.Eventend_date ?? "",
+        scheduleDate: portal?.schedule_date ?? "",
+
+        counter: portal?.viewcounter ?? 0,
+        order: portal?.order ?? 0,
+        status: portal?.status ?? "active",
+
+        master_category: portal?.post_cat ?? "",
+
+        excluded_portals: [],
+
+        // Tags (#AI → ["AI"])
         tags:
-          typeof data?.post_tag === "string" && data.post_tag.length > 0
-            ? data.post_tag
+          Array.isArray(portal?.tags) && portal.tags.length > 0
+            ? portal.tags
+            : typeof portal?.post_tag === "string"
+            ? portal.post_tag
                 .split(",")
-                .map((tag) => tag.replace("#", "").trim())
-                .filter(Boolean)
+                .map((t) => t.replace("#", "").trim())
             : [],
       }));
+      setEditorKey(Date.now());
 
-      // ✅ Preview image if available
-      if (data.news_post_image) {
-        setImagePreview(data.news_post_image);
+
+      // ✅ Image preview
+      if (portal?.post_image) {
+        setImagePreview(portal.post_image);
       }
 
-      console.log("✅ Loaded & processed article data:", data);
+      console.log("✅ Form filled from portal:", portal);
 
-      // ✅ Fetch mapped categories if a master category exists
-      if (data.master_category) {
+      // ------------------------------------
+      // ✅ Load portal category mapping
+      // ------------------------------------
+      if (portal?.post_cat) {
         try {
-          const res2 = await fetchMappedCategoriesById(data.master_category);
+          const res2 = await fetchMappedCategoriesById(portal.post_cat);
           const mappings = res2?.data?.data?.mappings || [];
 
-          if (Array.isArray(mappings) && mappings.length > 0) {
-            const excluded = Array.isArray(data.excluded_portals)
-              ? data.excluded_portals.map(Number)
-              : [];
-
+          if (mappings.length > 0) {
             const formatted = mappings.map((item) => ({
               id: item.id,
               portalId: Number(item.portal_id),
               portalCategoryId: Number(item.portal_category),
-              portalName: item.portal_name || "Unnamed Portal",
+              portalName: item.portal_name ?? "Unnamed Portal",
               categoryId: item.master_category,
-              categoryName: item.master_category_name || "",
-              portalCategoryName: item.portal_category_name || "",
-              selected: !excluded.includes(Number(item.portal_category)),
+              categoryName: item.master_category_name ?? "",
+              portalCategoryName: item.portal_category_name ?? "",
+              selected: true, // All selected by default
             }));
 
             setMappedPortals(formatted);
@@ -163,6 +177,7 @@ useEffect(() => {
           toast.error("Error loading mapped portals.");
         }
       }
+
     } catch (err) {
       console.error("❌ Failed to load news detail:", err);
       toast.error("Failed to load article data.");
@@ -173,6 +188,7 @@ useEffect(() => {
 
   loadNewsDetails();
 }, [isEditMode, id]);
+
 
 
 

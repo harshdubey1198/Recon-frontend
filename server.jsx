@@ -138,7 +138,7 @@ export async function fetchNewsDetail(id) {
 }
 
 export async function fetchNewsSingle(id) {
-  return axiosInstance.get(`/api/news//${id}/`);
+  return axiosInstance.get(`/api/news/${id}/`);
 }
 
 export async function fetchAdminStats() {
