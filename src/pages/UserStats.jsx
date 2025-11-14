@@ -186,9 +186,10 @@ const UserStats = () => {
                 <Loader2 className="w-6 h-6 text-gray-600 animate-spin" />
               </div>
             ) : stats.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border border-gray-200 rounded-lg overflow-hidden">
-                  <thead className="bg-gray-100 text-gray-700 text-sm uppercase">
+            <div className="overflow-x-auto">
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-black text-white/80 text-sm uppercase sticky top-0 z-20">
                     <tr>
                       <th className="px-4 py-2 text-left">User</th>
                       <th className="px-4 py-2 text-left">Master Posts</th>
@@ -198,6 +199,7 @@ const UserStats = () => {
                       <th className="px-4 py-2 text-left">Categories</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {stats.map((user) => (
                       <tr
@@ -208,18 +210,10 @@ const UserStats = () => {
                         <td className="px-4 py-2 font-medium text-gray-900">
                           {formatUsername(user.created_by__username)}
                         </td>
-                        <td className="px-4 py-2 text-gray-700">
-                          {user.num_master_posts}
-                        </td>
-                        <td className="px-4 py-2 text-gray-700">
-                          {user.num_total_distributions}
-                        </td>
-                        <td className="px-4 py-2 text-green-600 font-semibold">
-                          {user.num_successful_distributions}
-                        </td>
-                        <td className="px-4 py-2 text-red-600 font-semibold">
-                          {user.num_failed_distributions}
-                        </td>
+                        <td className="px-4 py-2 text-gray-700">{user.num_master_posts}</td>
+                        <td className="px-4 py-2 text-gray-700">{user.num_total_distributions}</td>
+                        <td className="px-4 py-2 text-green-600 font-semibold">{user.num_successful_distributions}</td>
+                        <td className="px-4 py-2 text-red-600 font-semibold">{user.num_failed_distributions}</td>
                         <td className="px-4 py-2 text-gray-600">
                           {user.assigned_master_categories?.length
                             ? user.assigned_master_categories.join(", ")
@@ -229,6 +223,7 @@ const UserStats = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
