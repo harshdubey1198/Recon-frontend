@@ -1,10 +1,11 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { X, Award, Users, FolderOpen, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Award } from 'lucide-react';
 import { toast } from "react-toastify";
 import { fetchPortalStats } from "../../../server";
-import formatUsername from '../../utils/formateName';
 import WeeklyPerformance from './WeeklyPerformance';
 import DateRangeFilter from '../filters/DateRangeFilter';
+import TopContributors from '../Stats/TopContributors';
+import TopPerformingCategories from '../Stats/TopPerformingCategories';
 
 export default function PortalDetailModal({ 
   isOpen, 
@@ -14,10 +15,6 @@ export default function PortalDetailModal({
   initialRange = "7d", 
   initialCustomRange = null 
 }) {
-  const [modalContributorsPage, setModalContributorsPage] = useState(1);
-  const modalContributorsRef = useRef(null);
-  const ITEMS_PER_PAGE = 8;
-
   // Loading and data state
   const [loading, setLoading] = useState(true);
   const [portalData, setPortalData] = useState(null);
@@ -33,22 +30,21 @@ export default function PortalDetailModal({
       setModalRange(initialRange);
       setModalCustomRange(initialCustomRange || { start: "", end: "" });
       setShowCustomDateInputs(initialRange === "custom");
-      setModalContributorsPage(1);
     }
   }, [isOpen, initialRange, initialCustomRange]);
 
   // Load portal stats
- useEffect(() => {
-  if (!portalId || !isOpen) return;
+  useEffect(() => {
+    if (!portalId || !isOpen) return;
 
-  if (modalRange === "All") {
-    fetchAllData(); 
-  } else if (modalRange === "custom" && modalCustomRange?.start && modalCustomRange?.end) {
-    handleApplyCustomRange(); 
-  } else {
-    loadPortalStats(); 
-  }
-}, [portalId, isOpen, modalRange, modalCustomRange]);
+    if (modalRange === "All") {
+      fetchAllData(); 
+    } else if (modalRange === "custom" && modalCustomRange?.start && modalCustomRange?.end) {
+      handleApplyCustomRange(); 
+    } else {
+      loadPortalStats(); 
+    }
+  }, [portalId, isOpen, modalRange, modalCustomRange]);
 
   const loadPortalStats = async () => {
     try {
@@ -190,31 +186,7 @@ export default function PortalDetailModal({
     setShowCustomDateInputs(false);
   };
 
-  const handleModalScroll = useCallback(() => {
-    if (!modalContributorsRef.current) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = modalContributorsRef.current;
-    if (scrollTop + clientHeight >= scrollHeight - 10) {
-      setModalContributorsPage(prev => {
-        const maxPage = Math.ceil((portalData?.topContributors?.length || 0) / ITEMS_PER_PAGE);
-        return prev < maxPage ? prev + 1 : prev;
-      });
-    }
-  }, [portalData?.topContributors?.length, ITEMS_PER_PAGE]);
-
   if (!isOpen) return null;
-
-  // Loading State
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center w-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-gray-700">Loading portal details...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Empty State
   if (!portalData) {
@@ -318,95 +290,11 @@ export default function PortalDetailModal({
         <div className="overflow-y-auto max-h-[calc(95vh-380px)] p-6 bg-gray-50">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Top Contributors */}
-            <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6 shadow-md">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="p-2 bg-black/80 rounded-lg">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Top Contributors</h3>
-              </div>
-              <div className="space-y-3">
-                {portalData.topContributors?.length > 0 ? (
-                  <div 
-                    ref={modalContributorsRef}
-                    onScroll={handleModalScroll}
-                    className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
-                    style={{
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#fb923c #fed7aa'
-                    }}
-                  >
-                    {portalData.topContributors
-                      .slice(0, modalContributorsPage * ITEMS_PER_PAGE)
-                      .map((user, idx) => (
-                      <div key={idx} className="bg-white rounded-xl p-4 border border-orange-200 hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full flex items-center justify-center shadow-md">
-                              <span className="text-white font-bold text-sm">
-                                {user.news_post__created_by__username?.[0]?.toUpperCase() || 'U'}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">
-                                {formatUsername(user.news_post__created_by__username || 'Unknown User')}
-                              </p>
-                              <p className="text-xs text-gray-500">Contributor</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold text-orange-600">{user.total_distributions || 0}</p>
-                            <p className="text-xs text-gray-500">articles</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {modalContributorsPage * ITEMS_PER_PAGE < portalData.topContributors.length && (
-                      <div className="text-center py-2">
-                        <p className="text-xs text-gray-500">Scroll for more...</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm text-center py-8">No contributors found.</p>
-                )}
-              </div>
-            </div>
+            {/* Top Contributors Component */}
+            <TopContributors contributors={portalData.topContributors} itemsPerPage={8} />
 
-            {/* Top Performing Categories */}
-            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-6 shadow-md">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="p-2 bg-black/80 rounded-lg">
-                  <FolderOpen className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Top Performing Categories</h3>
-              </div>
-              <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2"
-                style={{
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#3b82f6 #bfdbfe'
-                }}
-              >
-                {portalData.topCategories?.length > 0 ? (
-                  portalData.topCategories.map((cat, idx) => (
-                    <div key={idx} className="bg-white rounded-xl p-4 border border-blue-200 hover:shadow-lg transition-all">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                            <Tag className="w-4 h-4 text-white" />
-                          </div>
-                          <span className="font-semibold text-gray-900">{cat.master_category__name || 'Unknown'}</span>
-                        </div>
-                        <span className="text-sm font-bold text-blue-600">{cat.total_posts || 0} posts</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm text-center py-8">No categories available.</p>
-                )}
-              </div>
-            </div>
+            {/* Top Performing Categories Component */}
+            <TopPerformingCategories categories={portalData.topCategories} itemsPerPage={8} />
 
             {/* Weekly Performance - Full Width */}
             <div className="lg:col-span-2">

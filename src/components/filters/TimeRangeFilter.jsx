@@ -13,7 +13,7 @@ export default function TimeRangeFilter({ onChange, value, extraOptions = [] }) 
     { label: "Today", value: "today" },
     { label: "Yesterday", value: "yesterday" },
     { label: "Last 7 Days", value: "7d" },
-    { label: "Last 1 month", value: "1m" },
+    { label: " 1 month", value: "1m" },
     { label: "Custom Range", value: "custom" },
   ];
 

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { fetchDomainDistribution, fetchWeeklyPerformanceData } from "../../../server";
-import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight, Users, FolderOpen, Tag } from "lucide-react";
-import formatUsername from "../../utils/formateName";
+import { Award, BarChart3, Clock, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import PortalDetailModal from "../Modal/PortalDetailModal";
 import DownloadButton from "../DownLoad/DownloadButton";
 import WeeklyPerformance from "../Modal/WeeklyPerformance";
+import TopContributors from "../Stats/TopContributors";
+import TopPerformingCategories from "../Stats/TopPerformingCategories";
 
 const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref) => {
   const [domains, setDomains] = useState([]);
@@ -14,9 +15,6 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
   const [selectedPortal, setSelectedPortal] = useState(null);
   const [showPortalModal, setShowPortalModal] = useState(false);
   const [filterLimit, setFilterLimit] = useState("ALL");
-  const [globalContributorsPage, setGlobalContributorsPage] = useState(1);
-  const globalContributorsRef = useRef(null);
-  const ITEMS_PER_PAGE = 8;
 
   const loadDomains = async () => {
     try {
@@ -76,28 +74,16 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
     setShowPortalModal(true);
   };
 
-  const handleGlobalScroll = useCallback(() => {
-    if (!globalContributorsRef.current) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = globalContributorsRef.current;
-    if (scrollTop + clientHeight >= scrollHeight - 10) {
-      setGlobalContributorsPage(prev => {
-        const maxPage = Math.ceil(globalTopContributors.length / ITEMS_PER_PAGE);
-        return prev < maxPage ? prev + 1 : prev;
-      });
-    }
-  }, [globalTopContributors.length]);
-
   const getPerformanceColor = (percent) => {
     if (percent >= 80) return 'text-green-600 bg-green-50';
     if (percent >= 60) return 'text-yellow-600 bg-yellow-50';
     return 'text-red-600 bg-red-50';
   };
 
-  // useEffect(() => {
-  //   loadDomains();
-  //   loadWeeklyPerformanceData();
-  // }, [range, customRange]);
+  useEffect(() => {
+    loadDomains();
+    loadWeeklyPerformanceData();
+  }, [range, customRange]);
 
   const refreshData = async (newRange, newCustomRange) => {
     const effectiveRange = newRange || range;
@@ -242,7 +228,7 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
                 </th>
               </tr>
             </thead>
-              <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100">
               {filteredDomains.map((portal, index) => (
                 <tr
                   key={index}
@@ -302,16 +288,13 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
                     <span className="text-base sm:text-lg font-bold text-gray-600">{portal.total}</span>
-
-                    </td>
+                  </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-red-600 text-sm sm:text-base">{portal.failed}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
                     <span className="text-gray-700 font-medium text-sm sm:text-base">{portal.avgPublishTime ? portal.avgPublishTime.toFixed(2) : 0}s</span>
                   </td>
-                   
                   <td className="px-3 sm:px-6 py-3 sm:py-4 align-top">
                     <span className="text-base sm:text-lg font-bold text-gray-600">{portal.retry}</span>
-                     
                   </td>
                 </tr>
               ))}
@@ -328,92 +311,11 @@ const PortalLeaderboard = forwardRef(({ range = "7d", customRange = null }, ref)
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Top Contributors */}
-        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-md">
-          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-            <div className="p-2 bg-black rounded-lg">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Contributors</h3>
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {globalTopContributors?.length > 0 ? (
-              <div 
-                ref={globalContributorsRef}
-                onScroll={handleGlobalScroll}
-                className="space-y-2 sm:space-y-3 max-h-[400px] overflow-y-auto pr-2"
-                style={{
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#fb923c #fed7aa'
-                }}
-              >
-                {globalTopContributors.slice(0, globalContributorsPage * ITEMS_PER_PAGE).map((user, idx) => (
-                  <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-orange-200 hover:shadow-lg transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-800 to-gray-900 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-                          <span className="text-white font-bold text-xs sm:text-sm">
-                            {user.news_post__created_by__username?.[0]?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                            {formatUsername(user.news_post__created_by__username || 'Unknown User')}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-500">Contributor</p>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="text-lg sm:text-2xl font-bold text-orange-600">{user.total_distributions || 0}</p>
-                        <p className="text-[10px] sm:text-xs text-gray-500">articles</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {globalContributorsPage * ITEMS_PER_PAGE < globalTopContributors.length && (
-                  <div className="text-center py-2">
-                    <p className="text-xs text-gray-500">Scroll for more...</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-xs sm:text-sm text-center py-8">No contributors found.</p>
-            )}
-          </div>
-        </div>
+        {/* Top Contributors Component */}
+        <TopContributors contributors={globalTopContributors} itemsPerPage={8} />
 
-        {/* Top Performing Categories */}
-        <div className="bg-gray-100 rounded-xl sm:rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-md">
-          <div className="flex items-center space-x-2 mb-3 sm:mb-4">
-            <div className="p-2 bg-black/80 rounded-lg">
-              <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-gray-900">Top Performing Categories</h3>
-          </div>
-          <div className="space-y-2 sm:space-y-3">
-            {globalTopCategories?.length > 0 ? (
-              globalTopCategories.map((cat, idx) => (
-                <div key={idx} className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-200 hover:shadow-lg transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-                        <Tag className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                      </div>
-                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                        {cat.master_category__name || 'Unknown'}
-                      </span>
-                    </div>
-                    <span className="text-xs sm:text-sm font-bold text-blue-600 flex-shrink-0 ml-2">
-                      {cat.total_posts || 0} posts
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-xs sm:text-sm text-center py-8">No categories available.</p>
-            )}
-          </div>
-        </div>
+        {/* Top Performing Categories Component */}
+        <TopPerformingCategories categories={globalTopCategories} itemsPerPage={8} />
       </div>
 
       {/* Weekly Performance Component */}

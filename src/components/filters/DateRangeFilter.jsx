@@ -47,7 +47,7 @@ const DateRangeFilter = ({
           <option value="today" className="text-black">Today</option>
           <option value="yesterday" className="text-black">Yesterday</option>
           <option value="7d" className="text-black">Last 7 Days</option>
-          <option value="1m" className="text-black">Last Month</option>
+          <option value="1m" className="text-black">1 Month</option>
           <option value="custom" className="text-black">Custom Range</option>
         </select>
       </div>
