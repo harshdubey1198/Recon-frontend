@@ -352,7 +352,6 @@ const NewsList = () => {
                   portal_id: selectedPortal,
                   master_category_id: selectedMasterCategory,
                   username: createdBy,
-                  date_filter: { start_date: startDate, end_date: endDate },
                 };
                 loadNewsWithFilters(filters);
               }}

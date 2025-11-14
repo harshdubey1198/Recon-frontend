@@ -14,7 +14,8 @@ const UserStats = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   // 🔹 Filters
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("today");
+
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
@@ -87,13 +88,14 @@ const UserStats = () => {
     loadStats(filters);
   };
 
-  const handleClear = () => {
-    setDateFilter("");
-    setSelectedUser("");
-    setSelectedUserId("");
-    setPage(1);
-    loadStats();
-  };
+ const handleClear = () => {
+  setDateFilter("today");   // ← set back to default
+  setSelectedUser("");
+  setSelectedUserId("");
+  setPage(1);
+  loadStats({ date_filter: "today" });
+};
+
 
   // 🔹 Define columns for download
   const downloadColumns = [
@@ -170,9 +172,7 @@ const UserStats = () => {
                     username: selectedUser,
                     user_id: selectedUserId,
                 }}
-                timeRangeOptions={[
-                    { label: "Last 1 Month", value: "1m" }, 
-                ]}
+                
                 onChange={handleFilterChange}
                 onClear={handleClear}
                 />

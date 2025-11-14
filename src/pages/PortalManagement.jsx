@@ -204,7 +204,7 @@ export default function PortalManagement() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Portal Management
+           User Portal Management
           </h1>
           <p className="text-gray-600">Manage user portal access and status</p>
         </div>
@@ -418,7 +418,7 @@ export default function PortalManagement() {
                               </div>
                             </td>
                             <td className="py-3 px-6 text-right">
-                              {!item.found && (
+                              {item.found ? (
                                 <button
                                   onClick={async () => {
                                     try {
@@ -440,9 +440,9 @@ export default function PortalManagement() {
                                   }}
                                   className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
                                 >
-                                  Retry
+                                  Retry 
                                 </button>
-                              )}
+                              ):"---"}
                             </td>
                           </tr>
                         ))}
