@@ -23,8 +23,13 @@ export default function MasterFilter({
   }, [initialFilters]);
 
   const updateFilter = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  // If value is an object like {value: "today"}, extract it
+  if (key === "date_filter" && typeof value === "object" && value !== null) {
+    value = value.value || value.date_filter || ""; 
+  }
+  setFilters((prev) => ({ ...prev, [key]: value }));
+};
+
 
   const applyAllFilters = () => onChange?.(filters);
   const clearAllFilters = () => {

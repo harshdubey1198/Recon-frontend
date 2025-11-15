@@ -54,14 +54,8 @@ export async function createNewsArticle(formData) {
   });
 }
 
-export async function publishNewsArticle(id, payload) {
-  // if (!payload || !payload.master_category) {
-  //   throw new Error("Please provide valid payload with master_category.");
-  // }
-
-  return axiosInstance.post(`/api/publish/news/${id}/`, payload, {
-    headers: { "Content-Type": "application/json" },
-  });
+export async function publishNewsArticle(id,) {
+  return axiosInstance.post(`/api/publish/news/${id}/`)
 }
 export async function fetchDraftNews() {
   return axiosInstance.get(`/api/my/news/posts/?status=DRAFT`);

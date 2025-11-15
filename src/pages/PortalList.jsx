@@ -119,24 +119,12 @@ export default function PortalList() {
                       <h2 className="text-lg font-bold text-white truncate max-w-[160px]">
                         {portal.name || "Unnamed Portal"}
                       </h2>
-                      <p className="text-gray-300 text-xs">
-                        {portal.domain || portal.base_url || "—"}
-                      </p>
+                     
                     </div>
                   </div>
                 </div>
 
-                {/* Card Body */}
-                <div className="p-5 text-sm text-gray-700">
-                  <p className="text-gray-600">
-                    <span className="font-semibold text-gray-900">Base URL: </span>
-                    {portal.base_url || portal.domain || "N/A"}
-                  </p>
-                  <p className="text-gray-600 mt-1">
-                    <span className="font-semibold text-gray-900">Status: </span>
-                    {portal.status?.toUpperCase?.() || "ACTIVE"}
-                  </p>
-                </div>
+                
               </div>
             ))}
           </div>

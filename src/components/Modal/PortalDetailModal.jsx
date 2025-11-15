@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Award } from 'lucide-react';
+import { X, Award, Loader2, Loader } from 'lucide-react';
 import { toast } from "react-toastify";
 import { fetchPortalStats } from "../../../server";
 import WeeklyPerformance from './WeeklyPerformance';
@@ -47,7 +47,9 @@ export default function PortalDetailModal({
   }, [portalId, isOpen, modalRange, modalCustomRange]);
 
   const loadPortalStats = async () => {
+
     try {
+       setLoading(true); 
       const customDates = modalRange === "custom" && modalCustomRange?.start && modalCustomRange?.end ? {
         start: modalCustomRange.start,
         end: modalCustomRange.end
@@ -79,6 +81,9 @@ export default function PortalDetailModal({
       toast.error("Server error while fetching portal stats.");
       setPortalData(null);
     } 
+    finally {
+    setLoading(false); // ← THIS FIXES YOUR ISSUE
+  }
   };
 
   const handleModalRangeChange = (newRange) => {
@@ -188,22 +193,16 @@ export default function PortalDetailModal({
 
   if (!isOpen) return null;
 
-  // Empty State
-  if (!portalData) {
+  // 🧩 Loading State
+  if (loading)
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-xl p-6 text-center w-[400px]">
-          <p className="text-lg font-medium text-gray-700">No stats available for this portal.</p>
-          <button
-            onClick={onClose}
-            className="mt-4 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
-          >
-            Close
-          </button>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center justify-center w-[400px]">
+          <Loader className="w-8 h-8 text-gray-600 animate-spin mb-2" />
+          <p className="text-gray-700 font-medium">Loading ...</p>
         </div>
       </div>
     );
-  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">

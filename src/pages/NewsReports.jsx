@@ -6,7 +6,8 @@ import SearchFilter from "../components/filters/SearchFilter";
 import formatUsername from "../utils/formateName";
 
 export default function NewsReports() {
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({ date_filter: "today" });
+
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
@@ -119,13 +120,13 @@ export default function NewsReports() {
     console.log("📅 Raw Filters from UI:", newFilters);
 
     const dateFilter =
-      typeof newFilters.date_filter === "object"
-        ? newFilters.date_filter
-        : {
-            date_filter: newFilters.date_filter,
-            start_date: newFilters.start_date,
-            end_date: newFilters.end_date,
-          };
+  newFilters.date_filter === "today"
+    ? newFilters.date_filter
+    : {
+        date_filter: newFilters.date_filter,
+        start_date: newFilters.start_date,
+        end_date: newFilters.end_date,
+      };
 
     let apiParams = { ...filters, ...newFilters };
 
