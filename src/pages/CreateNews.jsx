@@ -1340,7 +1340,8 @@ const NewsArticleForm = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-5">
+              <div className="grid grid-cols-1 gap-2">
+
                 {/* <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Status
@@ -1356,8 +1357,8 @@ const NewsArticleForm = () => {
                   </select>
                 </div> */}
 
-                <label className="block text-sm font-semibold text-gray-700">
-                  Headline <span className="text-red-500">*</span>
+               <label className="block text-sm font-semibold text-gray-700 mb-0">
+                 Headline <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
