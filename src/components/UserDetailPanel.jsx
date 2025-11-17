@@ -6,7 +6,7 @@ import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import DownloadButton from "../components/DownLoad/DownloadButton";
 
-const UserDetailPanel = ({ userId, username, onClose }) => {
+const UserDetailPanel = ({ userId, username, onClose,range }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [noData, setNoData] = useState(false);
@@ -22,8 +22,8 @@ const loadUserData = async () => {
     setNoData(false);
 
     const [userRes, portalRes] = await Promise.all([
-      fetchUserPerformance(userId, "1m"),
-      fetchUserPortalPerformance(userId, "1m"),
+      fetchUserPerformance(userId,range),
+      fetchUserPortalPerformance(userId,range),
     ]);
 
     if (userRes?.data?.status) {

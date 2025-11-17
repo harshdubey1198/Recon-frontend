@@ -189,11 +189,11 @@ export async function fetchUnassignedUsers() {
   return axiosInstance.get("/account/unassigned/users/");
 }
 
-export async function fetchUserPerformance(userId, range = "1m") {
+export async function fetchUserPerformance(userId, range) {
   return axiosInstance.get(`/api/user/performance/${userId}?range=${range}`);
 }
 
-export async function fetchUserPortalPerformance(userId, range = "1m") {
+export async function fetchUserPortalPerformance(userId, range) {
   return axiosInstance.get(`/api/user/portal/performance/${userId}?range=${range}`);
 }
 

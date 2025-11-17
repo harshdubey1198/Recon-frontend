@@ -267,6 +267,7 @@ const UserStats = () => {
               userId={selectedUserDetail.id}
               username={selectedUserDetail.name}
               onClose={handleClosePanel}
+              range={dateFilter}
             />
           )}
 
