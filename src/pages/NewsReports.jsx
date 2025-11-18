@@ -123,8 +123,8 @@ export default function NewsReports() {
   newFilters.date_filter === "today"
     ? newFilters.date_filter
     : {
-        date_filter: newFilters.date_filter,
-        start_date: newFilters.start_date,
+      date_filter: newFilters.date_filter.date_filter,
+      start_date: newFilters.start_date,
         end_date: newFilters.end_date,
       };
 

@@ -1,39 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  Upload,
-  X,
-  Plus,
-  Calendar,
-  Eye,
-  Save,
-  RefreshCw,
-  Image as ImageIcon,
-  Tag,
-  FileText,
-  Settings,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  Star,
-  Crop,
-  RotateCw,
-  ZoomIn,
-  Maximize2,
-  SaveAll,
-} from "lucide-react";
+import {Upload,X,Plus,Calendar,Eye,Save,RefreshCw,Image as ImageIcon,Tag,FileText,Settings,Clock,TrendingUp,AlertCircle,Star,Crop,RotateCw,ZoomIn,Maximize2,SaveAll,} from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {
-  createNewsArticle,
-  publishNewsArticle,
-  fetchAllTags,
-  fetchAssignedCategories,
-  fetchMappedCategoriesById,
-  fetchDraftNews,
-  updateDraftNews,
-  fetchPortalCategories,
-  fetchPortals,
-} from "../../server";
+import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchAssignedCategories,fetchMappedCategoriesById,fetchDraftNews,updateDraftNews,fetchPortalCategories,fetchPortals,} from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 import { useParams } from "react-router-dom";
