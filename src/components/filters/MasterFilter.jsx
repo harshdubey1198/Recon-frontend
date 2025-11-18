@@ -23,13 +23,25 @@ export default function MasterFilter({
   }, [initialFilters]);
 
   const updateFilter = (key, value) => {
-  // If value is an object like {value: "today"}, extract it
-  if (key === "date_filter" && typeof value === "object" && value !== null) {
-    value = value.value || value.date_filter || ""; 
-  }
-  setFilters((prev) => ({ ...prev, [key]: value }));
-};
-
+    if (key === "date_filter" && typeof value === "object" && value !== null) {
+      // 👉 Case 1: Custom range object { date_filter: "custom", start_date, end_date }
+      if (value.date_filter === "custom") {
+        setFilters((prev) => ({
+          ...prev,
+          date_filter: value,                       // pura object store karo
+          start_date: value.start_date || "",      // optional: top-level bhi rakh sakte ho
+          end_date: value.end_date || "",
+        }));
+        return; // yahin return, neeche wala common setFilter na chale
+      }
+  
+      // 👉 Case 2: TimeRangeFilter se aaya object { value: "today", label: "Today" } etc.
+      value = value.value || value.date_filter || "";
+    }
+  
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  
 
   const applyAllFilters = () => onChange?.(filters);
   const clearAllFilters = () => {
