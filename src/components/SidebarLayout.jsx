@@ -20,6 +20,7 @@ export default function SidebarLayout() {
           { name: "Category Mapping", icon: Network, path: "/category-mapping" },
           { name: "Category Insights", icon: BarChart2, path: "/category-insights" },
           { name: "Portal Insights", icon: Building2, path: "/portal-insights" },
+          { name: "User Portal Mapping", icon: ShieldCheck, path: "/portal-mapping" },
           { name: "User Category Mapping", icon: ShieldCheck, path: "/access-control" },
           { name: "User Stats", icon: BarChart3, path: "/user-stats" },
           { name: "User Portal Management", icon: User, path: "/portal-management" },
