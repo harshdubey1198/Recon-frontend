@@ -49,6 +49,8 @@ export default function SignIn() {
         role,
         token: access,
         refreshToken: refresh,
+        accessExpiresIn: 431999.4294490814
+
       });
 
       navigate("/dashboard");

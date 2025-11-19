@@ -232,7 +232,7 @@ const NewsList = () => {
           longDesc: item.content ? item.content.replace(/<[^>]+>/g, "") : "",
           author: "You",
           live_url: "",
-          status: item.status || "N/A",
+          created_by_name: item.created_by_name || "N/A",
           date: new Date(item.created_at).toLocaleDateString(),
           image: item.post_image
             ? `${constant?.appBaseUrl}/${item.post_image}`
@@ -475,7 +475,7 @@ const NewsList = () => {
                       Live URL
                     </th> */}
                     <th className="px-4 py-2 text-xs font-semibold text-gray-700">
-                      Status
+                      Created by
                     </th>
                     <th className="px-4 py-2 text-xs font-semibold text-gray-700">
                       Date
@@ -552,16 +552,8 @@ const NewsList = () => {
                             {item.live_url}
                           </td> */}
                           <td className="px-4 py-2 text-center">
-                            <span
-                              className={`px-2 py-1 text-xs rounded ${
-                                item.status === "SUCCESS"
-                                  ? "bg-green-100 text-green-700"
-                                  : item.status === "PENDING"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              {item.status}
+                            <span>
+                              {item.created_by_name}
                             </span>
                           </td>
                           <td className="px-4 py-2  text-center text-sm text-gray-600">
