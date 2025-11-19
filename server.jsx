@@ -246,6 +246,32 @@ export async function fetchMappedCategoriesById(id,page=1) {
   return axiosInstance.get(`/api/master/categories/mapped/${id}/?page=${page}`);
 }
 
+// fetch portal parent categories
+export async function fetchPortalParentCategories(portal_id,page=1) {
+  return axiosInstance.get(`/api/parent/categories/list/${portal_id}/?page=${page}`);
+}
+
+// Fetch Sub-Categories by Parent Category
+export async function fetchSubCategoriesByParent(portal_id, parent_external_id, page = 1) {
+  return axiosInstance.get(
+    `/api/sub-categories/by/parent/category/`,
+    {
+      params: {
+        portal_id,
+        parent_external_id,
+        page
+      }
+    }
+  );
+}
+
+// Fetch Portal Category Matching
+export async function fetchPortalCategoryMatching(portal_category_id) {
+  return axiosInstance.get(`/api/portal/category/matching/`, { 
+    params: { portal_category_id },
+  });
+}
+
 // filter pramas section 
 function buildParams(range = "7d", customDates = null) {
   const params = { range };

@@ -330,9 +330,9 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
                   <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  Access Control
+                User Portal Mapping
                 </h1>
-                <p className="text-gray-300 text-sm mt-1">Manage user permissions and master categories</p>
+                <p className="text-gray-300 text-sm mt-1 ml-12">Manage user permissions and portals</p>
               </div>
                  <button
                     onClick={() => setIsAddUserModalOpen(true)}
@@ -375,7 +375,7 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-gray-900" />
-                    Assigned Categories for {formatUsername(selectedUser)}
+                    Assigned Portals for {formatUsername(selectedUser)}
                   </h3>
                   {assignmentPagination && (
                     <span className="text-sm text-gray-500">
