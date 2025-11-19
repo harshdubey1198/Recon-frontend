@@ -78,6 +78,8 @@ const NewsArticleForm = () => {
   const [showPortalCategoryModal, setShowPortalCategoryModal] = useState(false);
   const [portalList, setPortalList] = useState([]);
   const [portalCategoriesModal, setPortalCategoriesModal] = useState([]);
+  console.log("data bhdghfd",portalCategoriesModal);
+  
   const [selectedPortalForCategories, setSelectedPortalForCategories] =
     useState("");
   const [portalPage, setPortalPage] = useState(1);
@@ -124,17 +126,15 @@ const NewsArticleForm = () => {
   }, [showPortalCategoryModal, portalPage]);
 
   useEffect(() => {
-    if (selectedPortalForCategories) {
-      fetchPortalCategories(selectedPortalForCategories, categoryPage).then(
-        (res) => {
-          setPortalCategoriesModal(res?.data?.data || []);
-          // console.log(res.data);
-
-          setHasNextCategoryPage(!!res?.data?.pagination?.next);
-        }
-      );
-    }
-  }, [selectedPortalForCategories, categoryPage]);
+  if (selectedPortalForCategories) {
+    fetchPortalParentCategories(selectedPortalForCategories, categoryPage).then((res) => {
+      console.log("Fetched categories:", res?.data?.data?.parent_categories);
+      const categories = res?.data?.data?.parent_categories || [];
+      setPortalCategoriesModal(categories);
+      setHasNextCategoryPage(!!res?.data?.pagination?.next);
+    });
+  }
+}, [selectedPortalForCategories, categoryPage]);
 
   useEffect(() => {
     if (isEditMode) {
@@ -308,7 +308,7 @@ const handlePortalCategoryClick = async (portal) => {
       const mappings = raw?.parent_categories ?? [];
       console.log("mappings", mappings);
 
-      const next = res?.data?.pagination?.next || null;
+      const next = res?.data?.pagination?.next || null
       // console.log("🔹 Next page URL:", next);
 
       if (Array.isArray(mappings) && mappings.length > 0) {
@@ -1119,147 +1119,153 @@ const handlePortalCategoryClick = async (portal) => {
               </div>
 
               {showPortalSection && (
-                <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
-                  {/* Header Section */}
-                  <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-2 bg-gray-100 rounded-lg">
-                        <Settings className="w-5 h-5 text-gray-700" />
-                      </div>
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        {mappedPortals[0]?.mapping_found
-                          ? "Select matched portal"
-                          : categoryHistory.length > 0
-                          ? "Select subcategory"
-                          : "Select category"}{" "}
-                      </h2>
-                    </div>
+  <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
+    {/* Header Section */}
+    <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
+      <div className="flex items-center space-x-2">
+        <div className="p-2 bg-gray-100 rounded-lg">
+          <Settings className="w-5 h-5 text-gray-700" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">
+          {mappedPortals[0]?.mapping_found
+            ? "Select matched portal"
+            : categoryHistory.length > 0
+            ? "Select subcategory"
+            : "Select category"}{" "}
+          from{" "}
+          <span className="font-bold">
+            {mappedPortals[0]?.portalName ||
+              mappedPortals[0]?.portalParentCategory ||
+              mappedPortals[0]?.portalCategoryName ||
+              "Selected"}
+          </span>
+        </h2>
+      </div>
+          {/* Manage Categories Button */}
+         {/* Manage Categories Button */}
+{!showPortalCategoryModal && formData.master_category && mappedPortals.some(portal => portal.mapping_found) && (
+  <div className="flex justify-end mt-3">
+    <button
+      type="button"
+      className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+      onClick={() => {
+        setForceEnablePortal(true); // ✅ Enable portal management
+        setShowPortalCategoryModal(true); // Show the portal category modal
+      }}
+    >
+      Manage Portal Categories
+    </button>
+  </div>
+)}
 
-                    {/* Back Button */}
-                    {categoryHistory.length > 0 && (
-                      <button
-                        onClick={handleGoBack}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                        Back
-                      </button>
-                    )}
-                  </div>
 
-                  {/* Portal list */}
+      {/* Back Button */}
+      {categoryHistory.length > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleGoBack();
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Back
+        </button>
+      )}
+    </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {isPortalsLoading ? (
-                      <p className="text-center col-span-full py-5 text-gray-600">
-                        Loading...
-                      </p>
-                    ) : isLoadingMore ? (
-                      <p className="text-center col-span-full py-5 text-gray-600">
-                        Loading...
-                      </p>
-                    ) : (
-                    mappedPortals.map((portal, i) => (
-                          <div
-                            key={i}
-                            onClick={(e) => {
-                              if (portal.mapping_found) {
-                                e.stopPropagation();
-                                setMappedPortals(prev =>
-                                  prev.map(p =>
-                                    p.id === portal.id
-                                      ? { ...p, selected: !p.selected }
-                                      : p
-                                  )
-                                );
-                              } else {
-                                handlePortalCategoryClick(portal);
-                              }
-                            }}
-                            className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
-                              portal.selected
-                                ? "bg-gray-900 border-gray-900 text-white shadow-lg"
-                                : "bg-white  border-gray-900 hover:border-gray-400"
-                            }`}
-                          >
-                              
-                            <div>
-                              {portal.mapping_found ? (
-                                
-                                <>
-                                  {/* Checkbox Section */}
-                                  <div className="absolute top-3 left-3">
-                                    {portal.selected ? (
-                                      <input
-                            type="checkbox"
-                            checked={portal.selected}
-                            onChange={() =>
-                              setMappedPortals((prev) =>
-                                prev.map((p, idx) =>
-                                  idx === i
-                                    ? { ...p, selected: !p.selected }
-                                    : p
-                                )
+    {/* Portal list */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {isPortalsLoading ? (
+        <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
+      ) : isLoadingMore ? (
+        <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
+      ) : (
+        <>
+         
+          {/* Map through portals */}
+          {mappedPortals.map((portal, i) => (
+            <div
+              key={i}
+              onClick={(e) => {
+                if (portal.mapping_found) {
+                  e.stopPropagation(); // Prevent triggering other actions
+                  setMappedPortals((prev) =>
+                    prev.map((p) =>
+                      p.id === portal.id
+                        ? { ...p, selected: !p.selected }
+                        : p
+                    )
+                  );
+                } else {
+                  handlePortalCategoryClick(portal); // Show categories if no mapping
+                }
+              }}
+              className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
+                portal.selected
+                  ? "bg-gray-900 border-gray-900 text-white shadow-lg"
+                  : "bg-white border-gray-900 hover:border-gray-400"
+              }`}
+            >
+              <div>
+                {portal.mapping_found ? (
+                  <>
+                    {/* Checkbox Section */}
+                    <div className="absolute top-3 left-3">
+                      {portal.selected ? (
+                        <input
+                          type="checkbox"
+                          checked={portal.selected}
+                          onChange={() =>
+                            setMappedPortals((prev) =>
+                              prev.map((p, idx) =>
+                                idx === i ? { ...p, selected: !p.selected } : p
                               )
-                            }
-                            className="w-5 h-5 accent-gray-900"
-                          />
-                                    ) : (
-                                      <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
-                                    )}
-                                  </div>
-
-                                  {/* Text Content */}
-                                  <div className="ml-6">
-                                    <p className="text-lg font-semibold">{portal.portalName}</p>
-                                    <p className="text-sm text-gray-300">{portal.portalCategoryName}</p>
-                                    <p className="text-xs text-gray-400">{portal.portalParentCategory}</p>
-                                  </div>
-                                </>
-
-                              ) : (
-                                <div>
-                                  <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
-                                  <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                                  <p className="text-xs text-gray-400">{portal.portalName}</p>
-                                </div>
-                              )}
-                            </div>
-
-                          </div>
-                        ))
-
-                    )}
-                  </div>
-
-                  {/* Pagination */}
-                  {nextPage && (
-                    <div className="flex justify-center mt-4">
-                      <button
-                        onClick={() => handleCategorySelect(null, true)}
-                        disabled={isLoadingMore}
-                        className="px-5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {isLoadingMore
-                          ? "Loading more..."
-                          : "Load More Portals"}
-                      </button>
+                            )
+                          }
+                          className="w-5 h-5 accent-gray-900"
+                        />
+                      ) : (
+                        <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
+                      )}
                     </div>
-                  )}
-                </section>
-              )}
+
+                    {/* Text Content */}
+                    <div className="ml-6">
+                      <p className="text-lg font-semibold">{portal.portalName}</p>
+                      <p className="text-sm text-gray-300">{portal.portalCategoryName}</p>
+                      <p className="text-xs text-gray-400">{portal.portalParentCategory}</p>
+                    </div>
+                  </>
+                ) : (
+                  // When no mapping is found, display alternative content
+                  <div>
+                    <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
+                    <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
+                    <p className="text-xs text-gray-400">{portal.portalName}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  </section>
+)}
+
 
               {showPortalCategoryModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -1301,70 +1307,41 @@ const handlePortalCategoryClick = async (portal) => {
                       </select>
                     )}
                     {/* Category list */}
-                    {portalCategoriesModal.length > 0 ? (
-                      <ul className="max-h-60 overflow-y-auto border rounded p-2">
-                        {portalCategoriesModal.map((cat) => (
-                          <li
-                            key={cat.parent_external_id}
-                            className="p-2 border-b text-sm flex items-center justify-between"
-                          >
-                            <label className="flex items-center gap-2 cursor-pointer w-full">
-                              <input
-                                type="checkbox"
-                                checked={cat.selected || false}
-                                onChange={(e) => {
-                                  const isChecked = e.target.checked;
-                                  setPortalCategoriesModal((prev) =>
-                                    prev.map((c) => ({
-                                      ...c,
-                                      selected: isChecked
-                                        ? c.parent_external_id ===
-                                          cat.parent_external_id
-                                        : false,
-                                    }))
-                                  );
-                                }}
-                              />
-                              <span className="flex-1">
-                                {cat.parent_name}
-                                <span className="text-gray-400">
-                                  {" "}
-                                  ({cat.parent_name})
-                                </span>
-                              </span>
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
+                   {portalCategoriesModal.length > 0 ? (
+                          <ul className="max-h-60 overflow-y-auto border rounded p-2">
+                            {portalCategoriesModal.map((cat) => (
+                              <li
+                                key={cat.parent_external_id}
+                                className="p-2 border-b text-sm flex items-center justify-between"
+                              >
+                                <label className="flex items-center gap-2 cursor-pointer w-full">
+                                  <input
+                                    type="checkbox"
+                                    checked={cat.selected || false}
+                                    onChange={(e) => {
+                                      const isChecked = e.target.checked;
+                                      setPortalCategoriesModal((prev) =>
+                                        prev.map((c) => ({
+                                          ...c,
+                                          selected: c.parent_external_id === cat.parent_external_id ? isChecked : c.selected,
+                                        }))
+                                      );
+                                    }}
+                                  />
+                                  <span className="flex-1">
+                                    {cat.parent_name}
+                                  </span>
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
                       <p className="text-gray-500 text-sm text-center mt-2">
                         No categories found
                       </p>
                     )}
 
-                    {/* Pagination */}
-                    <div className="flex justify-between items-center mt-4">
-                      <button
-                        disabled={categoryPage === 1}
-                        onClick={() =>
-                          setCategoryPage((p) => Math.max(1, p - 1))
-                        }
-                        className="px-3 py-1 bg-gray-200 rounded text-sm disabled:opacity-50"
-                      >
-                        Prev
-                      </button>
-                      <span className="text-sm text-gray-700">
-                        Page {categoryPage}
-                      </span>
-                      <button
-                        disabled={!hasNextCategoryPage}
-                        onClick={() => setCategoryPage((p) => p + 1)}
-                        className="px-3 py-1 bg-gray-200 rounded text-sm disabled:opacity-50"
-                      >
-                        Next
-                      </button>
-                    </div>
-
+                    
                     {/* Save button */}
                     <div className="flex justify-end mt-5">
                       <button
