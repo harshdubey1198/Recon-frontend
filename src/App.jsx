@@ -17,6 +17,7 @@ import NewsReports from "./pages/NewsReports";
 import UserStats from "./pages/UserStats";
 import PortalList from "./pages/PortalList";
 import CategoryList from "./pages/CategoryList";
+import GoogleAnalytics from "./pages/GoogleAnalytics";
 import { ToastContainer } from "react-toastify";
 
 export default function AppRoutes() {
@@ -63,6 +64,8 @@ export default function AppRoutes() {
             <Route path="/news-reports" element={<NewsReports />} />
             <Route path="/all-categories" element={<AllCategories />} />
             <Route path="/user-categories" element={<UserCategories />} />
+            <Route path="/analytics" element={<GoogleAnalytics />} />
+
           </>
            )}
       </Route>

@@ -13,6 +13,7 @@ import CategoryMapping from "./pages/CategoryMapping";
 import AllCategories from "./pages/AllCategories";
 import PortalManagement from "./pages/PortalManagement";
 import UserCategories from "./pages/UserCategories";
+import GoogleAnalytics from "./pages/GoogleAnalytics";
 import { ToastContainer } from "react-toastify";
 
 export default function AppRoutes() {
@@ -53,6 +54,8 @@ const isMaster = role === "master";
             <Route path="/category-mapping" element={<CategoryMapping />} />
             <Route path="/portal-management" element={<PortalManagement />} />
             <Route path="/user-categories" element={<UserCategories />} />
+            <Route path="/analytics" element={<GoogleAnalytics />} />
+
           </>
         )}
       </Route>

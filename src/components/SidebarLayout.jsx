@@ -25,6 +25,7 @@ export default function SidebarLayout() {
           { name: "User Portal Management", icon: User, path: "/portal-management" },
           { name: "User Data", icon: Building2, path: "/user-access-list" },
           { name: "News Reports", icon: BarChart3, path: "/news-reports" },
+          { name: "Google Analytics", icon: BarChart3, path: "/analytics" },
         ]
       : []),
   ];

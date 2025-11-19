@@ -392,4 +392,20 @@ export async function editNews(id, formData) {
   });
 }
 
+/**
+ * Query Google Analytics 4 (GA4) data
+ * @param {Object} data - The request body, must include pid, endpoint, and body as specified in the curl example.
+ */
+export async function queryGA4(data) {
+  return axiosInstance.post(
+    "/api/ga4/query/",
+    data,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
 export default axiosInstance;
