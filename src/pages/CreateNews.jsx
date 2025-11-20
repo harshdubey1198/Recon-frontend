@@ -1,39 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  Upload,
-  X,
-  Plus,
-  Calendar,
-  Eye,
-  Save,
-  RefreshCw,
-  Image as ImageIcon,
-  Tag,
-  FileText,
-  Settings,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  Star,
-  Crop,
-  RotateCw,
-  ZoomIn,
-  Maximize2,
-  SaveAll,
-} from "lucide-react";
+import {Upload,X,Plus,Calendar,Eye,Save,RefreshCw,Image as ImageIcon,Tag,FileText,Settings,Clock,TrendingUp,AlertCircle,Star,Crop,RotateCw,ZoomIn,Maximize2,SaveAll,} from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {
-  createNewsArticle,
-  publishNewsArticle,
-  fetchAllTags,
-  fetchPortalParentCategories,
-  fetchDraftNews,
-  updateDraftNews,
-  fetchPortalCategoryMatching,
-  fetchPortalCategories,
-  fetchPortals,
-  fetchUserPortalsByUserId,
+import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchPortalParentCategories,fetchDraftNews,updateDraftNews,fetchPortalCategoryMatching,fetchPortalCategories,fetchPortals,fetchUserPortalsByUserId,
   fetchSubCategoriesByParent,
 } from "../../server";
 import constant from "../../Constant";
@@ -111,6 +80,8 @@ const NewsArticleForm = () => {
   const authUser = JSON.parse(localStorage.getItem("auth_user"));
   const userId = authUser?.id || null;
   const [categoryHistory, setCategoryHistory] = useState([]);
+  const [isSubcategoryView, setIsSubcategoryView] = useState(false);
+const [selectedParentCategory, setSelectedParentCategory] = useState(null);
   useEffect(() => {
     if (!formData.master_category) {
       setShowPortalSection(false);
@@ -126,7 +97,7 @@ const NewsArticleForm = () => {
   }, [showPortalCategoryModal, portalPage]);
 
   useEffect(() => {
-  if (selectedPortalForCategories) {
+  if (selectedPortalForCategories && categoryPage === 1) {
     fetchPortalParentCategories(selectedPortalForCategories, categoryPage).then((res) => {
       console.log("Fetched categories:", res?.data?.data?.parent_categories);
       const categories = res?.data?.data?.parent_categories || [];
@@ -852,42 +823,42 @@ const handlePortalCategoryClick = async (portal) => {
 
       // -------------------- CREATE NEW --------------------
       else {
-        // 🟢 Filter new added categories from modal (manually added only)
-        const newlyAddedCategories = mappedPortals
-          .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId) // 0 means manually added
-          .map((p) => Number(p.portalCategoryId));
+  // 🟢 Collect IDs of manually added AND selected categories (portalId === 0)
+  const manuallyAddedCategoryIds = mappedPortals
+    .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId)
+    .map((p) => Number(p.portalCategoryId));
 
-        // 🟠 Exclude unchecked categories (existing ones only)
-        const excludedCategories = mappedPortals
-          .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
-          .map((p) => Number(p.portalCategoryId));
+  // 🟠 Exclude unchecked categories (existing ones only)
+  const excludedCategories = mappedPortals
+    .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
+    .map((p) => Number(p.portalCategoryId));
 
-        // ✅ Append clean lists
-        formDataToSend.append(
-          "portal_category_ids",
-          mappedPortals[0]?.mapping_found
-            ? JSON.stringify([]) // mapping_found true → []
-            : JSON.stringify([mappedPortals[0]?.id]) // mapping_found false → requested_category.id
-        );
+  // ✅ Append clean lists based on mapping_found
+  if (mappedPortals[0]?.mapping_found) {
+    // When mapping found → send empty array
+    formDataToSend.append("portal_category_ids", JSON.stringify([]));
+  } else {
+    // When no mapping → send manually added category IDs OR requested category ID
+    const categoryIds = manuallyAddedCategoryIds.length > 0 
+      ? manuallyAddedCategoryIds 
+      : [mappedPortals[0]?.id];
+    
+    formDataToSend.append("portal_category_ids", JSON.stringify(categoryIds));
+  }
         formDataToSend.append(
           "exclude_portal_categories",
           JSON.stringify(excludedCategories)
         );
-
-        // 🧾 Debug logs
-        console.log("🟢 portal_category_ids →", newlyAddedCategories);
-        console.log("🟠 exclude_portal_categories →", excludedCategories);
-
-        // 🟡 Log FormData cleanly
+// 🟡 Log FormData cleanly
         const logFormData = {};
-        for (let [key, value] of formDataToSend.entries()) {
-          logFormData[key] = value;
-        }
-        // console.log("🟡 Payload for CREATE (FormData):", logFormData);
+            for (let [key, value] of formDataToSend.entries()) {
+              logFormData[key] = value;
+            }
+            console.log("🟡 Payload for CREATE (FormData):", logFormData);
 
-        const response = await createNewsArticle(formDataToSend);
-        createdArticle = response.data.data;
-      }
+            const response = await createNewsArticle(formDataToSend);
+            createdArticle = response.data.data;
+          }
 
       if (statusType === "DRAFT") {
         resetForm();
@@ -1121,168 +1092,214 @@ const handlePortalCategoryClick = async (portal) => {
               {showPortalSection && (
   <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
     {/* Header Section */}
-    <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
-      <div className="flex items-center space-x-2">
-        <div className="p-2 bg-gray-100 rounded-lg">
-          <Settings className="w-5 h-5 text-gray-700" />
-        </div>
-        <h2 className="text-lg font-semibold text-gray-900">
-          {mappedPortals[0]?.mapping_found
-            ? "Select matched portal"
-            : categoryHistory.length > 0
-            ? "Select subcategory"
-            : "Select category"}{" "}
-          from{" "}
-          <span className="font-bold">
-            {mappedPortals[0]?.portalName ||
-              mappedPortals[0]?.portalParentCategory ||
-              mappedPortals[0]?.portalCategoryName ||
-              "Selected"}
-          </span>
-        </h2>
-      </div>
-          {/* Manage Categories Button */}
-         {/* Manage Categories Button */}
-{!showPortalCategoryModal && formData.master_category && mappedPortals.some(portal => portal.mapping_found) && (
-  <div className="flex justify-end mt-3">
-    <button
-      type="button"
-      className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
-      onClick={() => {
-        setForceEnablePortal(true); // ✅ Enable portal management
-        setShowPortalCategoryModal(true); // Show the portal category modal
-      }}
-    >
-      Manage Portal Categories
-    </button>
-  </div>
-)}
+   <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
 
+  {/* LEFT: Icon + Title + Back Button */}
+  <div className="flex items-center space-x-3">
 
-      {/* Back Button */}
-      {categoryHistory.length > 0 && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleGoBack();
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back
-        </button>
-      )}
+   
+
+    {/* Settings Icon */}
+    <div className="p-2 bg-gray-100 rounded-lg">
+      <Settings className="w-5 h-5 text-gray-700" />
     </div>
 
+    {/* Title */}
+    <h2 className="text-lg font-semibold text-gray-900">
+      {mappedPortals[0]?.mapping_found
+        ? "Select matched portal"
+        : categoryHistory.length > 0
+        ? "Select subcategory"
+        : "Select category"}{" "}
+      from{" "}
+      <span className="font-bold">
+        {mappedPortals[0]?.portalName ||
+          mappedPortals[0]?.portalParentCategory ||
+          mappedPortals[0]?.portalCategoryName ||
+          "Selected"}
+      </span>
+    </h2>
+  </div>
+
+  {/* RIGHT: Manage Button */}
+  {!showPortalCategoryModal &&
+    formData.master_category &&
+    mappedPortals.some((portal) => portal.mapping_found) && (
+      <button
+        type="button"
+        className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+        onClick={() => {
+          setForceEnablePortal(true);
+          setShowPortalCategoryModal(true);
+        }}
+      >
+        Manage Portal Categories
+      </button>
+    )}
+     {/* Back Button (only when needed) */}
+    {categoryHistory.length > 0 && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleGoBack();
+        }}
+        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      </button>
+    )}
+</div>
+
+
     {/* Portal list */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {isPortalsLoading ? (
-        <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
-      ) : isLoadingMore ? (
-        <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
-      ) : (
-        <>
-         
-          {/* Map through portals */}
-          {mappedPortals.map((portal, i) => (
-            <div
-              key={i}
-              onClick={(e) => {
-                if (portal.mapping_found) {
-                  e.stopPropagation(); // Prevent triggering other actions
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  {isPortalsLoading ? (
+    <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
+  ) : isLoadingMore ? (
+    <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
+  ) : (
+    <>
+      {/* Map through portals */}
+      {mappedPortals.map((portal, i) => {
+        // Check if manually added (has timestamp-based id)
+       const isManuallyAdded = portal.portalId === 0;
+
+        
+        return (
+          <div
+            key={i}
+            onClick={(e) => {
+              if (portal.mapping_found) {
+                e.stopPropagation();
+                setMappedPortals((prev) =>
+                  prev.map((p) =>
+                    p.id === portal.id
+                      ? { ...p, selected: !p.selected }
+                      : p
+                  )
+                );
+              } else {
+                handlePortalCategoryClick(portal);
+              }
+            }}
+            className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
+              portal.selected
+                ? "bg-gray-900 border-gray-900 text-white shadow-lg"
+                : "bg-white border-gray-900 hover:border-gray-400"
+            }`}
+          >
+            {/* DELETE BUTTON for manually added categories */}
+            {isManuallyAdded && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   setMappedPortals((prev) =>
-                    prev.map((p) =>
-                      p.id === portal.id
-                        ? { ...p, selected: !p.selected }
-                        : p
+                    prev.filter(
+                      (p) =>
+                        !(
+                          p.portalName === portal.portalName &&
+                          p.portalCategoryId === portal.portalCategoryId
+                        )
                     )
                   );
-                } else {
-                  handlePortalCategoryClick(portal); // Show categories if no mapping
-                }
-              }}
-              className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
-                portal.selected
-                  ? "bg-gray-900 border-gray-900 text-white shadow-lg"
-                  : "bg-white border-gray-900 hover:border-gray-400"
-              }`}
-            >
-              <div>
-                {portal.mapping_found ? (
-                  <>
-                    {/* Checkbox Section */}
-                    <div className="absolute top-3 left-3">
-                      {portal.selected ? (
-                        <input
-                          type="checkbox"
-                          checked={portal.selected}
-                          onChange={() =>
-                            setMappedPortals((prev) =>
-                              prev.map((p, idx) =>
-                                idx === i ? { ...p, selected: !p.selected } : p
-                              )
-                            )
-                          }
-                          className="w-5 h-5 accent-gray-900"
-                        />
-                      ) : (
-                        <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
-                      )}
-                    </div>
+                }}
+                className="absolute top-2 right-2 p-1 bg-white hover:bg-red-600 text-white rounded-full transition-all z-10"
+                title="Remove this category"
+              >
+                <X className="w-3 h-3 text-black" />
+              </button>
+            )}
 
-                    {/* Text Content */}
-                    <div className="ml-6">
+            <div className="w-full">
+              {portal.mapping_found ? (
+                <>
+                  {/* Checkbox Section */}
+                  <div className="absolute top-3 left-3">
+                    {portal.selected ? (
+                      <input
+                        type="checkbox"
+                        checked={portal.selected}
+                        onChange={() =>
+                          setMappedPortals((prev) =>
+                            prev.map((p, idx) =>
+                              idx === i ? { ...p, selected: !p.selected } : p
+                            )
+                          )
+                        }
+                        className="w-5 h-5 accent-gray-900"
+                      />
+                    ) : (
+                      <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
+                    )}
+                  </div>
+
+                  {/* Text Content */}
+                  <div className="ml-6 mr-8">
+                    <p className="text-lg font-semibold">{portal.portalName}</p>
+                    <p className="text-sm text-gray-300">{portal.portalCategoryName}</p>
+                    <p className="text-xs text-gray-400">{portal.portalParentCategory}</p>
+                  </div>
+                </>
+              ) : (
+                // When no mapping is found, display alternative content
+                <div className="mr-8">
+                  {portal.is_manually_added ? (
+                    <>
+                      {/* MANUALLY ADDED — show Category → Parent → Portal name */}
+                      <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
+                      <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
+                      <p className="text-xs text-gray-400">{portal.portalName}</p>
+                    </>
+                  ) : (
+                    <>
+                      {/* MATCHING API DATA — show Portal name → Category → Subcategory */}
                       <p className="text-lg font-semibold">{portal.portalName}</p>
                       <p className="text-sm text-gray-300">{portal.portalCategoryName}</p>
                       <p className="text-xs text-gray-400">{portal.portalParentCategory}</p>
-                    </div>
-                  </>
-                ) : (
-                  // When no mapping is found, display alternative content
-                  <div>
-                    <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
-                    <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                    <p className="text-xs text-gray-400">{portal.portalName}</p>
-                  </div>
-                )}
-              </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          ))}
-        </>
-      )}
-    </div>
-  </section>
-)}
-
-
-              {showPortalCategoryModal && (
+          </div>
+        );
+      })}
+    </>
+  )}
+</div>
+              </section>
+            )}
+             {showPortalCategoryModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-2xl p-6 relative">
                     <button
-                      className="absolute top-3 right-3 text-gray-500 hover:text-black"
-                      onClick={() => {
-                        setShowPortalCategoryModal(false);
-                        setSelectedPortalForCategories(""); // ✅ CLEAR SELECTED PORTAL
-                      }}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                        className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                        onClick={() => {
+                          setShowPortalCategoryModal(false);
+                          setSelectedPortalForCategories(""); // Clear selected portal
+                          setIsSubcategoryView(false); // Reset to category view
+                          setPortalCategoriesModal([]); // Clear category/subcategory list
+                          setSelectedParentCategory(null); // Clear parent category
+                        }}
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
 
                     <h3 className="text-lg font-semibold mb-4">
-                      Manage Portal Categories
-                    </h3>
+                            {!selectedPortalForCategories 
+                              ? "Select Portal" 
+                              : isSubcategoryView 
+                                ? "Select Subcategory" 
+                                : "Select Category"}
+                          </h3>
 
                     {/* Portal selector */}
                     {formData.master_category && showPortalCategoryModal && (
@@ -1306,95 +1323,165 @@ const handlePortalCategoryClick = async (portal) => {
                         )}
                       </select>
                     )}
+                    {isSubcategoryView && (
+                        <button
+                          type="button"
+                          className="mb-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded flex items-center gap-1"
+                          onClick={async () => {
+                                setIsSubcategoryView(false);
+                                setCategoryPage(1);
+                                // Reload parent categories
+                                const res = await fetchPortalParentCategories(selectedPortalForCategories, 1);
+                                const categories = res?.data?.data?.parent_categories || [];
+                                // Remove any 'selected' property and ensure clean data
+                                const cleanCategories = categories.map(cat => ({
+                                  parent_name: cat.parent_name,
+                                  parent_external_id: cat.parent_external_id
+                                }));
+                                setPortalCategoriesModal(cleanCategories);
+                              }}
+                        >
+                          ← Back to Categories
+                        </button>
+                      )}
                     {/* Category list */}
                    {portalCategoriesModal.length > 0 ? (
-                          <ul className="max-h-60 overflow-y-auto border rounded p-2">
-                            {portalCategoriesModal.map((cat) => (
-                              <li
-                                key={cat.parent_external_id}
-                                className="p-2 border-b text-sm flex items-center justify-between"
-                              >
-                                <label className="flex items-center gap-2 cursor-pointer w-full">
-                                  <input
-                                    type="checkbox"
-                                    checked={cat.selected || false}
-                                    onChange={(e) => {
-                                      const isChecked = e.target.checked;
-                                      setPortalCategoriesModal((prev) =>
-                                        prev.map((c) => ({
-                                          ...c,
-                                          selected: c.parent_external_id === cat.parent_external_id ? isChecked : c.selected,
-                                        }))
-                                      );
-                                    }}
-                                  />
-                                  <span className="flex-1">
-                                    {cat.parent_name}
-                                  </span>
-                                </label>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
+                      <ul className="max-h-60 overflow-y-auto border rounded p-2">
+                        {portalCategoriesModal.map((cat) => (
+                          <li
+                            key={cat.parent_external_id || cat.external_id}
+                            className="p-2 border-b text-sm flex items-center justify-between cursor-pointer hover:bg-gray-50"
+                            onClick={async () => {
+                              if (!isSubcategoryView) {
+                                // Fetch subcategories when parent is clicked
+                                try {
+                                  const subCatRes = await fetchSubCategoriesByParent(
+                                    selectedPortalForCategories,
+                                    cat.parent_external_id
+                                  );
+                                  const subcats = subCatRes?.data?.data?.categories || [];
+                                  
+                                  if (subcats.length > 0) {
+                                    setPortalCategoriesModal(subcats);
+                                    setIsSubcategoryView(true);
+                                    setSelectedParentCategory(cat);
+                                  } else {
+                                    toast.info("No subcategories found");
+                                  }
+                                } catch (err) {
+                                  console.error("Error fetching subcategories:", err);
+                                  toast.error("Failed to load subcategories");
+                                }
+                              }
+                            }}
+                          >
+                            <label className="flex items-center gap-2 cursor-pointer w-full" onClick={(e) => {
+                              if (isSubcategoryView) {
+                                e.stopPropagation();
+                              }
+                            }}>
+                              {isSubcategoryView && (
+                                <input
+                                  type="checkbox"
+                                  checked={cat.selected || false}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    const isChecked = e.target.checked;
+                                    setPortalCategoriesModal((prev) =>
+                                      prev.map((c) => ({
+                                        ...c,
+                                        selected: c.external_id === cat.external_id ? isChecked : c.selected,
+                                      }))
+                                    );
+                                  }}
+                                />
+                              )}
+                              <span className="flex-1">
+                              <span className="flex-1">
+                                  {isSubcategoryView ? cat.name : cat.parent_name}
+                                </span>
+                              </span>
+                              {!isSubcategoryView && (
+                                <span className="text-xs text-gray-500">→</span>
+                              )}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
                       <p className="text-gray-500 text-sm text-center mt-2">
                         No categories found
                       </p>
                     )}
 
-                    
-                    {/* Save button */}
-                    <div className="flex justify-end mt-5">
-                      <button
-                        className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
-                        onClick={() => {
-                          const selectedCats = portalCategoriesModal.filter(
-                            (c) => c.selected
-                          );
-                          if (selectedCats.length === 0) {
-                            toast.warning(
-                              "Please select at least one category."
-                            );
-                            return;
-                          }
+                    {/* Save button - only show in subcategory view */}
+              {isSubcategoryView && (
+                <div className="flex justify-end mt-5">
+                  <button
+                    className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
+                    onClick={() => {
+                      const selectedCats = portalCategoriesModal.filter(
+                        (c) => c.selected
+                      );
+                      if (selectedCats.length === 0) {
+                        toast.warning(
+                          "Please select at least one subcategory."
+                        );
+                        return;
+                      }
 
-                          setMappedPortals((prev) => {
-                            const updated = [...prev];
-                            selectedCats.forEach((cat) => {
-                              const exists = updated.some(
-                                (p) =>
-                                  p.portalName ===
-                                    selectedPortalForCategories &&
-                                  p.portalCategoryName === cat.name
-                              );
-                              if (!exists) {
-                                updated.push({
-                                  id: Date.now() + Math.random(),
-                                  portalId: 0,
-                                  portalName: selectedPortalForCategories,
-                                  portalCategoryName: cat.name,
-                                  portalCategoryId: cat.id, // ✅ assign portal_category ID
-                                  selected: true,
-                                });
-                              }
+                      // ✅ Get the actual portal name from portalList
+                      const selectedPortalData = portalList.find(
+                        (p) => p.id === Number(selectedPortalForCategories)
+                      );
+                      const actualPortalName = selectedPortalData?.name || "Unknown Portal";
+
+                      setMappedPortals((prev) => {
+                        const updated = [...prev];
+                        selectedCats.forEach((cat) => {
+                          const exists = updated.some(
+                            (p) =>
+                              p.portalName === actualPortalName &&
+                              p.portalCategoryId === cat.external_id
+                          );
+                          if (!exists) {
+                            updated.push({
+                              id: Date.now() + Math.random(),
+                              portalId: Number(selectedPortalForCategories),
+                              portalName: actualPortalName,
+                              portalCategoryName: cat.name,
+                              portalParentCategory: cat.parent_name,
+                              portalCategoryId: cat.external_id,
+                              selected: true,
                             });
-                            return updated;
-                          });
+                          }
+                        });
+                        return updated;
+                      });
 
-                          toast.success(
-                            `${selectedCats.length} categor${
-                              selectedCats.length > 1 ? "yes" : "y"
-                            } added for ${selectedPortalForCategories}`
-                          );
-                          setShowPortalCategoryModal(false);
-                          setShowPortalSection(true);
-                        }}
-                      >
-                        Save Selected
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                      toast.success(
+                        `${selectedCats.length} subcategor${
+                          selectedCats.length > 1 ? "ies" : "y"
+                        } added`
+                      );
+                      
+                      // 🔥 RESET MODAL DATA
+                      setShowPortalCategoryModal(false);
+                      setIsSubcategoryView(false);
+                      setSelectedPortalForCategories(""); // Clear selected portal
+                      setPortalCategoriesModal([]); // Clear categories list
+                                        setSelectedParentCategory(null); // Clear parent category
+                                        setCategoryPage(1); // Reset page to 1
+                                        setShowPortalSection(true);
+                                      }}
+                                    >
+                                      Save Selected
+                                    </button>
+                                  </div>
+                                )}
+                                </div>
+                              </div>
+                            )}
 
               <div className="grid grid-cols-1 gap-2">
                 {/* <div>
