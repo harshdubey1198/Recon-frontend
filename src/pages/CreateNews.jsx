@@ -38,7 +38,6 @@ const NewsArticleForm = () => {
     slugEdited: false,
   });
   const [portalLoading, setPortalLoading] = useState(false);
-
   const [originalDraft, setOriginalDraft] = useState(null);
   const [isCategoryloading, setIsCategoryloading] = useState(true);
   const [availableTags, setAvailableTags] = useState([]);
@@ -822,25 +821,25 @@ const handlePortalCategoryClick = async (portal) => {
       }
 
       // -------------------- CREATE NEW --------------------
-      else {
+     else {
   // 🟢 Collect IDs of manually added AND selected categories (portalId === 0)
-  const manuallyAddedCategoryIds = mappedPortals
-    .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId)
-    .map((p) => Number(p.portalCategoryId));
+  const newlyAddedCategories = mappedPortals
+    .filter(p => p.portalId === 0 && p.selected && p.portalCategoryId)
+    .map(p => Number(p.id));
 
   // 🟠 Exclude unchecked categories (existing ones only)
   const excludedCategories = mappedPortals
     .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
-    .map((p) => Number(p.portalCategoryId));
+    .map((p) => Number(p.id));
 
   // ✅ Append clean lists based on mapping_found
   if (mappedPortals[0]?.mapping_found) {
-    // When mapping found → send empty array
-    formDataToSend.append("portal_category_ids", JSON.stringify([]));
+    // When mapping found → send manually added categories if any exist
+    formDataToSend.append("portal_category_ids", JSON.stringify(newlyAddedCategories));
   } else {
     // When no mapping → send manually added category IDs OR requested category ID
-    const categoryIds = manuallyAddedCategoryIds.length > 0 
-      ? manuallyAddedCategoryIds 
+    const categoryIds = newlyAddedCategories.length > 0 
+      ? newlyAddedCategories 
       : [mappedPortals[0]?.id];
     
     formDataToSend.append("portal_category_ids", JSON.stringify(categoryIds));
@@ -1170,10 +1169,9 @@ const handlePortalCategoryClick = async (portal) => {
       {/* Map through portals */}
       {mappedPortals.map((portal, i) => {
         // Check if manually added (has timestamp-based id)
-       const isManuallyAdded = portal.portalId === 0;
+     const isManuallyAdded = portal.is_manually_added === true;
 
-        
-        return (
+  return (
           <div
             key={i}
             onClick={(e) => {
@@ -1197,28 +1195,27 @@ const handlePortalCategoryClick = async (portal) => {
             }`}
           >
             {/* DELETE BUTTON for manually added categories */}
-            {isManuallyAdded && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMappedPortals((prev) =>
-                    prev.filter(
-                      (p) =>
-                        !(
-                          p.portalName === portal.portalName &&
-                          p.portalCategoryId === portal.portalCategoryId
-                        )
-                    )
-                  );
-                }}
-                className="absolute top-2 right-2 p-1 bg-white hover:bg-red-600 text-white rounded-full transition-all z-10"
-                title="Remove this category"
-              >
-                <X className="w-3 h-3 text-black" />
-              </button>
-            )}
+        {isManuallyAdded && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setMappedPortals((prev) =>
+              prev.filter(
+                (p) =>
+                  !(
+                    p.portalName === portal.portalName &&
+                    p.portalCategoryId === portal.portalCategoryId
+                  )
+              )
+            );
+          }}
+          className="absolute top-2 right-2 p-1 bg-white text-white rounded-full transition-all z-10"
+        >
+          <X className="w-3 h-3 text-black" />
+        </button>
+      )}
 
-            <div className="w-full">
+           <div className="w-full">
               {portal.mapping_found ? (
                 <>
                   {/* Checkbox Section */}
@@ -1241,29 +1238,35 @@ const handlePortalCategoryClick = async (portal) => {
                     )}
                   </div>
 
-                  {/* Text Content */}
+                  {/* Text Content - CONSISTENT ORDER: Portal → Parent → Category */}
                   <div className="ml-6 mr-8">
                     <p className="text-lg font-semibold">{portal.portalName}</p>
-                    <p className="text-sm text-gray-300">{portal.portalCategoryName}</p>
-                    <p className="text-xs text-gray-400">{portal.portalParentCategory}</p>
+                    <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
+                    <p className="text-xs text-gray-400">{portal.portalCategoryName}</p>
                   </div>
                 </>
               ) : (
-                // When no mapping is found, display alternative content
                 <div className="mr-8">
                   {portal.is_manually_added ? (
                     <>
-                      {/* MANUALLY ADDED — show Category → Parent → Portal name */}
-                      <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
+                      {/* MANUALLY ADDED - Portal → Parent → Category */}
+                      <p className="text-lg font-semibold">{portal.portalName}</p>
                       <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                      <p className="text-xs text-gray-400">{portal.portalName}</p>
+                      <p className="text-xs text-gray-400">{portal.portalCategoryName}</p>
+                    </>
+                  ) : categoryHistory.length > 0 ? (
+                    <>
+                      {/* SUBCATEGORY VIEW - Portal → Parent → Subcategory */}
+                       <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
+                      <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
+                     
                     </>
                   ) : (
                     <>
-                      {/* MATCHING API DATA — show Portal name → Category → Subcategory */}
-                      <p className="text-lg font-semibold">{portal.portalName}</p>
-                      <p className="text-sm text-gray-300">{portal.portalCategoryName}</p>
-                      <p className="text-xs text-gray-400">{portal.portalParentCategory}</p>
+                      {/* INITIAL PARENT CATEGORIES - Portal → Category */}
+                      <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
+                      <p className="text-sm text-gray-300">{portal.portalName}</p>
+                      
                     </>
                   )}
                 </div>
@@ -1274,7 +1277,7 @@ const handlePortalCategoryClick = async (portal) => {
       })}
     </>
   )}
-</div>
+          </div>
               </section>
             )}
              {showPortalCategoryModal && (
@@ -1446,15 +1449,16 @@ const handlePortalCategoryClick = async (portal) => {
                           );
                           if (!exists) {
                             updated.push({
-                              id: Date.now() + Math.random(),
-                              portalId: Number(selectedPortalForCategories),
-                              portalName: actualPortalName,
-                              portalCategoryName: cat.name,
-                              portalParentCategory: cat.parent_name,
-                              portalCategoryId: cat.external_id,
-                              selected: true,
-                            });
-                          }
+                                 id: cat.id,                     // use ONLY integer timestamp
+                                  portalId: 0,                          // mark manually added category
+                                  portalName: actualPortalName,
+                                  portalCategoryName: cat.name,
+                                  portalParentCategory: cat.parent_name,
+                                  portalCategoryId: cat.external_id,
+                                  selected: true,
+                                  is_manually_added: true,              // ✅ IMPORTANT FIX
+                                });
+                                                          }
                         });
                         return updated;
                       });
@@ -1481,7 +1485,7 @@ const handlePortalCategoryClick = async (portal) => {
                                 )}
                                 </div>
                               </div>
-                            )}
+              )}
 
               <div className="grid grid-cols-1 gap-2">
                 {/* <div>
