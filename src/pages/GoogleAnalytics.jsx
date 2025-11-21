@@ -9,8 +9,8 @@ const GoogleAnalytics = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState("Last 7 days");
   const [ga4Data, setGa4Data] = useState(null); // State for storing GA4 data
-  const [realtimeData, setRealtimeData] = useState([]); // State for storing real-time data (active users)
-  const [realtimeBars, setRealtimeBars] = useState([]); // For real-time bar chart
+  const [realtimeData, setRealtimeData] = useState([]); // State for storing 
+const [selectedCountry, setSelectedCountry] = useState([]);
 
   const dateRanges = [
     "Today",
@@ -29,6 +29,19 @@ const GoogleAnalytics = () => {
     setSelectedRange(range);
     setFilterOpen(false);
   };
+
+
+  const formatNumber = (num) => {
+  if (num === null || num === undefined) return "0";
+
+  if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  }
+  return num.toString();
+};
 
   // Function to handle country selection (though we're not using it for active users)
   const handleCountrySelect = (country) => {
@@ -92,34 +105,6 @@ const GoogleAnalytics = () => {
     return { startDate, endDate };
   };
 
-  // Function to fetch only active users (realtime data)
-  const fetchRealtimeData = async () => {
-    try {
-      const { startDate, endDate } = getDateRange(selectedRange); // Get dynamic date range
-      const requestData = {
-        pid: "497438670", // Replace with the actual pid
-        endpoint: "runRealtimeReport", // New endpoint for real-time data (active users only)
-        body: {
-          metrics: [
-            { name: "activeUsers" }
-          ]
-        },
-      };
-
-      const response = await queryGA4(requestData);
-      console.log("Realtime response:", response);
-
-      // Process the response to get active users
-      const activeUsers = response.data.rows.map((row) => ({
-        activeUsers: parseInt(row.metricValues[0].value, 10),
-      }));
-
-      setRealtimeBars(activeUsers); // Set active user data for the chart
-    } catch (error) {
-      console.error("Error fetching GA4 realtime data:", error);
-    }
-  };
-
   // Fetch GA4 data for active users, events, and new users
   useEffect(() => {
     const fetchGA4Data = async () => {
@@ -155,8 +140,61 @@ const GoogleAnalytics = () => {
       }
     };
 
+    // Fetch realtime data for active users per country
+    const fetchRealtimeData = async () => {
+      try {
+        const { startDate, endDate } = getDateRange(selectedRange); // Get dynamic date range
+        const requestData = {
+          pid: "497438670", // Replace with the actual pid
+          endpoint: "runRealtimeReport", // New endpoint for real-time data (active users only)
+          body: {
+            metrics: [
+              { name: "activeUsers" }
+            ]
+          },
+        };
+
+        const response = await queryGA4(requestData);
+        console.log("Realtime response:", response);
+
+        // Process the response to get active users
+        const activeUsers = response.data.rows.map((row) => ({
+          activeUsers: parseInt(row.metricValues[0].value, 10), // Active users for that country
+        }));
+
+        setRealtimeData(activeUsers); // Set active users per country to state
+      } catch (error) {
+        console.error("Error fetching GA4 realtime data:", error);
+      }
+    };
+    const fetchRealtimeCountryData = async () => {
+      try {
+        const { startDate, endDate } = getDateRange(selectedRange); // Get dynamic date range
+        const requestData = {
+          pid: "497438670", // Replace with the actual pid
+          endpoint: "runRealtimeReport", // New endpoint for real-time data (active users only)
+         body: { metrics: [ { name: "activeUsers" } ], dimensions: [ { name: "country" } ] }, };
+    
+
+        const response = await queryGA4(requestData);
+        console.log("Realtime response:", response);
+
+        // Process the response to get active users
+        const activeCountryUsers = response.data.rows.map((row) => ({
+                    country: row.dimensionValues[0].value, // Country nameusers for that country
+                    activeUsers: parseInt(row.metricValues[0]?.value || 0, 10),
+
+        }));
+
+        setSelectedCountry(activeCountryUsers); // Set active users per country to state
+      } catch (error) {
+        console.error("Error fetching GA4 realtime data:", error);
+      }
+    };
+
     fetchGA4Data();
     fetchRealtimeData(); // Call to fetch real-time data
+    fetchRealtimeCountryData()
   }, [selectedRange]); // Trigger on range change
 
   return (
@@ -198,7 +236,7 @@ const GoogleAnalytics = () => {
               <ChevronDown size={16} className="text-gray-600" />
             </div>
             <div className="text-4xl font-normal text-gray-900 mb-1">
-              {ga4Data ? ga4Data[0]?.activeUsers : "Loading..."}
+              {ga4Data ? formatNumber(ga4Data[0]?.activeUsers) : "Loading..."}
             </div>
             <div className="text-red-600 text-sm font-normal">↓ 7.4%</div>
           </div>
@@ -210,7 +248,7 @@ const GoogleAnalytics = () => {
               <ChevronDown size={16} className="text-gray-600" />
             </div>
             <div className="text-4xl font-normal text-gray-900 mb-1">
-              {ga4Data ? ga4Data[0]?.eventCount : "Loading..."}
+              {ga4Data ? formatNumber(ga4Data[0]?.eventCount) : "Loading..."}
             </div>
             <div className="text-green-600 text-sm font-normal">↑ 22.8%</div>
           </div>
@@ -232,7 +270,7 @@ const GoogleAnalytics = () => {
               <ChevronDown size={16} className="text-gray-600" />
             </div>
             <div className="text-4xl font-normal text-gray-900 mb-1">
-              {ga4Data ? ga4Data[0]?.newUsers : "Loading..."}
+              {ga4Data ? formatNumber(ga4Data[0]?.newUsers) : "Loading..."}
             </div>
             <div className="text-red-600 text-sm font-normal">↓ 9.2%</div>
           </div>
@@ -252,7 +290,7 @@ const GoogleAnalytics = () => {
             <div className="text-xs text-gray-500 font-medium mb-3 tracking-wider">ACTIVE USERS PER COUNTRY</div>
             <div className="h-24">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={realtimeData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <BarChart data={selectedCountry} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                   <Bar dataKey="activeUsers" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -268,8 +306,8 @@ const GoogleAnalytics = () => {
 
             <div className="space-y-3">
               {/* Dynamic Table Rows */}
-              {realtimeData.length > 0 ? (
-                realtimeData.map((item, i) => (
+              {selectedCountry.length > 0 ? (
+                selectedCountry.map((item, i) => (
                   <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
                     <div className="flex items-center gap-3">
                       <div className="w-1 h-4 bg-blue-600 rounded"></div>
