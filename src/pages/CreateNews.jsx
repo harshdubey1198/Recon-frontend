@@ -6,7 +6,7 @@ import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchAssignedCategorie
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 import { useParams } from "react-router-dom";
-
+import webpfy from "webpfy";
 const NewsArticleForm = () => {
   const { id } = useParams();
   const isEditMode = Boolean(id);
@@ -442,29 +442,43 @@ const NewsArticleForm = () => {
     setCroppedAreaPixels(croppedAreaPx);
   };
 
-  const applyCrop = async () => {
-    if (!imagePreview || !croppedAreaPixels) {
-      setShowCropper(false);
-      return;
-    }
+ const applyCrop = async () => {
+  if (!imagePreview || !croppedAreaPixels) {
+    setShowCropper(false);
+    return;
+  }
+  try {
+    const blob = await getCroppedImg(
+      imagePreview,
+      croppedAreaPixels,
+      rotation
+    );
+    if (!blob) return;
+    const croppedFile = new File([blob], "cropped.jpg", {
+      type: "image/jpeg",
+    });
+    console.log("🟡 Original File Type:", croppedFile.type, "Name:", croppedFile.name);
+
+    // Convert JPEG → WebP
+    let finalFile = croppedFile;
     try {
-      const blob = await getCroppedImg(
-        imagePreview,
-        croppedAreaPixels,
-        rotation
-      );
-      if (!blob) return;
-      const croppedFile = new File([blob], "cropped.jpg", {
-        type: "image/jpeg",
-      });
-      setPreviewFromFile(croppedFile);
-      setFormData((prev) => ({ ...prev, image: croppedFile }));
-    } catch (e) {
-      console.error("Crop failed", e);
-    } finally {
-      setShowCropper(false);
+      const { webpBlob, fileName } = await webpfy({ image: croppedFile });
+      if (webpBlob) {
+        finalFile = new File([webpBlob], fileName || "image.webp", { type: "image/webp" });
+        console.log("🟢 Converted to WebP:", finalFile.type, "Size:", (finalFile.size / 1024).toFixed(2), "KB");
+      }
+    } catch (webpError) {
+      console.warn("WebP conversion failed, using original JPEG:", webpError);
     }
-  };
+
+    setPreviewFromFile(finalFile);
+    setFormData((prev) => ({ ...prev, image: finalFile }));
+  } catch (e) {
+    console.error("Crop failed", e);
+  } finally {
+    setShowCropper(false);
+  }
+};
 
   useEffect(() => {
     const loadTags = async () => {
