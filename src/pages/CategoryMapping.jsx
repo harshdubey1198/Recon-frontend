@@ -318,7 +318,7 @@ const CategoryMapping = () => {
       });
 
       setMappings([...mappings, newMapping]);
-      setSelectedMasterCategory("");
+      // setSelectedMasterCategory("");
       setSelectedPortal("");
       setSelectedPortalCategory("");
       toast.success(res.data.message);

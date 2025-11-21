@@ -49,6 +49,8 @@ export default function SignIn() {
         role,
         token: access,
         refreshToken: refresh,
+        accessExpiresIn: 431999.4294490814
+
       });
 
       navigate("/dashboard");
@@ -98,7 +100,7 @@ export default function SignIn() {
               {/* Username Field */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 block">
-                  UserName
+                Username
                 </label>
                 <div className="relative">
                   <input

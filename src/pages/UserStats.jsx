@@ -187,7 +187,7 @@ const UserStats = () => {
               </div>
             ) : stats.length > 0 ? (
             <div className="overflow-x-auto">
-              <div className="max-h-64 overflow-y-auto">
+             <div className="max-h-80 overflow-y-auto">
                 <table className="w-full border border-gray-200 rounded-lg">
                   <thead className="bg-black text-white/80 text-sm uppercase sticky top-0 z-20">
                     <tr>

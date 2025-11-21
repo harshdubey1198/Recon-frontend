@@ -18,6 +18,7 @@ import UserStats from "./pages/UserStats";
 import PortalList from "./pages/PortalList";
 import CategoryList from "./pages/CategoryList";
 import { ToastContainer } from "react-toastify";
+import UserPortalMapping from "./pages/UserPortalMapping";
 
 export default function AppRoutes() {
   const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
@@ -53,6 +54,7 @@ export default function AppRoutes() {
         {/* Master-only routes */}
          {isMaster && (
           <>
+            <Route path="/portal-mapping" element={<UserPortalMapping />} />
             <Route path="/category-mapping" element={<CategoryMapping />} />
             <Route path="/category-insights" element={<CategoryList />} />
             <Route path="/portal-insights" element={<PortalList />} />
