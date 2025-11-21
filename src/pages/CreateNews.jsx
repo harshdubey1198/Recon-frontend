@@ -959,7 +959,7 @@ const handlePortalCategoryClick = async (portal) => {
         /> */}
 
           {/* Header */}
-          <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-6">
+          <div className="bg-black px-6 py-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-white/10 rounded-lg">
