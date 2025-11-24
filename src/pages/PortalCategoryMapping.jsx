@@ -346,10 +346,10 @@ const PortalCategoryMapping = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white p-6">
+     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-5xl mx-auto">
-        <div className="bg-black rounded-2xl shadow-lg p-8 mb-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-black px-8 py-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {step > 1 && (
                 <button
@@ -360,7 +360,7 @@ const PortalCategoryMapping = () => {
                 </button>
               )}
               <div>
-                <h1 className="text-3xl font-bold text-white">Portal Category Mapping</h1>
+               <h1 className="text-2xl font-bold text-white flex items-center gap-3">Portal Category Mapping</h1>
                 <p className="text-gray-300 mt-1">Step {step} of 4</p>
               </div>
             </div>
