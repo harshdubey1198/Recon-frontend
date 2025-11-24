@@ -468,7 +468,7 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
               </div>
             </div>
 
-            {/* Master Category Multi-Select */}
+            {/* select multi portal  */}
             <div className="space-y-3">
               <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <div className="bg-gray-900 p-1.5 rounded-lg">

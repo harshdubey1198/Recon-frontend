@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {Upload,X,Plus,Calendar,Eye,Save,RefreshCw,Image as ImageIcon,Tag,FileText,Settings,Clock,TrendingUp,AlertCircle,Star,Crop,RotateCw,ZoomIn,Maximize2,SaveAll,} from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchPortalParentCategories,fetchDraftNews,updateDraftNews,fetchPortalCategoryMatching,fetchPortalCategories,fetchPortals,fetchUserPortalsByUserId,
+import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortalCategoryMatching,fetchPortalCategories,fetchPortals,fetchUserPortalsByUserId,
   fetchSubCategoriesByParent,
 } from "../../server";
 import constant from "../../Constant";
@@ -128,7 +128,10 @@ const handlePortalCategoryClick = async (portal) => {
     setIsPortalsLoading(true);
 
     // Save current state to history before navigating
+    // Push history ONLY when loading subcategories (NOT parent level)
+if (mappedPortals.length > 0 && portal.has_subcategories) {
     setCategoryHistory((prev) => [...prev, mappedPortals]);
+}
 
     let subcats = [];
     let hasSubcategories = false;
@@ -168,45 +171,66 @@ const handlePortalCategoryClick = async (portal) => {
       // Don't return here - continue to check matching API below
     }
 
-    // CASE 2: Always try matching API (whether or not subcategories exist)
-    console.log("🔍 Calling matching API for portal.id:", portal.id);
+    // CASE 2: Always try cross-portal mapping API (whether or not subcategories exist)
+    console.log("🔍 Calling cross-portal mapping API for portal.id:", portal.id);
 
     try {
-      const matchingRes = await fetchPortalCategoryMatching(portal.id);
-      console.log("📡 Matching API Response:", matchingRes);
+      const matchingRes = await fetchCrossPortalMappings(portal.id);
+      console.log("📡 Cross-Portal Mapping API Response:", matchingRes);
       console.log("📡 Full response data:", matchingRes?.data);
 
       const matchingData = matchingRes?.data?.data || {};
       const mappingFound = matchingData.mapping_found;
       const requestedCategory = matchingData.requested_portal_category;
-      const relatedCategories = matchingData.related_portal_categories || [];
+      const mappedCategories = matchingData.mapped_portal_categories || [];
 
       console.log("📦 Matching data:", matchingData);
       console.log("✅ Mapping found:", mappingFound);
-      console.log("🔗 Related categories:", relatedCategories);
-      console.log("🔗 Related categories count:", relatedCategories.length);
+      console.log("🔗 Mapped categories:", mappedCategories);
+      console.log("🔗 Mapped categories count:", mappedCategories.length);
 
       // Always show matching results if mapping is found
-      if (mappingFound && relatedCategories.length > 0) {
-        console.log("🎯 Displaying related categories from matching API");
-        setMappedPortals(
-          relatedCategories.map((c) => ({
+      if (mappingFound && (mappedCategories.length > 0 || requestedCategory)) {
+        console.log("🎯 Displaying categories from cross-portal mapping API");
+        
+        // Combine requested category with mapped categories
+        const allCategories = [];
+        
+        // Add requested category first
+        if (requestedCategory) {
+          allCategories.push({
+            id: requestedCategory.id,
+            portalId: requestedCategory.portal_id || portal.portalId,
+            portalName: requestedCategory.portal_name || portal.portalName,
+            portalCategoryName: requestedCategory.name,
+            portalParentCategory: requestedCategory.parent_name,
+            portalCategoryId: requestedCategory.id,
+            selected: true,
+            mapping_found: mappingFound,
+            master_category_id: matchingData.master_category_id,
+          });
+        }
+        
+        // Add mapped categories
+        mappedCategories.forEach((c) => {
+          allCategories.push({
             id: c.id,
             portalId: c.portal_id,
             portalName: c.portal_name,
             portalCategoryName: c.name,
             portalParentCategory: c.parent_name,
-            portalCategoryId: c.external_id,
+            portalCategoryId: c.portal_category_id,
             selected: true,
             mapping_found: mappingFound,
             master_category_id: matchingData.master_category_id,
-          }))
-        );
+          });
+        });
+        
+        setMappedPortals(allCategories);
 
+        const totalCount = allCategories.length;
         toast.success(
-          `Found ${relatedCategories.length -1 } matched categor${
-            relatedCategories.length > 1 ? "ies" : "y"
-          } across portals`
+          `Found ${mappedCategories.length} matched categories `
         );
       } else if (requestedCategory && !hasSubcategories) {
         // Only show requested category if no subcategories and no mapping
@@ -214,14 +238,13 @@ const handlePortalCategoryClick = async (portal) => {
         setMappedPortals([
           {
             id: requestedCategory.id,
-            portalId: requestedCategory.portal_id,
-            portalName: portal.portalName,
+            portalId: requestedCategory.portal_id || portal.portalId,
+            portalName: requestedCategory.portal_name || portal.portalName,
             portalCategoryName: requestedCategory.name,
             portalParentCategory: requestedCategory.parent_name,
-            portalCategoryId: requestedCategory.external_id,
+            portalCategoryId: requestedCategory.id,
             selected: true,
             mapping_found: mappingFound,
-            master_category_id: matchingData.master_category_id || null,
           },
         ]);
 
@@ -230,12 +253,12 @@ const handlePortalCategoryClick = async (portal) => {
         }
       } else if (!hasSubcategories && !mappingFound) {
         // No subcategories and no mapping found
-        console.log("❌ No categories found in matching response");
+        console.log("❌ No categories found in mapping response");
         toast.info("No categories found for this selection");
         setCategoryHistory((prev) => prev.slice(0, -1));
       }
     } catch (matchError) {
-      console.error("❌ Matching API failed:", matchError);
+      console.error("❌ Cross-Portal Mapping API failed:", matchError);
       console.error("❌ Error response:", matchError.response?.data);
       console.error("❌ Error status:", matchError.response?.status);
       
@@ -718,7 +741,7 @@ const handlePortalCategoryClick = async (portal) => {
       return;
     }
 
-    const categoryId = Number(formData.master_category);
+    // const categoryId = Number(formData.master_category);
 
     // if (statusType === "PUBLISHED" && !categoryId && !formData.id) {
     //   toast.warning("Please select a category.");
@@ -740,12 +763,12 @@ const handlePortalCategoryClick = async (portal) => {
       formDataToSend.append("counter", formData.counter);
       formDataToSend.append("order", formData.order);
       formDataToSend.append(
-        "master_category",
+       "cross_portal_category_id",
         mappedPortals[0]?.mapping_found
-          ? mappedPortals[0]?.master_category_id // mapping_found true
-          : "" // mapping_found false → empty
-      );
-
+          ? mappedPortals[0]?.portalCategoryId   // when mapping found → subcategory id
+          : mappedPortals[0]?.id                 // when manually added
+      )
+       
       if (formData.tags && formData.tags.length > 0) {
         const formattedTags = formData.tags
           .map((tag) => {
@@ -1128,21 +1151,22 @@ const handlePortalCategoryClick = async (portal) => {
     </h2>
   </div>
 
-  {/* RIGHT: Manage Button */}
-  {!showPortalCategoryModal &&
-    formData.master_category &&
-    mappedPortals.some((portal) => portal.mapping_found) && (
-      <button
-        type="button"
-        className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
-        onClick={() => {
-          setForceEnablePortal(true);
-          setShowPortalCategoryModal(true);
-        }}
-      >
-        Manage Portal Categories
-      </button>
-    )}
+ {/* RIGHT: Manage Button */}
+{!showPortalCategoryModal &&
+  formData.master_category &&
+  categoryHistory.length > 0 && (
+    <button
+      type="button"
+      className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+      onClick={() => {
+        setForceEnablePortal(true);
+        setShowPortalCategoryModal(true);
+      }}
+    >
+      Manage Portal Categories
+    </button>
+  )}
+
      {/* Back Button (only when needed) */}
     {categoryHistory.length > 0 && (
       <button
@@ -1174,7 +1198,8 @@ const handlePortalCategoryClick = async (portal) => {
     <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
   ) : (
     <>
-      {/* Map through portals */}
+    
+    {/* Map through portals */}
       {mappedPortals.map((portal, i) => {
         // Check if manually added (has timestamp-based id)
      const isManuallyAdded = portal.is_manually_added === true;

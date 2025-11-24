@@ -297,6 +297,34 @@ export async function mapMasterCategory(data) {
   });
 }
 
+// create portal category mapping
+export async function createPortalCategoryMapping(data) {
+  return axiosInstance.post("/api/cross-portal-mappings/", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// get target portals list by source category
+export async function fetchCrossPortalMappings(sourceCategoryId) {
+  return axiosInstance.get(`/api/cross-portal-mappings`, {
+    params: {
+      source_category_id: sourceCategoryId,
+    },
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// delete cross portal mapping (NO params)
+export async function deleteCrossPortalMapping(mappingId) {
+  return axiosInstance.delete(
+    `/api/cross-portal-mappings/${mappingId}/`
+  );
+}
+
 export async function registerUser(data) {
   // data should be a plain object: { username, password, email }
   return axiosInstance.post("/account/registration/", data, {
