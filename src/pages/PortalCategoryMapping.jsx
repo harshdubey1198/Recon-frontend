@@ -587,7 +587,8 @@ const PortalCategoryMapping = () => {
                             setPortalCategoriesModal((prev) =>
                               prev.map((c) => ({
                                 ...c,
-                                selected: c.external_id === cat.external_id ? isChecked : c.selected,
+                               selected: c.external_id === cat.external_id ? isChecked : false,
+
                               }))
                             );
                           }}
