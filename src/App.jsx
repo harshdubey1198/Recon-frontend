@@ -19,14 +19,22 @@ import PortalList from "./pages/PortalList";
 import CategoryList from "./pages/CategoryList";
 import GoogleAnalytics from "./pages/GoogleAnalytics";
 import { ToastContainer } from "react-toastify";
+import UserPortalMapping from "./pages/UserPortalMapping";
+import PortalCategoryMapping from "./pages/PortalCategoryMapping";
+
+// Master-only route wrapper component
+function MasterRoute({ children }) {
+  const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
+  const isMaster = user?.role === "master";
+  
+  if (!isMaster) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+}
 
 export default function AppRoutes() {
-  const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
- const role = user?.role || "";
-  console.log(role);
-  
-  const isMaster = role === "master";
-
   return (
     <Routes>
       {/* Default redirect */}
@@ -51,23 +59,17 @@ export default function AppRoutes() {
         <Route path="/news-list" element={<NewsList />} />
         <Route path="/news/:id" element={<NewsDetail />} />
 
-        {/* Master-only routes */}
-         {isMaster && (
-          <>
-            <Route path="/category-mapping" element={<CategoryMapping />} />
-            <Route path="/category-insights" element={<CategoryList />} />
-            <Route path="/portal-insights" element={<PortalList />} />
-            <Route path="/access-control" element={<AccessControl />} />
-            <Route path="/user-stats" element={<UserStats />} />
-            <Route path="/portal-management" element={<PortalManagement />} />
-            <Route path="/user-access-list" element={<UserAccessList />} />
-            <Route path="/news-reports" element={<NewsReports />} />
-            <Route path="/all-categories" element={<AllCategories />} />
-            <Route path="/user-categories" element={<UserCategories />} />
-            <Route path="/analytics" element={<GoogleAnalytics />} />
-
-          </>
-           )}
+        {/* Master-only routes - Always defined, protected by MasterRoute */}
+        <Route path="/portal-mapping" element={<MasterRoute><UserPortalMapping /></MasterRoute>} />
+        <Route path="/Portal-category-mapping" element={<MasterRoute><PortalCategoryMapping /></MasterRoute>} />
+        {/* <Route path="/category-insights" element={<MasterRoute><CategoryList /></MasterRoute>} /> */}
+        <Route path="/portal-insights" element={<MasterRoute><PortalList /></MasterRoute>} />
+        <Route path="/user-stats" element={<MasterRoute><UserStats /></MasterRoute>} />
+        <Route path="/portal-management" element={<MasterRoute><PortalManagement /></MasterRoute>} />
+        <Route path="/user-access-list" element={<MasterRoute><UserAccessList /></MasterRoute>} />
+        <Route path="/news-reports" element={<MasterRoute><NewsReports /></MasterRoute>} />
+        <Route path="/all-categories" element={<MasterRoute><AllCategories /></MasterRoute>} />
+        <Route path="/user-categories" element={<MasterRoute><UserCategories /></MasterRoute>} />
       </Route>
 
       {/* Catch-all */}

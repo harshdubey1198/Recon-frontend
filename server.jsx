@@ -179,7 +179,10 @@ export async function createMasterCategory(data) {
 export async function assignMasterCategoriesToUser(data) {
   return axiosInstance.post("/account/user/assignment/", data);
 }
-
+ // assign multiple portals to a user
+ export async function assignMultiplePortalsToUser(data) {
+  return axiosInstance.post("/account/user/assign-portal/", data);
+}
 
 export async function fetchPortals(page = 1)  {
   return axiosInstance.get(`/api/portals/list/?page=${page}`);
@@ -235,8 +238,38 @@ export async function fetchAssignmentsByUsername(username,page=1) {
   return axiosInstance.get(`/account/assignments/list/?username=${username}&page=${page}`);
 }
 
+// user portal assignments
+export async function fetchUserPortalsByUserId(user_id, page = 1) {
+  return axiosInstance.get(`/account/user/portals/${user_id}/?page=${page}`);
+}
 export async function fetchMappedCategoriesById(id,page=1) {
   return axiosInstance.get(`/api/master/categories/mapped/${id}/?page=${page}`);
+}
+
+// fetch portal parent categories
+export async function fetchPortalParentCategories(portal_id,page=1) {
+  return axiosInstance.get(`/api/parent/categories/list/${portal_id}/?page=${page}`);
+}
+
+// Fetch Sub-Categories by Parent Category
+export async function fetchSubCategoriesByParent(portal_id, parent_external_id, page = 1) {
+  return axiosInstance.get(
+    `/api/sub-categories/by/parent/category/`,
+    {
+      params: {
+        portal_id,
+        parent_external_id,
+        page
+      }
+    }
+  );
+}
+
+// Fetch Portal Category Matching
+export async function fetchPortalCategoryMatching(portal_category_id) {
+  return axiosInstance.get(`/api/portal/category/matching/`, { 
+    params: { portal_category_id },
+  });
 }
 
 // filter pramas section 
@@ -262,6 +295,34 @@ export async function mapMasterCategory(data) {
       "Content-Type": "application/json",
     },
   });
+}
+
+// create portal category mapping
+export async function createPortalCategoryMapping(data) {
+  return axiosInstance.post("/api/cross-portal-mappings/", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// get target portals list by source category
+export async function fetchCrossPortalMappings(sourceCategoryId) {
+  return axiosInstance.get(`/api/cross-portal-mappings`, {
+    params: {
+      source_category_id: sourceCategoryId,
+    },
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// delete cross portal mapping (NO params)
+export async function deleteCrossPortalMapping(mappingId) {
+  return axiosInstance.delete(
+    `/api/cross-portal-mappings/${mappingId}/`
+  );
 }
 
 export async function registerUser(data) {
@@ -323,6 +384,16 @@ export async function removeUserAssignment(data) {
     }
   });
 }
+// remove portal user assignment
+export async function removePortalUserAssignment(data) {
+  return axiosInstance.delete(`/account/user/remove-portal/`, {
+    data: {
+      user_id: data.user_id,
+      portal_id: data.portal_id
+    }
+  });
+}
+
 export async function fetchUserPostStats(params = {}) {
   const query = new URLSearchParams();
 

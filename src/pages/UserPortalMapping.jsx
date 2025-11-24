@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { User, List, CheckCircle2, Plus, Loader2, X, Trash2 } from "lucide-react";
-import { createMasterCategory, fetchMasterCategories, assignMasterCategoriesToUser, fetchAllUsersList,registerUser, fetchAssignmentsByUsername, removeUserAssignment } from "../../server";
+import {  assignMultiplePortalsToUser,fetchPortals, fetchAllUsersList,registerUser, fetchUserPortalsByUserId, removePortalUserAssignment } from "../../server";
 import { toast } from "react-toastify";
 import formatUsername from "../utils/formateName";
 
-const AccessControl = () => {
+const UserPortalMapping = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [masterCategoryName, setMasterCategoryName] = useState("");
   const [masterCategoryDescription, setMasterCategoryDescription] = useState("");
@@ -60,57 +60,86 @@ const AccessControl = () => {
     }
   };
 
-  // Load Categories with pagination
-  const loadCategories = async (page = 1, append = false) => {
-    if (isCategoryFetching) return;
-    setIsCategoryFetching(true);
-    try {
-      const response = await fetchMasterCategories(page);
-      const { data, pagination } = response.data;
-      
-      setMasterCategories(prev => append ? [...prev, ...data] : data);
-      setCategoryPagination(pagination);
-      setCategoryPage(page);
-    } catch (error) {
-      console.error("Error fetching master categories:", error);
-      toast.error("Failed to load categories");
-    } finally {
-      setIsCategoryFetching(false);
-    }
-  };
+// Load Portals with pagination (replacing loadCategories)
+const loadCategories = async (page = 1, append = false) => {
+  if (isCategoryFetching) return;
+  setIsCategoryFetching(true);
 
-  // Load user assignments with infinite scroll
-  const loadUserAssignments = async (username, page = 1, append = false) => {
-    if (!username) {
+  try {
+    const response = await fetchPortals(page);
+    const { data, pagination } = response.data;
+
+    // Structure portal data
+    const formattedData = data.map((portal) => ({
+      id: portal.id,
+      name: portal.name,        // portal.name based on your API
+      base_url: portal.base_url // optional if you want to use it later
+    }));
+
+    setMasterCategories((prev) =>
+      append ? [...prev, ...formattedData] : formattedData
+    );
+
+    setCategoryPagination(pagination);
+    setCategoryPage(page);
+
+  } catch (error) {
+    console.error("Error fetching portals:", error);
+    toast.error("Failed to load portals");
+  } finally {
+    setIsCategoryFetching(false);
+  }
+};
+
+
+
+ // Load user portal assignments with infinite scroll
+const loadUserAssignments = async (userId, page = 1, append = false) => {
+  if (!userId) {
+    setUserAssignments([]);
+    setAssignmentPagination(null);
+    return;
+  }
+
+  if (append) {
+    setIsLoadingMoreAssignments(true);
+  } else {
+    setAssignmentsLoading(true);
+  }
+
+  try {
+    const response = await fetchUserPortalsByUserId(userId, page);
+
+    if (response.data?.status) {
+      const newData = response.data.data.map((item) => ({
+        id: item.assignment_id,          // assignment id
+        master_category: {               // match old category structure
+          id: item.portal_id,
+          name: item.portal_name
+        },
+        created_at: item.assigned_at,    // match expected timestamp key
+      }));
+
+      setUserAssignments(prev =>
+        append ? [...prev, ...newData] : newData
+      );
+
+      setAssignmentPagination(response.data.pagination);
+      setAssignmentPage(page);
+    }
+  } catch (error) {
+    console.error("Error fetching portal assignments:", error);
+    toast.error("Failed to load assignments");
+
+    if (!append) {
       setUserAssignments([]);
-      setAssignmentPagination(null);
-      return;
     }
+  } finally {
+    setAssignmentsLoading(false);
+    setIsLoadingMoreAssignments(false);
+  }
+};
 
-    if (append) {
-      setIsLoadingMoreAssignments(true);
-    } else {
-      setAssignmentsLoading(true);
-    }
-
-    try {
-      const response = await fetchAssignmentsByUsername(username, page);
-      if (response.data?.status) {
-        setUserAssignments(prev => append ? [...prev, ...response.data.data] : response.data.data);
-        setAssignmentPagination(response.data.pagination);
-        setAssignmentPage(page);
-      }
-    } catch (error) {
-      console.error("Error fetching assignments:", error);
-      toast.error("Failed to load assignments");
-      if (!append) {
-        setUserAssignments([]);
-      }
-    } finally {
-      setAssignmentsLoading(false);
-      setIsLoadingMoreAssignments(false);
-    }
-  };
 
   useEffect(() => {
     loadUsers();
@@ -127,7 +156,7 @@ const AccessControl = () => {
     setSelectedUserId(user ? user.id : null);
     
     if (username) {
-      loadUserAssignments(username, 1, false);
+      loadUserAssignments(user.id, 1, false);
     } else {
       setUserAssignments([]);
       setAssignmentPagination(null);
@@ -160,9 +189,9 @@ const AccessControl = () => {
 
     setRemovingAssignment(assignment.id);
     try {
-      const response = await removeUserAssignment({
+      const response = await removePortalUserAssignment({
         user_id: selectedUserId,
-        master_category_id: masterCategoryId
+        portal_id: masterCategoryId
       });
       
       toast.success(response?.data?.message || `Removed assignment: ${assignment.master_category?.name}`);
@@ -215,56 +244,36 @@ const AccessControl = () => {
     }
   };
 
-  // Create Master Category
-  const handleCreateMasterCategory = async () => {
-    if (!masterCategoryName || !masterCategoryDescription) {
-      toast.warning("Please fill both name and description");
-      return;
-    }
-    try {
-      await createMasterCategory({
-        name: masterCategoryName,
-        description: masterCategoryDescription,
-      });
-      toast.success("Master Category created!");
-      setIsModalOpen(false);
-      setMasterCategoryName("");
-      setMasterCategoryDescription("");
-      loadCategories(1, false);
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to create master category");
-    }
-  };
+ // Add access (assign master categories to user)
+ const handleAddAccess = async () => {
+  if (!selectedUser || selectedMasterCategories.length === 0) {
+    toast.warning("Please select a user and at least one portal");
+    return;
+  }
 
-  // Add access (assign master categories to user)
-  const handleAddAccess = async () => {
-    if (!selectedUser || selectedMasterCategories.length === 0) {
-      toast.warning("Please select a user and at least one master category");
-      return;
-    }
+  try {
+    const userObj = unassignedUsers.find((u) => u.username === selectedUser);
 
-    try {
-      const userObj = unassignedUsers.find((u) => u.username === selectedUser);
-      const categoryIds = masterCategories
-        .filter((cat) => selectedMasterCategories.includes(cat.name))
-        .map((cat) => cat.id);
+    const portalIds = masterCategories
+      .filter((cat) => selectedMasterCategories.includes(cat.name))
+      .map((cat) => cat.id);
 
-      const res = await assignMasterCategoriesToUser({
-        username: userObj.username,
-        master_categories: categoryIds,
-      });
+    const res = await assignMultiplePortalsToUser({
+      user_id: userObj.id,       // ✅ FIXED (was userObj.user_id)
+      portal_ids: portalIds,     // ✅ matches API payload
+    });
 
-      toast.success(`${res.data.message}\n${selectedMasterCategories.join(", ")}`);
-      setSelectedMasterCategories([]);
-      
-      // Refresh assignments for the selected user
-      loadUserAssignments(selectedUser, 1, false);
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to assign categories");
-    }
-  };
+    toast.success(`${res.data.message}\n${selectedMasterCategories.join(", ")}`);
+    setSelectedMasterCategories([]);
+
+    // Refresh assignments
+    loadUserAssignments(userObj.id, 1, false); // ✅ FIXED (was selectedUser)
+  } catch (error) {
+    console.error(error);
+    toast.error(error.response?.data?.message || "Failed to assign portals");
+  }
+};
+
 
    const handleAddUser = async (e) => {
       e.preventDefault();
@@ -321,25 +330,16 @@ const AccessControl = () => {
                   <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
-                   Category Mapping
+                User Portal Mapping
                 </h1>
-                <p className="text-gray-300 text-sm mt-1">Manage user permissions and master categories</p>
+                <p className="text-gray-300 text-sm mt-1 ml-12">Manage user permissions and portals</p>
               </div>
-               <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all shadow-md text-sm font-medium"
-                  >
-                    <Plus className="w-4 h-4" /> Add Category
-                  </button>
-
-                  <button
+                 <button
                     onClick={() => setIsAddUserModalOpen(true)}
                     className="flex items-center gap-2 px-3 py-1.5 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all shadow-md text-sm font-medium"
                   >
                     <Plus className="w-4 h-4" /> Add User
                   </button>
-                </div>
             </div>
           </div>
 
@@ -375,7 +375,7 @@ const AccessControl = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-gray-900" />
-                    Assigned Categories for {formatUsername(selectedUser)}
+                    Assigned Portals for {formatUsername(selectedUser)}
                   </h3>
                   {assignmentPagination && (
                     <span className="text-sm text-gray-500">
@@ -468,13 +468,13 @@ const AccessControl = () => {
               </div>
             </div>
 
-            {/* Master Category Multi-Select */}
+            {/* select multi portal  */}
             <div className="space-y-3">
               <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <div className="bg-gray-900 p-1.5 rounded-lg">
                   <List className="w-4 h-4 text-white" />
                 </div>
-                Select Master Categories
+                Select Portals
                 <span className="text-xs text-gray-500 font-normal">(Hold Ctrl/Cmd to select multiple)</span>
               </label>
               <div className="relative">
@@ -531,7 +531,7 @@ const AccessControl = () => {
                 className="px-6 py-3 bg-gray-900 text-white rounded-xl flex items-center gap-2 hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl font-semibold"
               >
                 <CheckCircle2 className="w-5 h-5" />
-                Add Access
+                Assign Portal 
               </button>
             </div>
 
@@ -540,57 +540,6 @@ const AccessControl = () => {
         </div>
       </div>
 
-      {/* Modal for Master Category */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md space-y-5 shadow-2xl animate-in">
-            <div className="flex items-center gap-3">
-              <div className="bg-gray-900 p-2 rounded-lg">
-                <Plus className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-800">Add Master Category</h3>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Global News"
-                  value={masterCategoryName}
-                  onChange={(e) => setMasterCategoryName(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none transition-all"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  placeholder="Enter category description..."
-                  value={masterCategoryDescription}
-                  onChange={(e) => setMasterCategoryDescription(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none transition-all min-h-24"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 pt-4">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateMasterCategory}
-                className="px-5 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all shadow-lg font-medium"
-              >
-                Create Category
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
        {isAddUserModalOpen && (
               <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100">
@@ -682,4 +631,4 @@ const AccessControl = () => {
   );
 };
 
-export default AccessControl;
+export default UserPortalMapping;
