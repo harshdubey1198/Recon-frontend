@@ -141,13 +141,11 @@ const NewsArticleForm = () => {
           portal.portalCategoryId
         );
         subcats = subCatRes?.data?.data?.categories || [];
-        console.log("📂 Subcategories found:", subcats.length);
 
         if (subcats.length > 0) {
           hasSubcategories = true;
         }
       } catch (subError) {
-        console.log("⚠️ Subcategories API failed:", subError.response?.status);
         hasSubcategories = false;
       }
 
@@ -172,25 +170,18 @@ const NewsArticleForm = () => {
 
       try {
         const matchingRes = await fetchCrossPortalMappings(portal.id);
-        console.log("📡 Cross-Portal Mapping API Response:", matchingRes);
-        console.log("📡 Full response data:", matchingRes?.data);
 
         const matchingData = matchingRes?.data?.data || {};
         const mappingFound = matchingData.mapping_found;
         const requestedCategory = matchingData.requested_portal_category;
         const mappedCategories = matchingData.mapped_portal_categories || [];
 
-        console.log("📦 Matching data:", matchingData);
-        console.log("✅ Mapping found:", mappingFound);
-        console.log("🔗 Mapped categories:", mappedCategories);
-        console.log("🔗 Mapped categories count:", mappedCategories.length);
 
         // Always show matching results if mapping is found
         if (
           mappingFound &&
           (mappedCategories.length > 0 || requestedCategory)
         ) {
-          console.log("🎯 Displaying categories from cross-portal mapping API");
 
           // Combine requested category with mapped categories
           const allCategories = [];
@@ -230,8 +221,6 @@ const NewsArticleForm = () => {
           const totalCount = allCategories.length;
           toast.success(`Found ${mappedCategories.length} matched categories `);
         } else if (requestedCategory && !hasSubcategories) {
-          // Only show requested category if no subcategories and no mapping
-          console.log("⚠️ Showing requested category only");
           setMappedPortals([
             {
               id: requestedCategory.id,
@@ -254,9 +243,6 @@ const NewsArticleForm = () => {
           setCategoryHistory((prev) => prev.slice(0, -1));
         }
       } catch (matchError) {
-        console.error("❌ Cross-Portal Mapping API failed:", matchError);
-        console.error("❌ Error response:", matchError.response?.data);
-        console.error("❌ Error status:", matchError.response?.status);
 
         // If no subcategories and matching failed, remove from history
         if (!hasSubcategories) {
@@ -579,12 +565,7 @@ const NewsArticleForm = () => {
       const croppedFile = new File([blob], "cropped.jpg", {
         type: "image/jpeg",
       });
-      console.log(
-        "🟡 Original File Type:",
-        croppedFile.type,
-        "Name:",
-        croppedFile.name
-      );
+    
 
       // Convert JPEG → WebP
       let finalFile = croppedFile;
@@ -594,13 +575,7 @@ const NewsArticleForm = () => {
           finalFile = new File([webpBlob], fileName || "image.webp", {
             type: "image/webp",
           });
-          console.log(
-            "🟢 Converted to WebP:",
-            finalFile.type,
-            "Size:",
-            (finalFile.size / 1024).toFixed(2),
-            "KB"
-          );
+         
         }
       } catch (webpError) {
         console.warn("WebP conversion failed, using original JPEG:", webpError);
@@ -1221,19 +1196,20 @@ const NewsArticleForm = () => {
 
                     {/* RIGHT: Manage Button */}
                     {!showPortalCategoryModal &&
-                      formData.master_category &&
-                      categoryHistory.length > 0 && (
-                        <button
-                          type="button"
-                          className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
-                          onClick={() => {
-                            setForceEnablePortal(true);
-                            setShowPortalCategoryModal(true);
-                          }}
-                        >
-                          Manage Portal Categories
-                        </button>
-                      )}
+  formData.master_category &&
+  (categoryHistory.length > 0 && !mappedPortals[0]?.has_subcategories) && (
+    <button
+      type="button"
+      className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+      onClick={() => {
+        setForceEnablePortal(true);
+        setShowPortalCategoryModal(true);
+      }}
+    >
+      Manage Portal Categories
+    </button>
+  )}
+
 
                     {/* Back Button (only when needed) */}
                     {categoryHistory.length > 0 && (
