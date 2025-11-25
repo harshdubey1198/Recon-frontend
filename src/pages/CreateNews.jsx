@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import {Upload,X,Plus,Calendar,Eye,Save,RefreshCw,Image as ImageIcon,Tag,FileText,Settings,Clock,TrendingUp,AlertCircle,Star,Crop,RotateCw,ZoomIn,Maximize2,SaveAll,} from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortalCategoryMatching,fetchPortalCategories,fetchPortals,fetchUserPortalsByUserId,
-  fetchSubCategoriesByParent,
+import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortals,fetchUserPortalsByUserId,fetchSubCategoriesByParent,
 } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
@@ -46,17 +45,13 @@ const NewsArticleForm = () => {
   const [showPortalCategoryModal, setShowPortalCategoryModal] = useState(false);
   const [portalList, setPortalList] = useState([]);
   const [portalCategoriesModal, setPortalCategoriesModal] = useState([]);
-  console.log("data bhdghfd",portalCategoriesModal);
-  
-  const [selectedPortalForCategories, setSelectedPortalForCategories] =
-    useState("");
+  const [selectedPortalForCategories, setSelectedPortalForCategories] = useState("");
   const [portalPage, setPortalPage] = useState(1);
   const [categoryPage, setCategoryPage] = useState(1);
   const [hasNextCategoryPage, setHasNextCategoryPage] = useState(false);
   const [imagePreview, setImagePreview] = useState(
     formData.image ? `${constant.appBaseUrl}${formData?.image}` : null
   );
-  // console.log("imagepreview",imagePreview);
   const [isLoading, setIsLoading] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -80,15 +75,17 @@ const NewsArticleForm = () => {
   const userId = authUser?.id || null;
   const [categoryHistory, setCategoryHistory] = useState([]);
   const [isSubcategoryView, setIsSubcategoryView] = useState(false);
-const [selectedParentCategory, setSelectedParentCategory] = useState(null);
-const [tagSearchQuery, setTagSearchQuery] = useState("");
-const tagInputRef = React.useRef(null);
-const [showTagDropdown, setShowTagDropdown] = useState(false);
-const filteredTags = availableTags.filter(tag => {
-  const matchesSearch = tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase());
-  const notSelected = !formData.tags.includes(tag.name);
-  return matchesSearch && notSelected;
-});
+  const [selectedParentCategory, setSelectedParentCategory] = useState(null);
+  const [tagSearchQuery, setTagSearchQuery] = useState("");
+  const tagInputRef = React.useRef(null);
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const filteredTags = availableTags.filter((tag) => {
+    const matchesSearch = tag.name
+      .toLowerCase()
+      .includes(tagSearchQuery.toLowerCase());
+    const notSelected = !formData.tags.includes(tag.name);
+    return matchesSearch && notSelected;
+  });
   useEffect(() => {
     if (!formData.master_category) {
       setShowPortalSection(false);
@@ -104,178 +101,177 @@ const filteredTags = availableTags.filter(tag => {
   }, [showPortalCategoryModal, portalPage]);
 
   useEffect(() => {
-  if (selectedPortalForCategories && categoryPage === 1) {
-    fetchPortalParentCategories(selectedPortalForCategories, categoryPage).then((res) => {
-      console.log("Fetched categories:", res?.data?.data?.parent_categories);
-      const categories = res?.data?.data?.parent_categories || [];
-      setPortalCategoriesModal(categories);
-      setHasNextCategoryPage(!!res?.data?.pagination?.next);
-    });
-  }
-}, [selectedPortalForCategories, categoryPage]);
+    if (selectedPortalForCategories && categoryPage === 1) {
+      fetchPortalParentCategories(
+        selectedPortalForCategories,
+        categoryPage
+      ).then((res) => {
+        console.log("Fetched categories:", res?.data?.data?.parent_categories);
+        const categories = res?.data?.data?.parent_categories || [];
+        setPortalCategoriesModal(categories);
+        setHasNextCategoryPage(!!res?.data?.pagination?.next);
+      });
+    }
+  }, [selectedPortalForCategories, categoryPage]);
 
   useEffect(() => {
     if (isEditMode) {
       console.log("🟣 Edit mode enabled for ID:", id);
-      // For now just show that edit mode is active
     } else {
       console.log("🟢 Create mode active");
     }
   }, [isEditMode, id]);
 
-const handlePortalCategoryClick = async (portal) => {
-  try {
-    setIsPortalsLoading(true);
-
-    // Save current state to history before navigating
-    // Push history ONLY when loading subcategories (NOT parent level)
-if (mappedPortals.length > 0 && portal.has_subcategories) {
-    setCategoryHistory((prev) => [...prev, mappedPortals]);
-}
-
-    let subcats = [];
-    let hasSubcategories = false;
-
-    // Try to fetch subcategories first
+  const handlePortalCategoryClick = async (portal) => {
     try {
-      const subCatRes = await fetchSubCategoriesByParent(
-        portal.portalId,
-        portal.portalCategoryId
-      );
-      subcats = subCatRes?.data?.data?.categories || [];
-      console.log("📂 Subcategories found:", subcats.length);
+      setIsPortalsLoading(true);
 
-      if (subcats.length > 0) {
-        hasSubcategories = true;
+      // Push history ONLY when loading subcategories (NOT parent level)
+      if (mappedPortals.length > 0 && portal.has_subcategories) {
+        setCategoryHistory((prev) => [...prev, mappedPortals]);
       }
-    } catch (subError) {
-      console.log("⚠️ Subcategories API failed:", subError.response?.status);
-      hasSubcategories = false;
-    }
 
-    // CASE 1: If subcategories exist, show them (but continue to check matching)
-    if (hasSubcategories) {
-      console.log("✅ Showing subcategories");
-      setMappedPortals(
-        subcats.map((c) => ({
-          id: c.id,
-          portalId: portal.portalId,
-          portalName: portal.portalName,
-          portalCategoryName: c.name,
-          portalParentCategory: c.parent_name,
-          portalCategoryId: c.external_id,
-          selected: true,
-          has_subcategories: true,
-        }))
-      );
-      // Don't return here - continue to check matching API below
-    }
+      let subcats = [];
+      let hasSubcategories = false;
 
-    // CASE 2: Always try cross-portal mapping API (whether or not subcategories exist)
-    console.log("🔍 Calling cross-portal mapping API for portal.id:", portal.id);
+      // Try to fetch subcategories first
+      try {
+        const subCatRes = await fetchSubCategoriesByParent(
+          portal.portalId,
+          portal.portalCategoryId
+        );
+        subcats = subCatRes?.data?.data?.categories || [];
+        console.log("📂 Subcategories found:", subcats.length);
 
-    try {
-      const matchingRes = await fetchCrossPortalMappings(portal.id);
-      console.log("📡 Cross-Portal Mapping API Response:", matchingRes);
-      console.log("📡 Full response data:", matchingRes?.data);
-
-      const matchingData = matchingRes?.data?.data || {};
-      const mappingFound = matchingData.mapping_found;
-      const requestedCategory = matchingData.requested_portal_category;
-      const mappedCategories = matchingData.mapped_portal_categories || [];
-
-      console.log("📦 Matching data:", matchingData);
-      console.log("✅ Mapping found:", mappingFound);
-      console.log("🔗 Mapped categories:", mappedCategories);
-      console.log("🔗 Mapped categories count:", mappedCategories.length);
-
-      // Always show matching results if mapping is found
-      if (mappingFound && (mappedCategories.length > 0 || requestedCategory)) {
-        console.log("🎯 Displaying categories from cross-portal mapping API");
-        
-        // Combine requested category with mapped categories
-        const allCategories = [];
-        
-        // Add requested category first
-        if (requestedCategory) {
-          allCategories.push({
-            id: requestedCategory.id,
-            portalId: requestedCategory.portal_id || portal.portalId,
-            portalName: requestedCategory.portal_name || portal.portalName,
-            portalCategoryName: requestedCategory.name,
-            portalParentCategory: requestedCategory.parent_name,
-            portalCategoryId: requestedCategory.id,
-            selected: true,
-            mapping_found: mappingFound,
-            master_category_id: matchingData.master_category_id,
-          });
+        if (subcats.length > 0) {
+          hasSubcategories = true;
         }
-        
-        // Add mapped categories
-        mappedCategories.forEach((c) => {
-          allCategories.push({
+      } catch (subError) {
+        console.log("⚠️ Subcategories API failed:", subError.response?.status);
+        hasSubcategories = false;
+      }
+
+      // CASE 1: If subcategories exist, show them (but continue to check matching)
+      if (hasSubcategories) {
+        console.log("✅ Showing subcategories");
+        setMappedPortals(
+          subcats.map((c) => ({
             id: c.id,
-            portalId: c.portal_id,
-            portalName: c.portal_name,
+            portalId: portal.portalId,
+            portalName: portal.portalName,
             portalCategoryName: c.name,
             portalParentCategory: c.parent_name,
-            portalCategoryId: c.portal_category_id,
+            portalCategoryId: c.external_id,
             selected: true,
-            mapping_found: mappingFound,
-            master_category_id: matchingData.master_category_id,
-          });
-        });
-        
-        setMappedPortals(allCategories);
-
-        const totalCount = allCategories.length;
-        toast.success(
-          `Found ${mappedCategories.length} matched categories `
+            has_subcategories: true,
+          }))
         );
-      } else if (requestedCategory && !hasSubcategories) {
-        // Only show requested category if no subcategories and no mapping
-        console.log("⚠️ Showing requested category only");
-        setMappedPortals([
-          {
-            id: requestedCategory.id,
-            portalId: requestedCategory.portal_id || portal.portalId,
-            portalName: requestedCategory.portal_name || portal.portalName,
-            portalCategoryName: requestedCategory.name,
-            portalParentCategory: requestedCategory.parent_name,
-            portalCategoryId: requestedCategory.id,
-            selected: true,
-            mapping_found: mappingFound,
-          },
-        ]);
+      }
 
-        if (!mappingFound) {
-          toast.info("No related categories mapped yet");
+      console.log( "🔍 Calling cross-portal mapping API for portal.id:", portal.id );
+
+      try {
+        const matchingRes = await fetchCrossPortalMappings(portal.id);
+        console.log("📡 Cross-Portal Mapping API Response:", matchingRes);
+        console.log("📡 Full response data:", matchingRes?.data);
+
+        const matchingData = matchingRes?.data?.data || {};
+        const mappingFound = matchingData.mapping_found;
+        const requestedCategory = matchingData.requested_portal_category;
+        const mappedCategories = matchingData.mapped_portal_categories || [];
+
+        console.log("📦 Matching data:", matchingData);
+        console.log("✅ Mapping found:", mappingFound);
+        console.log("🔗 Mapped categories:", mappedCategories);
+        console.log("🔗 Mapped categories count:", mappedCategories.length);
+
+        // Always show matching results if mapping is found
+        if (
+          mappingFound &&
+          (mappedCategories.length > 0 || requestedCategory)
+        ) {
+          console.log("🎯 Displaying categories from cross-portal mapping API");
+
+          // Combine requested category with mapped categories
+          const allCategories = [];
+
+          // Add requested category first
+          if (requestedCategory) {
+            allCategories.push({
+              id: requestedCategory.id,
+              portalId: requestedCategory.portal_id || portal.portalId,
+              portalName: requestedCategory.portal_name || portal.portalName,
+              portalCategoryName: requestedCategory.name,
+              portalParentCategory: requestedCategory.parent_name,
+              portalCategoryId: requestedCategory.id,
+              selected: true,
+              mapping_found: mappingFound,
+              master_category_id: matchingData.master_category_id,
+            });
+          }
+
+          // Add mapped categories
+          mappedCategories.forEach((c) => {
+            allCategories.push({
+              id: c.id,
+              portalId: c.portal_id,
+              portalName: c.portal_name,
+              portalCategoryName: c.name,
+              portalParentCategory: c.parent_name,
+              portalCategoryId: c.portal_category_id,
+              selected: true,
+              mapping_found: mappingFound,
+              master_category_id: matchingData.master_category_id,
+            });
+          });
+
+          setMappedPortals(allCategories);
+
+          const totalCount = allCategories.length;
+          toast.success(`Found ${mappedCategories.length} matched categories `);
+        } else if (requestedCategory && !hasSubcategories) {
+          // Only show requested category if no subcategories and no mapping
+          console.log("⚠️ Showing requested category only");
+          setMappedPortals([
+            {
+              id: requestedCategory.id,
+              portalId: requestedCategory.portal_id || portal.portalId,
+              portalName: requestedCategory.portal_name || portal.portalName,
+              portalCategoryName: requestedCategory.name,
+              portalParentCategory: requestedCategory.parent_name,
+              portalCategoryId: requestedCategory.id,
+              selected: true,
+              mapping_found: mappingFound,
+            },
+          ]);
+
+          if (!mappingFound) {
+            toast.info("No related categories mapped yet");
+          }
+        } else if (!hasSubcategories && !mappingFound) {
+          // No subcategories and no mapping found
+          toast.info("No categories found for this selection");
+          setCategoryHistory((prev) => prev.slice(0, -1));
         }
-      } else if (!hasSubcategories && !mappingFound) {
-        // No subcategories and no mapping found
-        console.log("❌ No categories found in mapping response");
-        toast.info("No categories found for this selection");
-        setCategoryHistory((prev) => prev.slice(0, -1));
+      } catch (matchError) {
+        console.error("❌ Cross-Portal Mapping API failed:", matchError);
+        console.error("❌ Error response:", matchError.response?.data);
+        console.error("❌ Error status:", matchError.response?.status);
+
+        // If no subcategories and matching failed, remove from history
+        if (!hasSubcategories) {
+          setCategoryHistory((prev) => prev.slice(0, -1));
+          toast.error("Failed to load categories");
+        }
       }
-    } catch (matchError) {
-      console.error("❌ Cross-Portal Mapping API failed:", matchError);
-      console.error("❌ Error response:", matchError.response?.data);
-      console.error("❌ Error status:", matchError.response?.status);
-      
-      // If no subcategories and matching failed, remove from history
-      if (!hasSubcategories) {
-        setCategoryHistory((prev) => prev.slice(0, -1));
-        toast.error("Failed to load categories");
-      }
+    } catch (e) {
+      console.error("❌ Unexpected error:", e);
+      toast.error("Failed to load categories. Please try again.");
+      setCategoryHistory((prev) => prev.slice(0, -1));
+    } finally {
+      setIsPortalsLoading(false);
     }
-  } catch (e) {
-    console.error("❌ Unexpected error:", e);
-    toast.error("Failed to load categories. Please try again.");
-    setCategoryHistory((prev) => prev.slice(0, -1));
-  } finally {
-    setIsPortalsLoading(false);
-  }
-};
+  };
 
   const handleCategorySelect = async (e, loadNext = false) => {
     const categoryId = loadNext ? formData.master_category : e.target.value;
@@ -309,7 +305,7 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
       const mappings = raw?.parent_categories ?? [];
       console.log("mappings", mappings);
 
-      const next = res?.data?.pagination?.next || null
+      const next = res?.data?.pagination?.next || null;
       // console.log("🔹 Next page URL:", next);
 
       if (Array.isArray(mappings) && mappings.length > 0) {
@@ -568,43 +564,56 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
     setCroppedAreaPixels(croppedAreaPx);
   };
 
- const applyCrop = async () => {
-  if (!imagePreview || !croppedAreaPixels) {
-    setShowCropper(false);
-    return;
-  }
-  try {
-    const blob = await getCroppedImg(
-      imagePreview,
-      croppedAreaPixels,
-      rotation
-    );
-    if (!blob) return;
-    const croppedFile = new File([blob], "cropped.jpg", {
-      type: "image/jpeg",
-    });
-    console.log("🟡 Original File Type:", croppedFile.type, "Name:", croppedFile.name);
-
-    // Convert JPEG → WebP
-    let finalFile = croppedFile;
-    try {
-      const { webpBlob, fileName } = await webpfy({ image: croppedFile });
-      if (webpBlob) {
-        finalFile = new File([webpBlob], fileName || "image.webp", { type: "image/webp" });
-        console.log("🟢 Converted to WebP:", finalFile.type, "Size:", (finalFile.size / 1024).toFixed(2), "KB");
-      }
-    } catch (webpError) {
-      console.warn("WebP conversion failed, using original JPEG:", webpError);
+  const applyCrop = async () => {
+    if (!imagePreview || !croppedAreaPixels) {
+      setShowCropper(false);
+      return;
     }
+    try {
+      const blob = await getCroppedImg(
+        imagePreview,
+        croppedAreaPixels,
+        rotation
+      );
+      if (!blob) return;
+      const croppedFile = new File([blob], "cropped.jpg", {
+        type: "image/jpeg",
+      });
+      console.log(
+        "🟡 Original File Type:",
+        croppedFile.type,
+        "Name:",
+        croppedFile.name
+      );
 
-    setPreviewFromFile(finalFile);
-    setFormData((prev) => ({ ...prev, image: finalFile }));
-  } catch (e) {
-    console.error("Crop failed", e);
-  } finally {
-    setShowCropper(false);
-  }
-};
+      // Convert JPEG → WebP
+      let finalFile = croppedFile;
+      try {
+        const { webpBlob, fileName } = await webpfy({ image: croppedFile });
+        if (webpBlob) {
+          finalFile = new File([webpBlob], fileName || "image.webp", {
+            type: "image/webp",
+          });
+          console.log(
+            "🟢 Converted to WebP:",
+            finalFile.type,
+            "Size:",
+            (finalFile.size / 1024).toFixed(2),
+            "KB"
+          );
+        }
+      } catch (webpError) {
+        console.warn("WebP conversion failed, using original JPEG:", webpError);
+      }
+
+      setPreviewFromFile(finalFile);
+      setFormData((prev) => ({ ...prev, image: finalFile }));
+    } catch (e) {
+      console.error("Crop failed", e);
+    } finally {
+      setShowCropper(false);
+    }
+  };
 
   useEffect(() => {
     const loadTags = async () => {
@@ -627,102 +636,110 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
     };
   }, []);
 
-const loadAssignedCategories = async (page = 1, append = false) => {
-  try {
-    if (!userId) {
-      console.error("❌ User ID not found in localStorage");
-      return;
-    }
+  const loadAssignedCategories = async (page = 1, append = false) => {
+    try {
+      if (!userId) {
+        console.error("❌ User ID not found in localStorage");
+        return;
+      }
 
-    // 🔥 SHOW LOADING IMMEDIATELY FOR BOTH PORTAL AND CATEGORIES
-    setIsCategoryloading(true);
-    setShowPortalSection(true);
-    setIsPortalsLoading(true);
+      // 🔥 SHOW LOADING IMMEDIATELY FOR BOTH PORTAL AND CATEGORIES
+      setIsCategoryloading(true);
+      setShowPortalSection(true);
+      setIsPortalsLoading(true);
 
-    const res = await fetchUserPortalsByUserId(userId, page);
+      const res = await fetchUserPortalsByUserId(userId, page);
 
-    if (res?.data?.status && Array.isArray(res.data.data) && res.data.data.length > 0) {
-      const portals = res.data.data.map((item) => ({
-        id: Number(item.portal_id),
-        name: item.portal_name,
-      }));
-
-      const finalList = append ? [...assignedCategories, ...portals] : portals;
-      setAssignedCategories(finalList);
-
-      // 🔥 AUTO-SELECT FIRST PORTAL AND FETCH CATEGORIES IMMEDIATELY
-      if (finalList.length > 0) {
-        const defaultPortal = finalList[0];
-
-        setFormData((p) => ({
-          ...p,
-          master_category: defaultPortal.id,
+      if (
+        res?.data?.status &&
+        Array.isArray(res.data.data) &&
+        res.data.data.length > 0
+      ) {
+        const portals = res.data.data.map((item) => ({
+          id: Number(item.portal_id),
+          name: item.portal_name,
         }));
 
-        // 🔥 FETCH PARENT CATEGORIES (NO WAITING)
-        try {
-          const categoryRes = await fetchPortalParentCategories(defaultPortal.id);
-          const parents = categoryRes?.data?.data?.parent_categories || [];
-          
-          setMappedPortals(
-            parents.map((c) => ({
-              id: c.parent_external_id,
-              portalId: defaultPortal.id,
-              portalName: defaultPortal.name,
-              portalCategoryName: c.parent_name,
-              portalCategoryId: c.parent_external_id,
-              selected: true,
-              has_subcategories: true,
-            }))
-          );
-        } catch (err) {
-          console.error("❌ Failed to fetch parent categories:", err);
-          setMappedPortals([]);
-        }
-      }
+        const finalList = append
+          ? [...assignedCategories, ...portals]
+          : portals;
+        setAssignedCategories(finalList);
 
-      const nextUrl = res.data?.pagination?.next;
-      if (nextUrl) {
-        const nextPageParam = new URL(nextUrl).searchParams.get("page");
-        setNextCategoryPage(Number(nextPageParam));
+        // 🔥 AUTO-SELECT FIRST PORTAL AND FETCH CATEGORIES IMMEDIATELY
+        if (finalList.length > 0) {
+          const defaultPortal = finalList[0];
+
+          setFormData((p) => ({
+            ...p,
+            master_category: defaultPortal.id,
+          }));
+
+          // 🔥 FETCH PARENT CATEGORIES (NO WAITING)
+          try {
+            const categoryRes = await fetchPortalParentCategories(
+              defaultPortal.id
+            );
+            const parents = categoryRes?.data?.data?.parent_categories || [];
+
+            setMappedPortals(
+              parents.map((c) => ({
+                id: c.parent_external_id,
+                portalId: defaultPortal.id,
+                portalName: defaultPortal.name,
+                portalCategoryName: c.parent_name,
+                portalCategoryId: c.parent_external_id,
+                selected: true,
+                has_subcategories: true,
+              }))
+            );
+          } catch (err) {
+            console.error("❌ Failed to fetch parent categories:", err);
+            setMappedPortals([]);
+          }
+        }
+
+        const nextUrl = res.data?.pagination?.next;
+        if (nextUrl) {
+          const nextPageParam = new URL(nextUrl).searchParams.get("page");
+          setNextCategoryPage(Number(nextPageParam));
+        } else {
+          setNextCategoryPage(null);
+        }
+
+        // 🔥 HIDE LOADING AFTER PORTAL DATA IS LOADED
+        setIsCategoryloading(false);
       } else {
-        setNextCategoryPage(null);
+        console.warn("⚠️ No portal found for this user.");
+        setAssignedCategories([]);
+        setFormData((p) => ({
+          ...p,
+          master_category: null,
+        }));
+        setMappedPortals([]);
+        setShowPortalSection(false);
+        // 🔥 HIDE LOADING IMMEDIATELY WHEN NO PORTALS
+        setIsCategoryloading(false);
+        setIsPortalsLoading(false);
+        // 🔥 CLOSE THE MODAL WHEN NO PORTALS
+        setShowPortalCategoryModal(false);
       }
-      
-      // 🔥 HIDE LOADING AFTER PORTAL DATA IS LOADED
-      setIsCategoryloading(false);
-    } else {
-      console.warn("⚠️ No portal found for this user.");
+    } catch (err) {
+      console.error("❌ Failed to fetch portal list:", err);
+      // 🔥 HIDE LOADING ON ERROR AND CLEAR DATA
       setAssignedCategories([]);
-      setFormData((p) => ({
-        ...p,
-        master_category: null,
-      }));
       setMappedPortals([]);
       setShowPortalSection(false);
-      // 🔥 HIDE LOADING IMMEDIATELY WHEN NO PORTALS
       setIsCategoryloading(false);
       setIsPortalsLoading(false);
-      // 🔥 CLOSE THE MODAL WHEN NO PORTALS
+      // 🔥 CLOSE THE MODAL ON ERROR
       setShowPortalCategoryModal(false);
+    } finally {
+      // 🔥 ONLY HIDE PORTALS LOADING IF PORTALS EXIST (categories fetch separately)
+      if (assignedCategories.length === 0) {
+        setIsPortalsLoading(false);
+      }
     }
-  } catch (err) {
-    console.error("❌ Failed to fetch portal list:", err);
-    // 🔥 HIDE LOADING ON ERROR AND CLEAR DATA
-    setAssignedCategories([]);
-    setMappedPortals([]);
-    setShowPortalSection(false);
-    setIsCategoryloading(false);
-    setIsPortalsLoading(false);
-    // 🔥 CLOSE THE MODAL ON ERROR
-    setShowPortalCategoryModal(false);
-  } finally {
-    // 🔥 ONLY HIDE PORTALS LOADING IF PORTALS EXIST (categories fetch separately)
-    if (assignedCategories.length === 0) {
-      setIsPortalsLoading(false);
-    }
-  }
-};
+  };
 
   const handleGoBack = () => {
     if (categoryHistory.length > 0) {
@@ -809,12 +826,12 @@ const loadAssignedCategories = async (page = 1, append = false) => {
       formDataToSend.append("counter", formData.counter);
       formDataToSend.append("order", formData.order);
       formDataToSend.append(
-       "cross_portal_category_id",
+        "cross_portal_category_id",
         mappedPortals[0]?.mapping_found
-          ? mappedPortals[0]?.portalCategoryId   // when mapping found → subcategory id
-          : mappedPortals[0]?.id                 // when manually added
-      )
-       
+          ? mappedPortals[0]?.portalCategoryId // when mapping found → subcategory id
+          : mappedPortals[0]?.id // when manually added
+      );
+
       if (formData.tags && formData.tags.length > 0) {
         const formattedTags = formData.tags
           .map((tag) => {
@@ -898,43 +915,50 @@ const loadAssignedCategories = async (page = 1, append = false) => {
       }
 
       // -------------------- CREATE NEW --------------------
-     else {
-  // 🟢 Collect IDs of manually added AND selected categories (portalId === 0)
-  const newlyAddedCategories = mappedPortals
-    .filter(p => p.portalId === 0 && p.selected && p.portalCategoryId)
-    .map(p => Number(p.id));
+      else {
+        // 🟢 Collect IDs of manually added AND selected categories (portalId === 0)
+        const newlyAddedCategories = mappedPortals
+          .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId)
+          .map((p) => Number(p.id));
 
-  // 🟠 Exclude unchecked categories (existing ones only)
-  const excludedCategories = mappedPortals
-    .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
-    .map((p) => Number(p.id));
+        // 🟠 Exclude unchecked categories (existing ones only)
+        const excludedCategories = mappedPortals
+          .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
+          .map((p) => Number(p.id));
 
-  // ✅ Append clean lists based on mapping_found
-  if (mappedPortals[0]?.mapping_found) {
-    // When mapping found → send manually added categories if any exist
-    formDataToSend.append("portal_category_ids", JSON.stringify(newlyAddedCategories));
-  } else {
-    // When no mapping → send manually added category IDs OR requested category ID
-    const categoryIds = newlyAddedCategories.length > 0 
-      ? newlyAddedCategories 
-      : [mappedPortals[0]?.id];
-    
-    formDataToSend.append("portal_category_ids", JSON.stringify(categoryIds));
-  }
+        // ✅ Append clean lists based on mapping_found
+        if (mappedPortals[0]?.mapping_found) {
+          // When mapping found → send manually added categories if any exist
+          formDataToSend.append(
+            "portal_category_ids",
+            JSON.stringify(newlyAddedCategories)
+          );
+        } else {
+          // When no mapping → send manually added category IDs OR requested category ID
+          const categoryIds =
+            newlyAddedCategories.length > 0
+              ? newlyAddedCategories
+              : [mappedPortals[0]?.id];
+
+          formDataToSend.append(
+            "portal_category_ids",
+            JSON.stringify(categoryIds)
+          );
+        }
         formDataToSend.append(
           "exclude_portal_categories",
           JSON.stringify(excludedCategories)
         );
-// 🟡 Log FormData cleanly
+        // 🟡 Log FormData cleanly
         const logFormData = {};
-            for (let [key, value] of formDataToSend.entries()) {
-              logFormData[key] = value;
-            }
-            console.log("🟡 Payload for CREATE (FormData):", logFormData);
+        for (let [key, value] of formDataToSend.entries()) {
+          logFormData[key] = value;
+        }
+        console.log("🟡 Payload for CREATE (FormData):", logFormData);
 
-            const response = await createNewsArticle(formDataToSend);
-            createdArticle = response.data.data;
-          }
+        const response = await createNewsArticle(formDataToSend);
+        createdArticle = response.data.data;
+      }
 
       if (statusType === "DRAFT") {
         resetForm();
@@ -948,7 +972,7 @@ const loadAssignedCategories = async (page = 1, append = false) => {
       //   resetForm();
       //   // if (res?.data?.message) toast.success(res.data.message);
       // }
-     if (statusType === "PUBLISHED") {
+      if (statusType === "PUBLISHED") {
         const res = await publishNewsArticle(createdArticle.id, {
           portal_category_id: mappedPortals[0]?.mapping_found
             ? mappedPortals[0]?.master_category_id
@@ -956,14 +980,14 @@ const loadAssignedCategories = async (page = 1, append = false) => {
         });
 
         if (res?.data?.message) toast.success(res.data.message);
-        
+
         // 🔥 RESET EVERYTHING AFTER SUCCESSFUL PUBLISH
         setMappedPortals([]);
         setShowPortalSection(false);
         setSelectedPortalForCategories("");
         setCategoryHistory([]);
         resetForm();
-        
+
         // 🔥 RELOAD DEFAULT PORTAL AND CATEGORIES
         await loadAssignedCategories();
       } else {
@@ -1126,7 +1150,7 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm bg-gray-100"
                       value="Loading portals..."
                     />
-                 ) : assignedCategories.length === 0 ? (
+                  ) : assignedCategories.length === 0 ? (
                     // 🔹 NO PORTAL FOUND → Show message in input box
                     <input
                       disabled
@@ -1168,222 +1192,251 @@ const loadAssignedCategories = async (page = 1, append = false) => {
               </div>
 
               {showPortalSection && (
-  <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
-    {/* Header Section */}
-   <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
+                <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
+                  {/* Header Section */}
+                  <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
+                    {/* LEFT: Icon + Title + Back Button */}
+                    <div className="flex items-center space-x-3">
+                      {/* Settings Icon */}
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <Settings className="w-5 h-5 text-gray-700" />
+                      </div>
 
-  {/* LEFT: Icon + Title + Back Button */}
-  <div className="flex items-center space-x-3">
+                      {/* Title */}
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {mappedPortals[0]?.mapping_found
+                          ? "Select matched portal"
+                          : categoryHistory.length > 0
+                          ? "Select subcategory"
+                          : "Select category"}{" "}
+                        from{" "}
+                        <span className="font-bold">
+                          {mappedPortals[0]?.portalName ||
+                            mappedPortals[0]?.portalParentCategory ||
+                            mappedPortals[0]?.portalCategoryName ||
+                            "Selected"}
+                        </span>
+                      </h2>
+                    </div>
 
-   
+                    {/* RIGHT: Manage Button */}
+                    {!showPortalCategoryModal &&
+                      formData.master_category &&
+                      categoryHistory.length > 0 && (
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+                          onClick={() => {
+                            setForceEnablePortal(true);
+                            setShowPortalCategoryModal(true);
+                          }}
+                        >
+                          Manage Portal Categories
+                        </button>
+                      )}
 
-    {/* Settings Icon */}
-    <div className="p-2 bg-gray-100 rounded-lg">
-      <Settings className="w-5 h-5 text-gray-700" />
-    </div>
-
-    {/* Title */}
-    <h2 className="text-lg font-semibold text-gray-900">
-      {mappedPortals[0]?.mapping_found
-        ? "Select matched portal"
-        : categoryHistory.length > 0
-        ? "Select subcategory"
-        : "Select category"}{" "}
-      from{" "}
-      <span className="font-bold">
-        {mappedPortals[0]?.portalName ||
-          mappedPortals[0]?.portalParentCategory ||
-          mappedPortals[0]?.portalCategoryName ||
-          "Selected"}
-      </span>
-    </h2>
-  </div>
-
- {/* RIGHT: Manage Button */}
-{!showPortalCategoryModal &&
-  formData.master_category &&
-  categoryHistory.length > 0 && (
-    <button
-      type="button"
-      className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
-      onClick={() => {
-        setForceEnablePortal(true);
-        setShowPortalCategoryModal(true);
-      }}
-    >
-      Manage Portal Categories
-    </button>
-  )}
-
-     {/* Back Button (only when needed) */}
-    {categoryHistory.length > 0 && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleGoBack();
-        }}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back
-      </button>
-    )}
-</div>
-
-
-    {/* Portal list */}
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-  {isPortalsLoading ? (
-    <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
-  ) : isLoadingMore ? (
-    <p className="text-center col-span-full py-5 text-gray-600">Loading...</p>
-  ) : (
-    <>
-    
-    {/* Map through portals */}
-      {mappedPortals.map((portal, i) => {
-        // Check if manually added (has timestamp-based id)
-     const isManuallyAdded = portal.is_manually_added === true;
-
-  return (
-          <div
-            key={i}
-            onClick={(e) => {
-              if (portal.mapping_found) {
-                e.stopPropagation();
-                setMappedPortals((prev) =>
-                  prev.map((p) =>
-                    p.id === portal.id
-                      ? { ...p, selected: !p.selected }
-                      : p
-                  )
-                );
-              } else {
-                handlePortalCategoryClick(portal);
-              }
-            }}
-            className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
-              portal.selected
-                ? "bg-gray-900 border-gray-900 text-white shadow-lg"
-                : "bg-white border-gray-900 hover:border-gray-400"
-            }`}
-          >
-            {/* DELETE BUTTON for manually added categories */}
-        {isManuallyAdded && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setMappedPortals((prev) =>
-              prev.filter(
-                (p) =>
-                  !(
-                    p.portalName === portal.portalName &&
-                    p.portalCategoryId === portal.portalCategoryId
-                  )
-              )
-            );
-          }}
-          className="absolute top-2 right-2 p-1 bg-white text-white rounded-full transition-all z-10"
-        >
-          <X className="w-3 h-3 text-black" />
-        </button>
-      )}
-
-           <div className="w-full">
-              {portal.mapping_found ? (
-                <>
-                  {/* Checkbox Section */}
-                  <div className="absolute top-3 left-3">
-                    {portal.selected ? (
-                      <input
-                        type="checkbox"
-                        checked={portal.selected}
-                        onChange={() =>
-                          setMappedPortals((prev) =>
-                            prev.map((p, idx) =>
-                              idx === i ? { ...p, selected: !p.selected } : p
-                            )
-                          )
-                        }
-                        className="w-5 h-5 accent-gray-900"
-                      />
-                    ) : (
-                      <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
+                    {/* Back Button (only when needed) */}
+                    {categoryHistory.length > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGoBack();
+                        }}
+                        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                        Back
+                      </button>
                     )}
                   </div>
 
-                  {/* Text Content - CONSISTENT ORDER: Portal → Parent → Category */}
-                  <div className="ml-6 mr-8">
-                    <p className="text-lg font-semibold">{portal.portalName}</p>
-                    <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                    <p className="text-xs text-gray-400">{portal.portalCategoryName}</p>
+                  {/* Portal list */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {isPortalsLoading ? (
+                      <p className="text-center col-span-full py-5 text-gray-600">
+                        Loading...
+                      </p>
+                    ) : isLoadingMore ? (
+                      <p className="text-center col-span-full py-5 text-gray-600">
+                        Loading...
+                      </p>
+                    ) : (
+                      <>
+                        {/* Map through portals */}
+                        {mappedPortals.map((portal, i) => {
+                          // Check if manually added (has timestamp-based id)
+                          const isManuallyAdded =
+                            portal.is_manually_added === true;
+
+                          return (
+                            <div
+                              key={i}
+                              onClick={(e) => {
+                                if (portal.mapping_found) {
+                                  e.stopPropagation();
+                                  setMappedPortals((prev) =>
+                                    prev.map((p) =>
+                                      p.id === portal.id
+                                        ? { ...p, selected: !p.selected }
+                                        : p
+                                    )
+                                  );
+                                } else {
+                                  handlePortalCategoryClick(portal);
+                                }
+                              }}
+                              className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
+                                portal.selected
+                                  ? "bg-gray-900 border-gray-900 text-white shadow-lg"
+                                  : "bg-white border-gray-900 hover:border-gray-400"
+                              }`}
+                            >
+                              {/* DELETE BUTTON for manually added categories */}
+                              {isManuallyAdded && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMappedPortals((prev) =>
+                                      prev.filter(
+                                        (p) =>
+                                          !(
+                                            p.portalName ===
+                                              portal.portalName &&
+                                            p.portalCategoryId ===
+                                              portal.portalCategoryId
+                                          )
+                                      )
+                                    );
+                                  }}
+                                  className="absolute top-2 right-2 p-1 bg-white text-white rounded-full transition-all z-10"
+                                >
+                                  <X className="w-3 h-3 text-black" />
+                                </button>
+                              )}
+
+                              <div className="w-full">
+                                {portal.mapping_found ? (
+                                  <>
+                                    {/* Checkbox Section */}
+                                    <div className="absolute top-3 left-3">
+                                      {portal.selected ? (
+                                        <input
+                                          type="checkbox"
+                                          checked={portal.selected}
+                                          onChange={() =>
+                                            setMappedPortals((prev) =>
+                                              prev.map((p, idx) =>
+                                                idx === i
+                                                  ? {
+                                                      ...p,
+                                                      selected: !p.selected,
+                                                    }
+                                                  : p
+                                              )
+                                            )
+                                          }
+                                          className="w-5 h-5 accent-gray-900"
+                                        />
+                                      ) : (
+                                        <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
+                                      )}
+                                    </div>
+
+                                    {/* Text Content - CONSISTENT ORDER: Portal → Parent → Category */}
+                                    <div className="ml-6 mr-8">
+                                      <p className="text-lg font-semibold">
+                                        {portal.portalName}
+                                      </p>
+                                      <p className="text-sm text-gray-300">
+                                        {portal.portalParentCategory}
+                                      </p>
+                                      <p className="text-xs text-gray-400">
+                                        {portal.portalCategoryName}
+                                      </p>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="mr-8">
+                                    {portal.is_manually_added ? (
+                                      <>
+                                        {/* MANUALLY ADDED - Portal → Parent → Category */}
+                                        <p className="text-lg font-semibold">
+                                          {portal.portalName}
+                                        </p>
+                                        <p className="text-sm text-gray-300">
+                                          {portal.portalParentCategory}
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                          {portal.portalCategoryName}
+                                        </p>
+                                      </>
+                                    ) : categoryHistory.length > 0 ? (
+                                      <>
+                                        {/* SUBCATEGORY VIEW - Portal → Parent → Subcategory */}
+                                        <p className="text-lg font-semibold">
+                                          {portal.portalCategoryName}
+                                        </p>
+                                        <p className="text-sm text-gray-300">
+                                          {portal.portalParentCategory}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <>
+                                        {/* INITIAL PARENT CATEGORIES - Portal → Category */}
+                                        <p className="text-lg font-semibold">
+                                          {portal.portalCategoryName}
+                                        </p>
+                                        <p className="text-sm text-gray-300">
+                                          {portal.portalName}
+                                        </p>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
                   </div>
-                </>
-              ) : (
-                <div className="mr-8">
-                  {portal.is_manually_added ? (
-                    <>
-                      {/* MANUALLY ADDED - Portal → Parent → Category */}
-                      <p className="text-lg font-semibold">{portal.portalName}</p>
-                      <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                      <p className="text-xs text-gray-400">{portal.portalCategoryName}</p>
-                    </>
-                  ) : categoryHistory.length > 0 ? (
-                    <>
-                      {/* SUBCATEGORY VIEW - Portal → Parent → Subcategory */}
-                       <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
-                      <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                     
-                    </>
-                  ) : (
-                    <>
-                      {/* INITIAL PARENT CATEGORIES - Portal → Category */}
-                      <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
-                      <p className="text-sm text-gray-300">{portal.portalName}</p>
-                      
-                    </>
-                  )}
-                </div>
+                </section>
               )}
-            </div>
-          </div>
-        );
-      })}
-    </>
-  )}
-          </div>
-              </section>
-            )}
-             {showPortalCategoryModal && (
+              {showPortalCategoryModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                   <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-2xl p-6 relative">
                     <button
-                        className="absolute top-3 right-3 text-gray-500 hover:text-black"
-                        onClick={() => {
-                          setShowPortalCategoryModal(false);
-                          setSelectedPortalForCategories(""); // Clear selected portal
-                          setIsSubcategoryView(false); // Reset to category view
-                          setPortalCategoriesModal([]); // Clear category/subcategory list
-                          setSelectedParentCategory(null); // Clear parent category
-                        }}
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      className="absolute top-3 right-3 text-gray-500 hover:text-black"
+                      onClick={() => {
+                        setShowPortalCategoryModal(false);
+                        setSelectedPortalForCategories(""); // Clear selected portal
+                        setIsSubcategoryView(false); // Reset to category view
+                        setPortalCategoriesModal([]); // Clear category/subcategory list
+                        setSelectedParentCategory(null); // Clear parent category
+                      }}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
 
                     <h3 className="text-lg font-semibold mb-4">
-                            {!selectedPortalForCategories 
-                              ? "Select Portal" 
-                              : isSubcategoryView 
-                                ? "Select Subcategory" 
-                                : "Select Category"}
-                          </h3>
+                      {!selectedPortalForCategories
+                        ? "Select Portal"
+                        : isSubcategoryView
+                        ? "Select Subcategory"
+                        : "Select Category"}
+                    </h3>
 
                     {/* Portal selector */}
                     {formData.master_category && showPortalCategoryModal && (
@@ -1408,28 +1461,32 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                       </select>
                     )}
                     {isSubcategoryView && (
-                        <button
-                          type="button"
-                          className="mb-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded flex items-center gap-1"
-                          onClick={async () => {
-                                setIsSubcategoryView(false);
-                                setCategoryPage(1);
-                                // Reload parent categories
-                                const res = await fetchPortalParentCategories(selectedPortalForCategories, 1);
-                                const categories = res?.data?.data?.parent_categories || [];
-                                // Remove any 'selected' property and ensure clean data
-                                const cleanCategories = categories.map(cat => ({
-                                  parent_name: cat.parent_name,
-                                  parent_external_id: cat.parent_external_id
-                                }));
-                                setPortalCategoriesModal(cleanCategories);
-                              }}
-                        >
-                          ← Back to Categories
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="mb-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded flex items-center gap-1"
+                        onClick={async () => {
+                          setIsSubcategoryView(false);
+                          setCategoryPage(1);
+                          // Reload parent categories
+                          const res = await fetchPortalParentCategories(
+                            selectedPortalForCategories,
+                            1
+                          );
+                          const categories =
+                            res?.data?.data?.parent_categories || [];
+                          // Remove any 'selected' property and ensure clean data
+                          const cleanCategories = categories.map((cat) => ({
+                            parent_name: cat.parent_name,
+                            parent_external_id: cat.parent_external_id,
+                          }));
+                          setPortalCategoriesModal(cleanCategories);
+                        }}
+                      >
+                        ← Back to Categories
+                      </button>
+                    )}
                     {/* Category list */}
-                   {portalCategoriesModal.length > 0 ? (
+                    {portalCategoriesModal.length > 0 ? (
                       <ul className="max-h-60 overflow-y-auto border rounded p-2">
                         {portalCategoriesModal.map((cat) => (
                           <li
@@ -1439,12 +1496,14 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                               if (!isSubcategoryView) {
                                 // Fetch subcategories when parent is clicked
                                 try {
-                                  const subCatRes = await fetchSubCategoriesByParent(
-                                    selectedPortalForCategories,
-                                    cat.parent_external_id
-                                  );
-                                  const subcats = subCatRes?.data?.data?.categories || [];
-                                  
+                                  const subCatRes =
+                                    await fetchSubCategoriesByParent(
+                                      selectedPortalForCategories,
+                                      cat.parent_external_id
+                                    );
+                                  const subcats =
+                                    subCatRes?.data?.data?.categories || [];
+
                                   if (subcats.length > 0) {
                                     setPortalCategoriesModal(subcats);
                                     setIsSubcategoryView(true);
@@ -1453,17 +1512,23 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                                     toast.info("No subcategories found");
                                   }
                                 } catch (err) {
-                                  console.error("Error fetching subcategories:", err);
+                                  console.error(
+                                    "Error fetching subcategories:",
+                                    err
+                                  );
                                   toast.error("Failed to load subcategories");
                                 }
                               }
                             }}
                           >
-                            <label className="flex items-center gap-2 cursor-pointer w-full" onClick={(e) => {
-                              if (isSubcategoryView) {
-                                e.stopPropagation();
-                              }
-                            }}>
+                            <label
+                              className="flex items-center gap-2 cursor-pointer w-full"
+                              onClick={(e) => {
+                                if (isSubcategoryView) {
+                                  e.stopPropagation();
+                                }
+                              }}
+                            >
                               {isSubcategoryView && (
                                 <input
                                   type="checkbox"
@@ -1474,15 +1539,20 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                                     setPortalCategoriesModal((prev) =>
                                       prev.map((c) => ({
                                         ...c,
-                                        selected: c.external_id === cat.external_id ? isChecked : c.selected,
+                                        selected:
+                                          c.external_id === cat.external_id
+                                            ? isChecked
+                                            : c.selected,
                                       }))
                                     );
                                   }}
                                 />
                               )}
                               <span className="flex-1">
-                              <span className="flex-1">
-                                  {isSubcategoryView ? cat.name : cat.parent_name}
+                                <span className="flex-1">
+                                  {isSubcategoryView
+                                    ? cat.name
+                                    : cat.parent_name}
                                 </span>
                               </span>
                               {!isSubcategoryView && (
@@ -1499,73 +1569,75 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                     )}
 
                     {/* Save button - only show in subcategory view */}
-              {isSubcategoryView && (
-                <div className="flex justify-end mt-5">
-                  <button
-                    className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
-                    onClick={() => {
-                      const selectedCats = portalCategoriesModal.filter(
-                        (c) => c.selected
-                      );
-                      if (selectedCats.length === 0) {
-                        toast.warning(
-                          "Please select at least one subcategory."
-                        );
-                        return;
-                      }
+                    {isSubcategoryView && (
+                      <div className="flex justify-end mt-5">
+                        <button
+                          className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
+                          onClick={() => {
+                            const selectedCats = portalCategoriesModal.filter(
+                              (c) => c.selected
+                            );
+                            if (selectedCats.length === 0) {
+                              toast.warning(
+                                "Please select at least one subcategory."
+                              );
+                              return;
+                            }
 
-                      // ✅ Get the actual portal name from portalList
-                      const selectedPortalData = portalList.find(
-                        (p) => p.id === Number(selectedPortalForCategories)
-                      );
-                      const actualPortalName = selectedPortalData?.name || "Unknown Portal";
+                            // ✅ Get the actual portal name from portalList
+                            const selectedPortalData = portalList.find(
+                              (p) =>
+                                p.id === Number(selectedPortalForCategories)
+                            );
+                            const actualPortalName =
+                              selectedPortalData?.name || "Unknown Portal";
 
-                      setMappedPortals((prev) => {
-                        const updated = [...prev];
-                        selectedCats.forEach((cat) => {
-                          const exists = updated.some(
-                            (p) =>
-                              p.portalName === actualPortalName &&
-                              p.portalCategoryId === cat.external_id
-                          );
-                          if (!exists) {
-                            updated.push({
-                                 id: cat.id,                     // use ONLY integer timestamp
-                                  portalId: 0,                          // mark manually added category
-                                  portalName: actualPortalName,
-                                  portalCategoryName: cat.name,
-                                  portalParentCategory: cat.parent_name,
-                                  portalCategoryId: cat.external_id,
-                                  selected: true,
-                                  is_manually_added: true,              // ✅ IMPORTANT FIX
-                                });
-                                                          }
-                        });
-                        return updated;
-                      });
+                            setMappedPortals((prev) => {
+                              const updated = [...prev];
+                              selectedCats.forEach((cat) => {
+                                const exists = updated.some(
+                                  (p) =>
+                                    p.portalName === actualPortalName &&
+                                    p.portalCategoryId === cat.external_id
+                                );
+                                if (!exists) {
+                                  updated.push({
+                                    id: cat.id, // use ONLY integer timestamp
+                                    portalId: 0, // mark manually added category
+                                    portalName: actualPortalName,
+                                    portalCategoryName: cat.name,
+                                    portalParentCategory: cat.parent_name,
+                                    portalCategoryId: cat.external_id,
+                                    selected: true,
+                                    is_manually_added: true, // ✅ IMPORTANT FIX
+                                  });
+                                }
+                              });
+                              return updated;
+                            });
 
-                      toast.success(
-                        `${selectedCats.length} subcategor${
-                          selectedCats.length > 1 ? "ies" : "y"
-                        } added`
-                      );
-                      
-                      // 🔥 RESET MODAL DATA
-                      setShowPortalCategoryModal(false);
-                      setIsSubcategoryView(false);
-                      setSelectedPortalForCategories(""); // Clear selected portal
-                      setPortalCategoriesModal([]); // Clear categories list
-                                        setSelectedParentCategory(null); // Clear parent category
-                                        setCategoryPage(1); // Reset page to 1
-                                        setShowPortalSection(true);
-                                      }}
-                                    >
-                                      Save Selected
-                                    </button>
-                                  </div>
-                                )}
-                                </div>
-                              </div>
+                            toast.success(
+                              `${selectedCats.length} subcategor${
+                                selectedCats.length > 1 ? "ies" : "y"
+                              } added`
+                            );
+
+                            // 🔥 RESET MODAL DATA
+                            setShowPortalCategoryModal(false);
+                            setIsSubcategoryView(false);
+                            setSelectedPortalForCategories(""); // Clear selected portal
+                            setPortalCategoriesModal([]); // Clear categories list
+                            setSelectedParentCategory(null); // Clear parent category
+                            setCategoryPage(1); // Reset page to 1
+                            setShowPortalSection(true);
+                          }}
+                        >
+                          Save Selected
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
               <div className="grid grid-cols-1 gap-2">
@@ -1663,6 +1735,7 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                     }}
                     config={{
                       height: 400,
+                      versionCheck: false,
                       removePlugins: "easyimage,cloudservices",
                       extraPlugins: "widget,justify,colorbutton,font",
                       autoGrow_minHeight: 300,
@@ -1948,8 +2021,8 @@ const loadAssignedCategories = async (page = 1, append = false) => {
               )}
             </section>
 
-         <section className="space-y-5">
- {/* Header */}
+            <section className="space-y-5">
+              {/* Header */}
               <div className="flex items-center space-x-2 pb-3 border-b-2 border-gray-200">
                 <div className="p-2 bg-gray-100 rounded-lg">
                   <Tag className="w-5 h-5 text-gray-700" />
@@ -1993,7 +2066,6 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                     type="text"
                     value={tagSearchQuery}
                     ref={tagInputRef}
-                    
                     onChange={(e) => setTagSearchQuery(e.target.value)}
                     onFocus={() => setShowTagDropdown(true)}
                     onClick={(e) => e.stopPropagation()}
@@ -2001,49 +2073,54 @@ const loadAssignedCategories = async (page = 1, append = false) => {
                     disabled={isTagsLoading}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
-                  
+
                   {showTagDropdown && !isTagsLoading && (
                     <>
                       {/* Backdrop to close dropdown */}
-                      <div 
-                        className="fixed inset-0 z-10" 
+                      <div
+                        className="fixed inset-0 z-10"
                         onClick={() => {
                           setShowTagDropdown(false);
                           setTagSearchQuery("");
                         }}
                       />
-                      
+
                       {/* Dropdown */}
-                      <div 
+                      <div
                         className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
-                      {filteredTags.length > 0 ? (
-                  filteredTags.map((tag) => (
-                  <div
-                  key={tag.slug}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFormData((prev) => ({
-                      ...prev,
-                      tags: [...prev.tags, tag.name],
-                    }));
-                    setTagSearchQuery("");
-                    // Keep focus on input after selection
-                    setTimeout(() => tagInputRef.current?.focus(), 0);  // ← THIS LINE HERE
-                  }}
-                  className="px-4 py-3 hover:bg-gray-100 cursor-pointer transition-all border-b border-gray-100 last:border-b-0"
-                >
-                  <span className="text-sm text-gray-800 font-medium">
-                    {tag.name}
-                  </span>
-                </div>
-                  ))
-                ) : (
-                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                    {tagSearchQuery ? "No matching tags found" : "All tags selected or no tags available"}
-                  </div>
-                )}
+                        {filteredTags.length > 0 ? (
+                          filteredTags.map((tag) => (
+                            <div
+                              key={tag.slug}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  tags: [...prev.tags, tag.name],
+                                }));
+                                setTagSearchQuery("");
+                                // Keep focus on input after selection
+                                setTimeout(
+                                  () => tagInputRef.current?.focus(),
+                                  0
+                                ); // ← THIS LINE HERE
+                              }}
+                              className="px-4 py-3 hover:bg-gray-100 cursor-pointer transition-all border-b border-gray-100 last:border-b-0"
+                            >
+                              <span className="text-sm text-gray-800 font-medium">
+                                {tag.name}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                            {tagSearchQuery
+                              ? "No matching tags found"
+                              : "All tags selected or no tags available"}
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
