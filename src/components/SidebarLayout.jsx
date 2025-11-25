@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Home, User, Menu, X, LogOut, BarChart3, FilePlus2, Newspaper, ShieldCheck, Network, Building2, BarChart2,} from "lucide-react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,7 +10,13 @@ export default function SidebarLayout() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const isMaster = user?.role === "master";
-
+  const contentRef = useRef(null);
+// Scroll to top on route change
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
   const menuItems = [
     { name: "Dashboard", icon: Home, path: "/dashboard" },
     { name: "Create News", icon: FilePlus2, path: "/create-news" },
@@ -42,7 +48,7 @@ export default function SidebarLayout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 ">
       {/* Mobile menu button */}
       <div className="lg:hidden fixed top-4 z-50">
         <button
@@ -82,7 +88,8 @@ export default function SidebarLayout() {
         </div>
 
         {/* Scrollable Navigation Area */}
-        <div className="flex-1 overflow-y-auto">
+       <div className="flex-1 overflow-y-auto no-scrollbar">
+
           {/* Navigation */}
           <nav className="mt-4 sm:mt-6 px-3 sm:px-4">
             <ul className="space-y-1">
@@ -157,7 +164,7 @@ export default function SidebarLayout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 ml-0 lg:ml-72 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 ml-0 lg:ml-72 flex flex-col h-screen overflow-hidden " ref={contentRef}>
         <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
           {/* Header - Fixed at top */}
           <header className="bg-white border-b border-gray-200 shadow-sm backdrop-blur-sm bg-white/95 sticky top-0 z-30">
@@ -185,8 +192,8 @@ export default function SidebarLayout() {
           </header>
 
           {/* Page content - Scrollable */}
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div className="max-w-7xl mx-auto">
+       <div className="flex-1 overflow-y-auto no-scrollbar">
+       <div className="max-w-7xl mx-auto">
               <Outlet />
             </div>
           </div>

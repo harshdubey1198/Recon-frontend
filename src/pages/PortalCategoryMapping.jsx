@@ -397,7 +397,8 @@ const PortalCategoryMapping = () => {
           )}
 
           {!loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto pr-2">
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 max-h-96 overflow-y-auto pr-2">
+
               {filteredItems.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-gray-500">
                   {step === 4 ? 'No mapped categories found. Click "Add Mapping" to add categories.' : 'No items found'}

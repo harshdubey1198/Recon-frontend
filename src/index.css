@@ -186,3 +186,11 @@
 .neo-toggle-input:not(:checked) + .neo-toggle .neo-status-text::before {
   content: "STANDBY";
 }
+/* Hide scrollbar on all browsers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
