@@ -627,70 +627,102 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
     };
   }, []);
 
-  const loadAssignedCategories = async (page = 1, append = false) => {
-    try {
-      if (!userId) {
-        console.error("❌ User ID not found in localStorage");
-        return;
-      }
+const loadAssignedCategories = async (page = 1, append = false) => {
+  try {
+    if (!userId) {
+      console.error("❌ User ID not found in localStorage");
+      return;
+    }
 
-      const res = await fetchUserPortalsByUserId(userId, page);
+    // 🔥 SHOW LOADING IMMEDIATELY FOR BOTH PORTAL AND CATEGORIES
+    setIsCategoryloading(true);
+    setShowPortalSection(true);
+    setIsPortalsLoading(true);
 
-      if (res?.data?.status && Array.isArray(res.data.data)) {
-        const portals = res.data.data.map((item) => ({
-          id: Number(item.portal_id),
-          name: item.portal_name,
+    const res = await fetchUserPortalsByUserId(userId, page);
+
+    if (res?.data?.status && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      const portals = res.data.data.map((item) => ({
+        id: Number(item.portal_id),
+        name: item.portal_name,
+      }));
+
+      const finalList = append ? [...assignedCategories, ...portals] : portals;
+      setAssignedCategories(finalList);
+
+      // 🔥 AUTO-SELECT FIRST PORTAL AND FETCH CATEGORIES IMMEDIATELY
+      if (finalList.length > 0) {
+        const defaultPortal = finalList[0];
+
+        setFormData((p) => ({
+          ...p,
+          master_category: defaultPortal.id,
         }));
 
-        setAssignedCategories((prev) => {
-          const finalList = append ? [...prev, ...portals] : portals;
-
-          // 🔥 AUTO-SELECT FIRST PORTAL
-          if (finalList.length > 0) {
-            const defaultPortal = finalList[0];
-
-            setFormData((p) => ({
-              ...p,
-              master_category: defaultPortal.id, // set selected portal
-            }));
-
-            // 🔥 LOAD PARENT CATEGORIES IMMEDIATELY
-            fetchPortalParentCategories(defaultPortal.id).then((res) => {
-              const parents = res?.data?.data?.parent_categories || [];
-              setMappedPortals(
-                parents.map((c) => ({
-                  id: c.parent_external_id,
-                  portalId: defaultPortal.id,
-                  portalName: defaultPortal.name,
-                  portalCategoryName: c.parent_name,
-                  portalCategoryId: c.parent_external_id,
-                  selected: true,
-                }))
-              );
-
-              setShowPortalSection(true); // open modal
-            });
-          }
-
-          return finalList;
-        });
-
-        const nextUrl = res.data?.pagination?.next;
-        if (nextUrl) {
-          const nextPageParam = new URL(nextUrl).searchParams.get("page");
-          setNextCategoryPage(Number(nextPageParam));
-        } else {
-          setNextCategoryPage(null);
+        // 🔥 FETCH PARENT CATEGORIES (NO WAITING)
+        try {
+          const categoryRes = await fetchPortalParentCategories(defaultPortal.id);
+          const parents = categoryRes?.data?.data?.parent_categories || [];
+          
+          setMappedPortals(
+            parents.map((c) => ({
+              id: c.parent_external_id,
+              portalId: defaultPortal.id,
+              portalName: defaultPortal.name,
+              portalCategoryName: c.parent_name,
+              portalCategoryId: c.parent_external_id,
+              selected: true,
+              has_subcategories: true,
+            }))
+          );
+        } catch (err) {
+          console.error("❌ Failed to fetch parent categories:", err);
+          setMappedPortals([]);
         }
-
-        setIsCategoryloading(false);
-      } else {
-        console.warn("⚠️ No portal found for this user.");
       }
-    } catch (err) {
-      console.error("❌ Failed to fetch portal list:", err);
+
+      const nextUrl = res.data?.pagination?.next;
+      if (nextUrl) {
+        const nextPageParam = new URL(nextUrl).searchParams.get("page");
+        setNextCategoryPage(Number(nextPageParam));
+      } else {
+        setNextCategoryPage(null);
+      }
+      
+      // 🔥 HIDE LOADING AFTER PORTAL DATA IS LOADED
+      setIsCategoryloading(false);
+    } else {
+      console.warn("⚠️ No portal found for this user.");
+      setAssignedCategories([]);
+      setFormData((p) => ({
+        ...p,
+        master_category: null,
+      }));
+      setMappedPortals([]);
+      setShowPortalSection(false);
+      // 🔥 HIDE LOADING IMMEDIATELY WHEN NO PORTALS
+      setIsCategoryloading(false);
+      setIsPortalsLoading(false);
+      // 🔥 CLOSE THE MODAL WHEN NO PORTALS
+      setShowPortalCategoryModal(false);
     }
-  };
+  } catch (err) {
+    console.error("❌ Failed to fetch portal list:", err);
+    // 🔥 HIDE LOADING ON ERROR AND CLEAR DATA
+    setAssignedCategories([]);
+    setMappedPortals([]);
+    setShowPortalSection(false);
+    setIsCategoryloading(false);
+    setIsPortalsLoading(false);
+    // 🔥 CLOSE THE MODAL ON ERROR
+    setShowPortalCategoryModal(false);
+  } finally {
+    // 🔥 ONLY HIDE PORTALS LOADING IF PORTALS EXIST (categories fetch separately)
+    if (assignedCategories.length === 0) {
+      setIsPortalsLoading(false);
+    }
+  }
+};
 
   const handleGoBack = () => {
     if (categoryHistory.length > 0) {
@@ -916,32 +948,27 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
       //   resetForm();
       //   // if (res?.data?.message) toast.success(res.data.message);
       // }
-      if (statusType === "PUBLISHED") {
-        // Build the payload with selected/excluded portal categories
-        // const payload = {
-        //   portal_category_ids: mappedPortals
-        //     .filter((p) => p.selected)
-        //     .map((p) => Number(p.portalCategoryId)),
-        //   exclude_portal_categories: mappedPortals
-        //     .filter((p) => !p.selected)
-        //     .map((p) => Number(p.portalCategoryId)),
-        // };
-        // const payload = [];
-
+     if (statusType === "PUBLISHED") {
         const res = await publishNewsArticle(createdArticle.id, {
           portal_category_id: mappedPortals[0]?.mapping_found
             ? mappedPortals[0]?.master_category_id
             : mappedPortals[0]?.id,
         });
 
-        setMappedPortals([]); // 🔥 CLEAR PORTAL MAPPINGS
-        setShowPortalSection(false); // 🔥 CLOSE SELECT PORTAL SECTION
-        setSelectedPortalForCategories(""); // 🔥 RESET MANAGE PORTAL CATEGORY DROPDOWN
-        resetForm();
         if (res?.data?.message) toast.success(res.data.message);
+        
+        // 🔥 RESET EVERYTHING AFTER SUCCESSFUL PUBLISH
+        setMappedPortals([]);
+        setShowPortalSection(false);
+        setSelectedPortalForCategories("");
+        setCategoryHistory([]);
+        resetForm();
+        
+        // 🔥 RELOAD DEFAULT PORTAL AND CATEGORIES
+        await loadAssignedCategories();
+      } else {
+        resetForm();
       }
-
-      resetForm();
     } catch (err) {
       toast.error("Failed to process form.");
     } finally {
@@ -1086,7 +1113,7 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
             {/* Basic Info */}
             <section className="space-y-5">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* LEFT SIDE: Category Selection */}
+                {/* LEFT SIDE: portal Selection */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Portal
@@ -1098,6 +1125,13 @@ if (mappedPortals.length > 0 && portal.has_subcategories) {
                       disabled
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm bg-gray-100"
                       value="Loading portals..."
+                    />
+                 ) : assignedCategories.length === 0 ? (
+                    // 🔹 NO PORTAL FOUND → Show message in input box
+                    <input
+                      disabled
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm bg-white text-gray-500"
+                      value="No portal found"
                     />
                   ) : assignedCategories.length === 1 ? (
                     // 🔹 ONLY ONE PORTAL → Show readonly input with auto-selected portal

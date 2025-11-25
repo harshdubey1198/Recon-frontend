@@ -347,7 +347,7 @@ const PortalCategoryMapping = () => {
 
   return (
      <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-100">
         <div className="bg-black px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
