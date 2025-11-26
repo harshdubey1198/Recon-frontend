@@ -128,9 +128,9 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
       setIsPortalsLoading(true);
 
       // Push history ONLY when loading subcategories (NOT parent level)
-      if (mappedPortals.length > 0 && portal.has_subcategories) {
-        setCategoryHistory((prev) => [...prev, mappedPortals]);
-      }
+     if (mappedPortals.length > 0) {
+  setCategoryHistory((prev) => [...prev, mappedPortals]);
+}
 
       let subcats = [];
       let hasSubcategories = false;
@@ -151,9 +151,9 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
         hasSubcategories = false;
       }
 
-      // CASE 1: If subcategories exist, show them (but continue to check matching)
       if (hasSubcategories) {
         console.log("✅ Showing subcategories");
+        setIsViewingSubcategories(true); // ✅ ADD THIS LINE
         setMappedPortals(
           subcats.map((c) => ({
             id: c.id,
@@ -166,6 +166,7 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
             has_subcategories: true,
           }))
         );
+        return; // ✅ EXIT HERE - Don't call cross-portal mapping API
       }
 
       console.log( "🔍 Calling cross-portal mapping API for portal.id:", portal.id );
@@ -180,10 +181,11 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
 
 
         // Always show matching results if mapping is found
-        if (
-          mappingFound &&
-          (mappedCategories.length > 0 || requestedCategory)
-        ) {
+       if (
+      mappingFound &&
+      (mappedCategories.length > 0 || requestedCategory)
+    ) {
+      setIsViewingSubcategories(false); // Reset subcategory view flag
 
           // Combine requested category with mapped categories
           const allCategories = [];
@@ -721,12 +723,15 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
     }
   };
 
-  const handleGoBack = () => {
+ const handleGoBack = () => {
   if (categoryHistory.length > 0) {
     const previousState = categoryHistory[categoryHistory.length - 1];
     setMappedPortals(previousState);
-    setCategoryHistory((prev) => prev.slice(0, -1)); // Remove last item from history
-    setIsViewingSubcategories(false); // Reset subcategory view flag
+    setCategoryHistory((prev) => prev.slice(0, -1));
+    
+    // ✅ REPLACE THE SINGLE LINE WITH THESE TWO LINES:
+    const hasSubcategories = previousState.some(p => p.has_subcategories);
+    setIsViewingSubcategories(hasSubcategories);
   }
 };
 
