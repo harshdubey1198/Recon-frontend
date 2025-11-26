@@ -1179,11 +1179,12 @@ const NewsArticleForm = () => {
 
                       {/* Title */}
                       <h2 className="text-lg font-semibold text-gray-900">
-                        {mappedPortals[0]?.mapping_found
-                          ? "Select matched portal"
-                          : categoryHistory.length > 0
-                          ? "Select subcategory"
-                          : "Select category"}{" "}
+                        {mappedPortals?.length > 0 && mappedPortals[0]?.mapping_found
+                              ? "Select matched portal"
+                              : mappedPortals?.length > 0 && mappedPortals[0]?.has_subcategories
+                              ? "Select subcategory"
+                              : "Select category"}
+                            {" "}
                         from{" "}
                         <span className="font-bold">
                           {mappedPortals[0]?.portalName ||
