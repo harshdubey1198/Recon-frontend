@@ -249,7 +249,7 @@ const PortalCategoryMapping = () => {
           parent_name: cat.parent_name,
           parent_external_id: cat.parent_external_id
         }));
-        setPortalCategoriesModal(cleanCategories);
+        setPortalCategoriesModal(cleanCategories.map(c => ({ ...c, selected: false })));
       } catch (err) {
         console.error("Error fetching parent categories:", err);
       }
@@ -537,7 +537,8 @@ const PortalCategoryMapping = () => {
                     parent_name: cat.parent_name,
                     parent_external_id: cat.parent_external_id
                   }));
-                  setPortalCategoriesModal(cleanCategories);
+                setPortalCategoriesModal(cleanCategories);
+
                 }}
               >
                 ← Back to Categories
@@ -548,7 +549,7 @@ const PortalCategoryMapping = () => {
               <ul className="max-h-60 overflow-y-auto border rounded p-2">
                 {portalCategoriesModal.map((cat) => (
                   <li
-                    key={cat.parent_external_id || cat.external_id}
+                     key={`${isSubcategoryView ? 'sub-' : 'parent-'}${cat.external_id || cat.parent_external_id}`}
                     className="p-2 border-b text-sm flex items-center justify-between cursor-pointer hover:bg-gray-50"
                     onClick={async () => {
                       if (!isSubcategoryView) {

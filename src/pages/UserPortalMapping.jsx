@@ -492,7 +492,7 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
                     )
                   }
                   onScroll={handleCategoryScroll}
-                  className="w-full h-auto border-2 border-gray-200 rounded-xl px-4 py-3 transition-all bg-white text-gray-700 font-medium h-64 cursor-pointer hover:border-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none overflow-hidden"
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 transition-all bg-white text-gray-700 font-medium h-64 cursor-pointer hover:border-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none overflow-hidden"
                 >
                   {masterCategories.map((cat) => (
                     <option key={cat.id} value={cat.name} className="py-2 px-2 hover:bg-gray-50">
