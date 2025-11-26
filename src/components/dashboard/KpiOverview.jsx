@@ -5,11 +5,8 @@ import { useNavigate } from "react-router-dom";
 
 export default function KPIOverview({ data = {} }) {
   const navigate = useNavigate();
-  console.log(data);
-  
-  const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
+   const user = JSON.parse(localStorage.getItem("auth_user") || "{}");
   const role = user?.role || "";
-  console.log(user?.role);
   
   const formatTime = (time) => {
     if (!time || time === 0) return "0s";
