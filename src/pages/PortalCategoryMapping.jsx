@@ -440,7 +440,6 @@ const PortalCategoryMapping = () => {
                             <div className="text-sm text-gray-500">
                               <p className="font-medium text-gray-700">{item.portal_name}</p>
                               <p className="text-xs mt-1">Parent: {item.parent_name}</p>
-                              <p className="text-xs">Portal Category ID: {item.portal_category_id}</p>
                             </div>
                           )}
                         </div>

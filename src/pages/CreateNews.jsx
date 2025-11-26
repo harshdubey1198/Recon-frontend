@@ -74,8 +74,9 @@ const NewsArticleForm = () => {
   const authUser = JSON.parse(localStorage.getItem("auth_user"));
   const userId = authUser?.id || null;
   const [categoryHistory, setCategoryHistory] = useState([]);
-  const [isSubcategoryView, setIsSubcategoryView] = useState(false);
-  const [selectedParentCategory, setSelectedParentCategory] = useState(null);
+const [isSubcategoryView, setIsSubcategoryView] = useState(false);
+const [selectedParentCategory, setSelectedParentCategory] = useState(null);
+const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
   const [tagSearchQuery, setTagSearchQuery] = useState("");
   const tagInputRef = React.useRef(null);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -142,9 +143,10 @@ const NewsArticleForm = () => {
         );
         subcats = subCatRes?.data?.data?.categories || [];
 
-        if (subcats.length > 0) {
-          hasSubcategories = true;
-        }
+       if (subcats.length > 0) {
+            hasSubcategories = true;
+            setIsViewingSubcategories(true); // Mark that we're viewing subcategories
+          }
       } catch (subError) {
         hasSubcategories = false;
       }
@@ -262,15 +264,18 @@ const NewsArticleForm = () => {
   const handleCategorySelect = async (e, loadNext = false) => {
     const categoryId = loadNext ? formData.master_category : e.target.value;
 
-    if (!loadNext) {
-      setFormData((prev) => ({
-        ...prev,
-        master_category: categoryId,
-      }));
-      setMappedPortals([]);
-      setNextPage(null);
-      setCategoryHistory([]); // Clear history when changing portal
-    }
+   if (!loadNext) {
+  setFormData((prev) => ({
+    ...prev,
+    master_category: categoryId,
+  }));
+  
+  setMappedPortals([]);          // clear old categories
+  setCategoryHistory([]);        // reset history
+  setShowPortalSection(false);   // hide header while loading
+  setIsViewingSubcategories(false); // reset subcategory view flag
+}
+
 
     if (!categoryId) {
       setMappedPortals([]);
@@ -717,12 +722,13 @@ const NewsArticleForm = () => {
   };
 
   const handleGoBack = () => {
-    if (categoryHistory.length > 0) {
-      const previousState = categoryHistory[categoryHistory.length - 1];
-      setMappedPortals(previousState);
-      setCategoryHistory((prev) => prev.slice(0, -1)); // Remove last item from history
-    }
-  };
+  if (categoryHistory.length > 0) {
+    const previousState = categoryHistory[categoryHistory.length - 1];
+    setMappedPortals(previousState);
+    setCategoryHistory((prev) => prev.slice(0, -1)); // Remove last item from history
+    setIsViewingSubcategories(false); // Reset subcategory view flag
+  }
+};
 
   useEffect(() => {
     loadAssignedCategories();
@@ -1169,7 +1175,8 @@ const NewsArticleForm = () => {
               {showPortalSection && (
                 <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
                   {/* Header Section */}
-                  <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
+                  <div className="relative flex items-center justify-between items-center pb-3 border-b-2 border-gray-200">
+
                     {/* LEFT: Icon + Title + Back Button */}
                     <div className="flex items-center space-x-3">
                       {/* Settings Icon */}
@@ -1178,65 +1185,64 @@ const NewsArticleForm = () => {
                       </div>
 
                       {/* Title */}
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        {mappedPortals?.length > 0 && mappedPortals[0]?.mapping_found
-                              ? "Select matched portal"
-                              : mappedPortals?.length > 0 && mappedPortals[0]?.has_subcategories
-                              ? "Select subcategory"
-                              : "Select category"}
-                            {" "}
-                        from{" "}
-                        <span className="font-bold">
-                          {mappedPortals[0]?.portalName ||
-                            mappedPortals[0]?.portalParentCategory ||
-                            mappedPortals[0]?.portalCategoryName ||
-                            "Selected"}
-                        </span>
-                      </h2>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                          {mappedPortals?.length > 0 && mappedPortals[0]?.mapping_found
+                                ? "Select matched portal"
+                                : isViewingSubcategories
+                                ? "Select subcategory"
+                                : "Select category"}
+                          {" "}
+                          from{" "}
+                          <span className="font-bold">
+                            {
+                              assignedCategories.find(
+                                (p) => p.id === Number(formData.master_category)
+                              )?.name || "Selected"
+                            }
+                          </span>
+                        </h2>
                     </div>
 
-                    {/* RIGHT: Manage Button */}
-                    {!showPortalCategoryModal &&
-  formData.master_category &&
-  (categoryHistory.length > 0 && !mappedPortals[0]?.has_subcategories) && (
-    <button
-      type="button"
-      className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
-      onClick={() => {
-        setForceEnablePortal(true);
-        setShowPortalCategoryModal(true);
-      }}
-    >
-      Manage Portal Categories
-    </button>
-  )}
+                   <div className="flex items-center gap-3">
+                        {/* Manage Button */}
+                        {!showPortalCategoryModal &&
+                          formData.master_category &&
+                          categoryHistory.length > 0 &&
+                          !mappedPortals[0]?.has_subcategories && (
+                            <button
+                              type="button"
+                              className="px-3 py-2 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+                              onClick={() => {
+                                setForceEnablePortal(true);
+                                setShowPortalCategoryModal(true);
+                              }}
+                            >
+                              Manage Portal Categories
+                            </button>
+                          )}
 
+                        {/* Back Button */}
+                        {categoryHistory.length > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGoBack();
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Back
+                          </button>
+                        )}
+                      </div>
 
-                    {/* Back Button (only when needed) */}
-                    {categoryHistory.length > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleGoBack();
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                        Back
-                      </button>
-                    )}
                   </div>
 
                   {/* Portal list */}
