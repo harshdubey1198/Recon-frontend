@@ -123,19 +123,20 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
     }
   }, [isEditMode, id]);
 
-  const handlePortalCategoryClick = async (portal) => {
-    try {
-      setIsPortalsLoading(true);
+ const handlePortalCategoryClick = async (portal) => {
+  try {
+    setIsPortalsLoading(true);
 
-      // Push history ONLY when loading subcategories (NOT parent level)
-     if (mappedPortals.length > 0) {
-  setCategoryHistory((prev) => [...prev, mappedPortals]);
-}
+    // Push history ONLY when loading subcategories (NOT parent level)
+    if (mappedPortals.length > 0) {
+      setCategoryHistory((prev) => [...prev, mappedPortals]);
+    }
 
-      let subcats = [];
-      let hasSubcategories = false;
+    let subcats = [];
+    let hasSubcategories = false;
 
-      // Try to fetch subcategories first
+    // ✅ FIX: Only try to fetch subcategories if we're NOT already viewing subcategories
+    if (!isViewingSubcategories) {
       try {
         const subCatRes = await fetchSubCategoriesByParent(
           portal.portalId,
@@ -143,125 +144,121 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
         );
         subcats = subCatRes?.data?.data?.categories || [];
 
-       if (subcats.length > 0) {
-            hasSubcategories = true;
-            setIsViewingSubcategories(true); // Mark that we're viewing subcategories
-          }
+        if (subcats.length > 0) {
+          hasSubcategories = true;
+          setIsViewingSubcategories(true); // Mark that we're viewing subcategories
+        }
       } catch (subError) {
         hasSubcategories = false;
       }
+    }
 
-      if (hasSubcategories) {
-        console.log("✅ Showing subcategories");
-        setIsViewingSubcategories(true); // ✅ ADD THIS LINE
-        setMappedPortals(
-          subcats.map((c) => ({
+    if (hasSubcategories) {
+      console.log("✅ Showing subcategories");
+      setIsViewingSubcategories(true);
+      setMappedPortals(
+        subcats.map((c) => ({
+          id: c.id,
+          portalId: portal.portalId,
+          portalName: portal.portalName,
+          portalCategoryName: c.name,
+          portalParentCategory: c.parent_name,
+          portalCategoryId: c.external_id,
+          selected: true,
+          has_subcategories: true,
+        }))
+      );
+      return; // ✅ EXIT HERE - Don't call cross-portal mapping API
+    }
+
+    console.log("🔍 Calling cross-portal mapping API for portal.id:", portal.id);
+
+    try {
+      const matchingRes = await fetchCrossPortalMappings(portal.id);
+
+      const matchingData = matchingRes?.data?.data || {};
+      const mappingFound = matchingData.mapping_found;
+      const requestedCategory = matchingData.requested_portal_category;
+      const mappedCategories = matchingData.mapped_portal_categories || [];
+
+      // Always show matching results if mapping is found
+      if (mappingFound && (mappedCategories.length > 0 || requestedCategory)) {
+        setIsViewingSubcategories(false); // Reset subcategory view flag
+
+        // Combine requested category with mapped categories
+        const allCategories = [];
+
+        // Add requested category first
+        if (requestedCategory) {
+          allCategories.push({
+            id: requestedCategory.id,
+            portalId: requestedCategory.portal_id || portal.portalId,
+            portalName: requestedCategory.portal_name || portal.portalName,
+            portalCategoryName: requestedCategory.name,
+            portalParentCategory: requestedCategory.parent_name,
+            portalCategoryId: requestedCategory.id,
+            selected: true,
+            mapping_found: mappingFound,
+            master_category_id: matchingData.master_category_id,
+          });
+        }
+
+        // Add mapped categories
+        mappedCategories.forEach((c) => {
+          allCategories.push({
             id: c.id,
-            portalId: portal.portalId,
-            portalName: portal.portalName,
+            portalId: c.portal_id,
+            portalName: c.portal_name,
             portalCategoryName: c.name,
             portalParentCategory: c.parent_name,
-            portalCategoryId: c.external_id,
+            portalCategoryId: c.portal_category_id,
             selected: true,
-            has_subcategories: true,
-          }))
-        );
-        return; // ✅ EXIT HERE - Don't call cross-portal mapping API
-      }
-
-      console.log( "🔍 Calling cross-portal mapping API for portal.id:", portal.id );
-
-      try {
-        const matchingRes = await fetchCrossPortalMappings(portal.id);
-
-        const matchingData = matchingRes?.data?.data || {};
-        const mappingFound = matchingData.mapping_found;
-        const requestedCategory = matchingData.requested_portal_category;
-        const mappedCategories = matchingData.mapped_portal_categories || [];
-
-
-        // Always show matching results if mapping is found
-       if (
-      mappingFound &&
-      (mappedCategories.length > 0 || requestedCategory)
-    ) {
-      setIsViewingSubcategories(false); // Reset subcategory view flag
-
-          // Combine requested category with mapped categories
-          const allCategories = [];
-
-          // Add requested category first
-          if (requestedCategory) {
-            allCategories.push({
-              id: requestedCategory.id,
-              portalId: requestedCategory.portal_id || portal.portalId,
-              portalName: requestedCategory.portal_name || portal.portalName,
-              portalCategoryName: requestedCategory.name,
-              portalParentCategory: requestedCategory.parent_name,
-              portalCategoryId: requestedCategory.id,
-              selected: true,
-              mapping_found: mappingFound,
-              master_category_id: matchingData.master_category_id,
-            });
-          }
-
-          // Add mapped categories
-          mappedCategories.forEach((c) => {
-            allCategories.push({
-              id: c.id,
-              portalId: c.portal_id,
-              portalName: c.portal_name,
-              portalCategoryName: c.name,
-              portalParentCategory: c.parent_name,
-              portalCategoryId: c.portal_category_id,
-              selected: true,
-              mapping_found: mappingFound,
-              master_category_id: matchingData.master_category_id,
-            });
+            mapping_found: mappingFound,
+            master_category_id: matchingData.master_category_id,
           });
+        });
 
-          setMappedPortals(allCategories);
+        setMappedPortals(allCategories);
 
-          const totalCount = allCategories.length;
-          toast.success(`Found ${mappedCategories.length} matched categories `);
-        } else if (requestedCategory && !hasSubcategories) {
-          setMappedPortals([
-            {
-              id: requestedCategory.id,
-              portalId: requestedCategory.portal_id || portal.portalId,
-              portalName: requestedCategory.portal_name || portal.portalName,
-              portalCategoryName: requestedCategory.name,
-              portalParentCategory: requestedCategory.parent_name,
-              portalCategoryId: requestedCategory.id,
-              selected: true,
-              mapping_found: mappingFound,
-            },
-          ]);
+        const totalCount = allCategories.length;
+        toast.success(`Found ${mappedCategories.length} matched categories `);
+      } else if (requestedCategory && !hasSubcategories) {
+        setMappedPortals([
+          {
+            id: requestedCategory.id,
+            portalId: requestedCategory.portal_id || portal.portalId,
+            portalName: requestedCategory.portal_name || portal.portalName,
+            portalCategoryName: requestedCategory.name,
+            portalParentCategory: requestedCategory.parent_name,
+            portalCategoryId: requestedCategory.id,
+            selected: true,
+            mapping_found: mappingFound,
+          },
+        ]);
 
-          if (!mappingFound) {
-            toast.info("No related categories mapped yet");
-          }
-        } else if (!hasSubcategories && !mappingFound) {
-          // No subcategories and no mapping found
-          toast.info("No categories found for this selection");
-          setCategoryHistory((prev) => prev.slice(0, -1));
+        if (!mappingFound) {
+          toast.info("No related categories mapped yet");
         }
-      } catch (matchError) {
-
-        // If no subcategories and matching failed, remove from history
-        if (!hasSubcategories) {
-          setCategoryHistory((prev) => prev.slice(0, -1));
-          toast.error("Failed to load categories");
-        }
+      } else if (!hasSubcategories && !mappingFound) {
+        // No subcategories and no mapping found
+        toast.info("No categories found for this selection");
+        setCategoryHistory((prev) => prev.slice(0, -1));
       }
-    } catch (e) {
-      console.error("❌ Unexpected error:", e);
-      toast.error("Failed to load categories. Please try again.");
-      setCategoryHistory((prev) => prev.slice(0, -1));
-    } finally {
-      setIsPortalsLoading(false);
+    } catch (matchError) {
+      // If no subcategories and matching failed, remove from history
+      if (!hasSubcategories) {
+        setCategoryHistory((prev) => prev.slice(0, -1));
+        toast.error("Failed to load categories");
+      }
     }
-  };
+  } catch (e) {
+    console.error("❌ Unexpected error:", e);
+    toast.error("Failed to load categories. Please try again.");
+    setCategoryHistory((prev) => prev.slice(0, -1));
+  } finally {
+    setIsPortalsLoading(false);
+  }
+};
 
   const handleCategorySelect = async (e, loadNext = false) => {
     const categoryId = loadNext ? formData.master_category : e.target.value;
