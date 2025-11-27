@@ -196,8 +196,8 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
             portalName: requestedCategory.portal_name || portal.portalName,
             portalCategoryName: requestedCategory.name,
             portalParentCategory: requestedCategory.parent_name,
-            portalCategoryId: requestedCategory.id,
-            selected: true,
+            portalCategoryId: requestedCategory.id,  
+             selected: true,
             mapping_found: mappingFound,
             master_category_id: matchingData.master_category_id,
           });
@@ -211,7 +211,7 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
             portalName: c.portal_name,
             portalCategoryName: c.name,
             portalParentCategory: c.parent_name,
-            portalCategoryId: c.portal_category_id,
+             portalCategoryId: c.id,
             selected: true,
             mapping_found: mappingFound,
             master_category_id: matchingData.master_category_id,
@@ -883,9 +883,10 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
           .filter((p) => p.selected)
           .map((p) => Number(p.portalCategoryId));
 
-        const excludedCategories = mappedPortals
-          .filter((p) => !p.selected)
-          .map((p) => Number(p.portalCategoryId));
+       const excludedCategories = mappedPortals
+        .filter((p) => !p.selected)
+        .map((p) => Number(p.id));
+
 
         changedFields.portal_category_ids = selectedCategories;
         changedFields.exclude_portal_categories = excludedCategories;
@@ -906,8 +907,9 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
 
         // 🟠 Exclude unchecked categories (existing ones only)
         const excludedCategories = mappedPortals
-          .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
-          .map((p) => Number(p.id));
+        .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
+        .map((p) => Number(p.portalCategoryId));
+
 
         // ✅ Append clean lists based on mapping_found
         if (mappedPortals[0]?.mapping_found) {
