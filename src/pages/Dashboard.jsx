@@ -7,6 +7,7 @@ import HeatMapCategory from "../components/dashboard/HeatMapCategory";
 import AnalyticsComponent from "../components/dashboard/AnalyticsComponent";
 import SuccessRateChart from "../components/dashboard/SuccessRateChart";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
+import GA4Leaderboard from "../components/dashboard/GA4Leaderboard";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -313,6 +314,11 @@ export default function Dashboard() {
         <KPIOverview data={stats} />
         <StatusOverview data={stats} />
         <PortalLeaderboard ref={portalLeaderboardRef} range={range} customRange={customRange} />
+
+        <GA4Leaderboard
+    range={range} 
+    customRange={customRange} 
+/>
         
         <div className="space-y-10">
           <HeatMapCategory
