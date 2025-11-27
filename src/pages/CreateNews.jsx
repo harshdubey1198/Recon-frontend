@@ -702,21 +702,17 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
         // 🔥 CLOSE THE MODAL WHEN NO PORTALS
         setShowPortalCategoryModal(false);
       }
-    } catch (err) {
+   } catch (err) {
       console.error("❌ Failed to fetch portal list:", err);
-      // 🔥 HIDE LOADING ON ERROR AND CLEAR DATA
       setAssignedCategories([]);
       setMappedPortals([]);
       setShowPortalSection(false);
       setIsCategoryloading(false);
-      setIsPortalsLoading(false);
-      // 🔥 CLOSE THE MODAL ON ERROR
+      // keep modal closed if error
       setShowPortalCategoryModal(false);
     } finally {
-      // 🔥 ONLY HIDE PORTALS LOADING IF PORTALS EXIST (categories fetch separately)
-      if (assignedCategories.length === 0) {
-        setIsPortalsLoading(false);
-      }
+      // ALWAYS stop portal-loading spinner regardless of stale state
+      setIsPortalsLoading(false);
     }
   };
 
@@ -947,6 +943,7 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
 
       if (statusType === "DRAFT") {
         resetForm();
+         await loadAssignedCategories(); 
         setIsLoading(false);
         return;
       }
@@ -967,14 +964,48 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
         if (res?.data?.message) toast.success(res.data.message);
 
         // 🔥 RESET EVERYTHING AFTER SUCCESSFUL PUBLISH
-        setMappedPortals([]);
-        setShowPortalSection(false);
-        setSelectedPortalForCategories("");
-        setCategoryHistory([]);
-        resetForm();
+       // reset UI first
+setMappedPortals([]);
+setSelectedPortalForCategories("");
+setCategoryHistory([]);
 
-        // 🔥 RELOAD DEFAULT PORTAL AND CATEGORIES
-        await loadAssignedCategories();
+// reset form fields (local)
+resetForm();
+
+// reload portals and only show portal section after load finishes
+await loadAssignedCategories(); // this now guarantees isPortalsLoading toggles off
+// ensure portal section shows only if we have mapped portals
+if (mappedPortals.length === 0 && assignedCategories.length > 0) {
+  // try to fetch parent categories for default assigned portal (first one)
+  const defaultPortalId = assignedCategories[0]?.id;
+  if (defaultPortalId) {
+    try {
+      const categoryRes = await fetchPortalParentCategories(defaultPortalId);
+      const parents = categoryRes?.data?.data?.parent_categories || [];
+      if (parents.length) {
+        setMappedPortals(
+          parents.map((c) => ({
+            id: c.parent_external_id,
+            portalId: defaultPortalId,
+            portalName: assignedCategories[0].name,
+            portalCategoryName: c.parent_name,
+            portalCategoryId: c.parent_external_id,
+            selected: true,
+            has_subcategories: true,
+          }))
+        );
+        setShowPortalSection(true);
+      } else {
+        setShowPortalSection(false);
+      }
+    } catch (err) {
+      setShowPortalSection(false);
+    }
+  }
+} else {
+  setShowPortalSection(mappedPortals.length > 0);
+}
+
       } else {
         resetForm();
       }
@@ -988,30 +1019,34 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
   const [editorKey, setEditorKey] = useState(Date.now());
   const resetForm = () => {
     revokeIfBlob(imagePreview);
-    setFormData({
-      headline: "",
-      title: "",
-      shortDesc: "",
-      longDesc: "",
-      image: null,
-      tags: [],
-      content: "",
-      latestNews: false,
-      headlines: false,
-      articles: false,
-      trending: false,
-      breakingNews: false,
-      upcomingEvents: false,
-      eventStartDate: "",
-      eventEndDate: "",
-      scheduleDate: "",
-      counter: 0,
-      order: 0,
-      status: "PUBLISHED",
-      meta_title: "",
-      slug: "",
-      slugEdited: false,
-    });
+   setFormData((prev) => ({
+  headline: "",
+  title: "",
+  shortDesc: "",
+  longDesc: "",
+  image: null,
+  tags: [],
+  content: "",
+  latestNews: false,
+  headlines: false,
+  articles: false,
+  trending: false,
+  breakingNews: false,
+  upcomingEvents: false,
+  eventStartDate: "",
+  eventEndDate: "",
+  scheduleDate: "",
+  counter: 0,
+  order: 0,
+  status: "PUBLISHED",
+  meta_title: "",
+  slug: "",
+  slugEdited: false,
+
+  // 🔥 DO NOT TOUCH master_category → keep the default portal selected
+  master_category: prev.master_category,
+}));
+
     setTagInput("");
     setImagePreview(null);
     setEditorKey(Date.now()); // 🔑 Force CKEditor remount
