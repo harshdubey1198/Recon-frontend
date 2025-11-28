@@ -243,6 +243,10 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+                <GA4Leaderboard
+    range={range} 
+    customRange={customRange} 
+/>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -315,10 +319,7 @@ export default function Dashboard() {
         <StatusOverview data={stats} />
         <PortalLeaderboard ref={portalLeaderboardRef} range={range} customRange={customRange} />
 
-        <GA4Leaderboard
-    range={range} 
-    customRange={customRange} 
-/>
+
         
         <div className="space-y-10">
           <HeatMapCategory
