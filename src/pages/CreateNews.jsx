@@ -722,9 +722,8 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
     setMappedPortals(previousState);
     setCategoryHistory((prev) => prev.slice(0, -1));
     
-    // ✅ REPLACE THE SINGLE LINE WITH THESE TWO LINES:
-    const hasSubcategories = previousState.some(p => p.has_subcategories);
-    setIsViewingSubcategories(hasSubcategories);
+    // ✅ When going back to parent categories, reset subcategory view flag
+    setIsViewingSubcategories(false);
   }
 };
 
@@ -1225,11 +1224,11 @@ if (mappedPortals.length === 0 && assignedCategories.length > 0) {
 
                       {/* Title */}
                     <h2 className="text-lg font-semibold text-gray-900">
-                          {mappedPortals?.length > 0 && mappedPortals[0]?.mapping_found
-                                ? "Select matched portal"
-                                : isViewingSubcategories
-                                ? "Select subcategory"
-                                : "Select category"}
+                         {mappedPortals?.length > 0 && mappedPortals[0]?.mapping_found
+                              ? "Select matched portal"
+                              : categoryHistory.length > 0
+                              ? "Select subcategory"
+                              : "Select category"}
                           {" "}
                           from{" "}
                           <span className="font-bold">
