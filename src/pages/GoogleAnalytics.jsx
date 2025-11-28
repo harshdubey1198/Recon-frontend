@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useContext  } from "react";
 import {
   ChevronDown,
   Activity,
@@ -17,13 +17,19 @@ import {
   Bar,
   Line
 } from "recharts";
+import { useAuth } from "../context/AuthContext";
+
 
 // Import the GA4 API function
-import { queryGA4 } from "../../server"; // Assuming queryGA4 function is exported from server.js
+import { queryGA4 , fetchAssignPortal } from "../../server"; // Assuming queryGA4 function is exported from server.js
 
 const GoogleAnalytics = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState("Last 7 days");
+const { user } = useAuth();
+const userId = user?.id;
+
+
 
   // GA4 overview totals
   const [ga4Totals, setGa4Totals] = useState({
@@ -38,6 +44,17 @@ const GoogleAnalytics = () => {
   const [selectedCountry, setSelectedCountry] = useState([]);
   const [realtimeTimeline, setRealtimeTimeline] = useState([]);
   const [selectedPid, setSelectedPid] = useState("497438670"); // default DXB
+  const portalNameMap = {
+  newsibileasia: "DXB",
+  gccnews24: "GCC",
+  cninews: "CNI",
+  middleeastbulletin: "Middleeast",
+  dxbnewsnetwork: "DXB",
+};
+
+const [filteredPidOptions, setFilteredPidOptions] = useState([]);
+
+  
 
   const dateRanges = [
     "Today",
@@ -54,8 +71,10 @@ const GoogleAnalytics = () => {
     { label: "CNI", pid: "511394726" },
     { label: "GCC", pid: "492306132" },
     { label: "Middleeast", pid: "491217318" },
-    { label: "GCC Backup", pid: "491207995" },
+    { label: "GCC ", pid: "491207995" },
   ];
+
+
 
   const handleSelect = (range) => {
     setSelectedRange(range);
@@ -328,6 +347,40 @@ const GoogleAnalytics = () => {
     ? "active users now"
     : "users in selected period";
 
+
+useEffect(() => {
+  if (!userId) return; // WAIT for context to load
+
+  const loadUserPortals = async () => {
+    try {
+      const res = await fetchAssignPortal(userId);
+      const assigned = res?.data?.data || [];
+      console.log("Fetch assign portal" , assigned)
+
+      const allowedLabels = assigned
+        .map(item => portalNameMap[item.portal_name.toLowerCase()])
+        .filter(Boolean);
+
+      const finalList = pidOptions.filter(option =>
+        allowedLabels.includes(option.label)
+      );
+
+      setFilteredPidOptions(finalList);
+
+      if (finalList.length > 0) {
+        setSelectedPid(finalList[0].pid);
+      }
+
+    } catch (err) {
+      console.error("Portal loading error:", err);
+    }
+  };
+
+  loadUserPortals();
+}, [userId]);  // ✔ FIX: run when userId is available
+
+
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -357,11 +410,15 @@ const GoogleAnalytics = () => {
                   value={selectedPid}
                   onChange={(e) => setSelectedPid(e.target.value)}
                 >
-                  {pidOptions.map((p) => (
+                  {filteredPidOptions.length === 0 && (
+                    <option>No portal assigned</option>
+                  )}
+                  {filteredPidOptions.map((p) => (
                     <option key={p.pid} value={p.pid}>
                       {p.label} — {p.pid}
                     </option>
                   ))}
+
                 </select>
               </div>
             </div>

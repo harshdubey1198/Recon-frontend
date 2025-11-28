@@ -21,6 +21,7 @@ export default function SidebarLayout() {
     { name: "Dashboard", icon: Home, path: "/dashboard" },
     { name: "Create News", icon: FilePlus2, path: "/create-news" },
     { name: "News List", icon: Newspaper, path: "/news-list" },
+    { name: "Analytics", icon: BarChart3, path: "/analytics" },
     ...(isMaster
       ? [
         // { name: "Category Insights", icon: BarChart2, path: "/category-insights" },
@@ -28,12 +29,11 @@ export default function SidebarLayout() {
         { name: "User Portal Mapping", icon: ShieldCheck, path: "/portal-mapping" },
         { name: "Portal Insights", icon: Building2, path: "/portal-insights" },
         // { name: "User Category Mapping", icon: ShieldCheck, path: "/access-control" },
-          { name: "User Stats", icon: BarChart3, path: "/user-stats" },
-          { name: "User Portal Management", icon: User, path: "/portal-management" },
-          { name: "User Data", icon: Building2, path: "/user-access-list" },
-          { name: "News Reports", icon: BarChart3, path: "/news-reports" },
-          { name: "Analytics", icon: BarChart3, path: "/analytics" },
-        ]
+        { name: "User Stats", icon: BarChart3, path: "/user-stats" },
+        { name: "User Portal Management", icon: User, path: "/portal-management" },
+        { name: "User Data", icon: Building2, path: "/user-access-list" },
+        { name: "News Reports", icon: BarChart3, path: "/news-reports" },
+      ]
       : []),
   ];
 

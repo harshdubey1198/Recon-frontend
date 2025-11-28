@@ -479,4 +479,8 @@ export async function queryGA4(data) {
   );
 }
 
+export async function fetchAssignPortal(userId) {
+  return axiosInstance.get(`/account/user/portals/${userId}/`)
+}
+
 export default axiosInstance;
