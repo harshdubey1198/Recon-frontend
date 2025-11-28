@@ -43,9 +43,9 @@ const userId = user?.id;
 
   const [selectedCountry, setSelectedCountry] = useState([]);
   const [realtimeTimeline, setRealtimeTimeline] = useState([]);
-  const [selectedPid, setSelectedPid] = useState("497438670"); // default DXB
+  const [selectedPid, setSelectedPid] = useState(""); // default DXB
   const portalNameMap = {
-  newsibileasia: "DXB",
+  newsibileasia: "newsibileasia",
   gccnews24: "GCC",
   cninews: "CNI",
   middleeastbulletin: "Middleeast",
@@ -53,6 +53,13 @@ const userId = user?.id;
 };
 
 const [filteredPidOptions, setFilteredPidOptions] = useState([]);
+const [realtimePages, setRealtimePages] = useState([]);
+const [limit, setLimit] = useState(10); // default show 10 rows from GA4
+const [currentPage, setCurrentPage] = useState(1);
+const pageSize = limit;
+
+
+
 
   
 
@@ -71,7 +78,7 @@ const [filteredPidOptions, setFilteredPidOptions] = useState([]);
     { label: "CNI", pid: "511394726" },
     { label: "GCC", pid: "492306132" },
     { label: "Middleeast", pid: "491217318" },
-    { label: "GCC ", pid: "491207995" },
+    { label: "newsibileasia", pid: "491207995" },
   ];
 
 
@@ -380,6 +387,74 @@ useEffect(() => {
 }, [userId]);  // ✔ FIX: run when userId is available
 
 
+  const totalPages = Math.max(1, Math.ceil(realtimePages.length / pageSize));
+
+
+    // Slice data for current page
+  const paginatedPages = realtimePages.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+
+const fetchRealtimePages = async () => {
+  try {
+    const requestData = {
+      pid: selectedPid,
+      endpoint: "runRealtimeReport",
+      body: {
+        dimensions: [
+          { name: "unifiedScreenName" } // Better than pagePath
+        ],
+        metrics: [
+          { name: "activeUsers" },
+          { name: "screenPageViews" }
+        ],
+        orderBys: [
+          {
+            metric: { metricName: "activeUsers" },
+            desc: true
+          }
+        ],
+        limit: limit  // ⬅️ dynamic limit
+
+      }
+    };
+
+    const response = await queryGA4(requestData);
+    const rows = response?.data?.rows || [];
+
+    const pages = rows.map((row) => ({
+      page: row.dimensionValues?.[0]?.value || "",
+      activeUsers: parseInt(row.metricValues?.[0]?.value || 0),
+      views: parseInt(row.metricValues?.[1]?.value || 0),
+    }));
+
+    setRealtimePages(pages);
+    setCurrentPage(1);
+  } catch (error) {
+    console.error("Realtime pages fetch error:", error);
+  }
+};
+
+
+useEffect(() => {
+  if (!selectedPid) return;
+
+  fetchRealtimePages(); // fetch again whenever limit changes
+
+  const interval = setInterval(() => {
+    fetchRealtimePages();
+  }, 30000);
+
+  return () => clearInterval(interval);
+
+}, [selectedPid, limit]);  // ⬅️ ADD limit HERE
+
+
+
+
+
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -666,6 +741,117 @@ useEffect(() => {
             </div>
           </div>
         </div>
+
+        {/* REALTIME PAGES TABLE */}
+        {/* 📌 Realtime Pages Section */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mt-6">
+
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              Realtime Pages (Last 30 Minutes)
+              <span className="px-2 py-0.5 text-xs rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                Live
+              </span>
+            </h2>
+
+            {/* 🔥 Page Size Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Show:</span>
+
+              <select
+                className="border rounded-lg px-2 py-1 text-sm"
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+
+              <span className="text-sm text-slate-600">items</span>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">#</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Page</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Active users</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Views</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {paginatedPages.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="py-4 text-center text-slate-500">
+                      No realtime page data found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedPages.map((page, index) => (
+                    <tr
+                      key={index}
+                      className="border-b last:border-0 hover:bg-slate-50 transition"
+                    >
+                      <td className="py-2 px-3">
+                        {(currentPage - 1) * pageSize + index + 1}
+                      </td>
+
+                      <td className="py-2 px-3 max-w-xs truncate text-blue-600">
+                        {page.page}
+                      </td>
+
+                      <td className="py-2 px-3 font-medium">
+                        {page.activeUsers}
+                      </td>
+
+                      <td className="py-2 px-3">
+                        {page.views}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 🔥 Pagination Controls */}
+          <div className="flex items-center justify-between mt-4">
+
+            <button
+              className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              ← Previous
+            </button>
+
+            <span className="text-sm text-slate-700">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next →
+            </button>
+
+          </div>
+        </div>
+
+
+
       </div>
     </div>
   );

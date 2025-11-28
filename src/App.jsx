@@ -70,7 +70,7 @@ export default function AppRoutes() {
         <Route path="/news-reports" element={<MasterRoute><NewsReports /></MasterRoute>} />
         <Route path="/all-categories" element={<MasterRoute><AllCategories /></MasterRoute>} />
         <Route path="/user-categories" element={<MasterRoute><UserCategories /></MasterRoute>} />
-        <Route path="/analytics" element={<MasterRoute><GoogleAnalytics /></MasterRoute>} />
+        <Route path="/analytics" element={<GoogleAnalytics />} />
       </Route>
 
       {/* Catch-all */}
