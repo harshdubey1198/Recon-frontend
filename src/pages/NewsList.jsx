@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileText, X, Clock } from "lucide-react";
-import {
-  fetchMyNewsPosts,
-  fetchDistributedNews,
-  publishNewsArticle,
-  fetchNewsDetail,
-  fetchMasterCategories,
-  fetchPortals,
-  fetchPortalCategories,
-  editNews,
-} from "../../server";
+import {fetchMyNewsPosts,fetchDistributedNews,publishNewsArticle,fetchNewsDetail,fetchMasterCategories,fetchPortals,
+  fetchPortalCategories,editNews,deleteDistributedNews,updateDistributedNews,fetchDistributedNewsDetail} from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 import MasterFilter from "../components/filters/MasterFilter";
@@ -281,6 +273,29 @@ const NewsList = () => {
       </div>
     );
   }
+
+ // NewsList.jsx - Add this function before the return statement
+const handleDeleteDistributedNews = async (distId, newsPostId) => {
+  try {
+    const res = await deleteDistributedNews(distId);
+    
+    if (res?.data?.status) {
+      toast.success("Distributed news deleted successfully!");
+      
+      // Reload the distributed news for this item
+      await loadDistributedNews(newsPostId);
+    } else {
+      toast.error(res?.data?.message || "Failed to delete distributed news.");
+    }
+  } catch (err) {
+    console.error("❌ Error deleting distributed news:", err);
+    
+    // Show user-friendly error message
+    const errorMsg = err?.response?.data?.message || 
+                     "Something went wrong while deleting. Please try again.";
+    toast.error(errorMsg);
+  }
+};
 
   useEffect(() => {
     loadNewsWithFilters({
@@ -650,6 +665,7 @@ const NewsList = () => {
                                         <br />
                                         Messages
                                       </th>
+                                      <th>Actions</th>
                                     </tr>
                                   </thead>
 
@@ -770,6 +786,34 @@ const NewsList = () => {
                                           )}
                                         </td>
 
+                                      <td className="px-2 py-3 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                          {/* Edit Button */}
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigate(`/create-news?dist_id=${dist.id}`);
+                                            }}
+                                            className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                                            title="Edit Distributed News"
+                                          >
+                                            
+                                            Edit
+                                          </button>
+
+                                          {/* Delete Button */}
+                                          <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteDistributedNews(dist.id, item.id);
+                                          }}
+                                          className="text-sm text-red-600 hover:text-red-800 font-medium"
+                                          title="Delete Distributed News"
+                                        >
+                                          Delete
+                                        </button>
+                                        </div>
+                                      </td>
                                         {/* 🔹 Date */}
                                         {/* <td className="px-2 py-3 text-center text-gray-500 whitespace-nowrap">
                                           </td> */}

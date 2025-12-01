@@ -94,6 +94,42 @@ export async function fetchDistributedNews(filters = {}, page = 1) {
   });
 }
 
+// Delete distributed news article
+export async function deleteDistributedNews(id) {
+  if (!id) throw new Error("News ID is required to delete.");
+
+  return axiosInstance.delete(`/api/delete/news/${id}/`);
+}
+
+// Update distributed news data
+export async function updateDistributedNews(id, payload) {
+  if (!id) throw new Error("News ID is required.");
+
+  const formData = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      if (Array.isArray(value)) {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value);
+      }
+    }
+  });
+
+  return axiosInstance.put(`/api/edit/news/${id}/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+// Get single distributed news detail
+export async function fetchDistributedNewsDetail(id) {
+  if (!id) throw new Error("News ID is required.");
+
+  return axiosInstance.get(`/api/news/${id}/`);
+}
+
+
 
 export async function updateDraftNews(id, status = "PUBLISHED",payload) {
   if (!id) throw new Error("News ID is required to update draft.");
