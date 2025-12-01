@@ -803,15 +803,15 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
 
                                           {/* Delete Button */}
                                           <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteDistributedNews(dist.id, item.id);
-                                          }}
-                                          className="text-sm text-red-600 hover:text-red-800 font-medium"
-                                          title="Delete Distributed News"
-                                        >
-                                          Delete
-                                        </button>
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteDistributedNews(dist.id, item.id);
+                                        }}
+                                        className="text-sm text-red-600 hover:text-red-800 font-medium"
+                                        title="Delete Distributed News"
+                                      >
+                                        Delete
+                                      </button>
                                         </div>
                                       </td>
                                         {/* 🔹 Date */}

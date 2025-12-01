@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import {Upload,X,Plus,Calendar,Eye,Save,RefreshCw,Image as ImageIcon,Tag,FileText,Settings,Clock,TrendingUp,AlertCircle,Star,Crop,RotateCw,ZoomIn,Maximize2,SaveAll,} from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {createNewsArticle,publishNewsArticle,fetchAllTags,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortals,fetchUserPortalsByUserId,fetchSubCategoriesByParent,
+import {createNewsArticle,publishNewsArticle,fetchAllTags,updateDistributedNews,fetchDistributedNewsDetail,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortals,fetchUserPortalsByUserId,fetchSubCategoriesByParent,
 } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
 import { useParams } from "react-router-dom";
 import webpfy from "webpfy";
+import { useLocation } from "react-router-dom";
 const NewsArticleForm = () => {
   const { id } = useParams();
   const isEditMode = Boolean(id);
@@ -74,12 +75,18 @@ const NewsArticleForm = () => {
   const authUser = JSON.parse(localStorage.getItem("auth_user"));
   const userId = authUser?.id || null;
   const [categoryHistory, setCategoryHistory] = useState([]);
-const [isSubcategoryView, setIsSubcategoryView] = useState(false);
-const [selectedParentCategory, setSelectedParentCategory] = useState(null);
-const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
+  const [isSubcategoryView, setIsSubcategoryView] = useState(false);
+  const [selectedParentCategory, setSelectedParentCategory] = useState(null);
+  const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
   const [tagSearchQuery, setTagSearchQuery] = useState("");
   const tagInputRef = React.useRef(null);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
+      // Add this inside the component
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const distId = queryParams.get("dist_id");
+    const [isDistributedEdit, setIsDistributedEdit] = useState(false);
+    const [distributedNewsId, setDistributedNewsId] = useState(null);
   const filteredTags = availableTags.filter((tag) => {
     const matchesSearch = tag.name
       .toLowerCase()
@@ -123,6 +130,67 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
     }
   }, [isEditMode, id]);
 
+  // Add this useEffect to load distributed news data
+useEffect(() => {
+  const loadDistributedNewsData = async () => {
+    if (distId) {
+      try {
+        setIsLoading(true);
+        const res = await fetchDistributedNewsDetail(distId);
+        
+        if (res?.data?.status) {
+          const dist = res.data.data;
+          
+          setIsDistributedEdit(true);
+          setDistributedNewsId(distId);
+          
+         const nd = res.data.data.portal_response;
+
+            setFormData({
+              headline: nd.post_title || "",
+              title: nd.post_title || "",
+              shortDesc: nd.post_short_des || "",
+              longDesc: nd.post_des || "",
+              meta_title: nd.meta_title || "",
+              slug: nd.slug || generateSlug(nd.post_title || ""),
+              status: "PUBLISHED",
+              image: null,
+              tags: nd.tags || [],
+              latestNews: nd.Head_Lines || false,
+              headlines: nd.Head_Lines || false,
+              articles: nd.articles || false,
+              trending: nd.trending || false,
+              breakingNews: nd.BreakingNews || false,
+              upcomingEvents: nd.Event || false,
+              eventStartDate: nd.Event_date || "",
+              eventEndDate: nd.Eventend_date || "",
+              scheduleDate: nd.schedule_date || "",
+              counter: nd.viewcounter || 0,
+              order: nd.order || 0,
+              slugEdited: false,
+              master_category: res.data.data.portal_news_id || "",
+            });
+
+          
+          // Set image preview if available
+         if (nd.post_image) {
+          setImagePreview(nd.post_image);
+        }
+
+          
+          toast.info(`Loaded distributed news: ${dist.news_post_title}`);
+        }
+      } catch (err) {
+        console.error("Failed to load distributed news:", err);
+        toast.error("Failed to load distributed news data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+  
+  loadDistributedNewsData();
+}, [distId]);
  const handlePortalCategoryClick = async (portal) => {
   try {
     setIsPortalsLoading(true);
@@ -755,265 +823,251 @@ const [isViewingSubcategories, setIsViewingSubcategories] = useState(false);
     }));
   };
 
-  const handleSubmit = async (e, statusType = "PUBLISHED") => {
-    e.preventDefault();
+// NewsArticleForm.jsx - Replace the handleSubmit function with this updated version
 
-    const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
+const handleSubmit = async (e, statusType = "PUBLISHED") => {
+  e.preventDefault();
 
-    if (!formData.meta_title.trim()) {
-      toast.warning("Meta title is required.");
-      return;
-    }
+  const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
 
-    if (!valid_statuses.includes(statusType)) {
-      toast.warning(
-        `Invalid status. Must be one of: ${valid_statuses.join(", ")}`
-      );
-      return;
-    }
+  if (!formData.meta_title.trim()) {
+    toast.warning("Meta title is required.");
+    return;
+  }
 
-    if (!formData.image) {
-      toast.warning("Please upload a post image before submitting.");
-      return;
-    }
+  if (!valid_statuses.includes(statusType)) {
+    toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
+    return;
+  }
 
-    if (formData.shortDesc.length > 160) {
-      toast.warning("Short description must be less than 160 characters.");
-      return;
-    }
+  if (!formData.image && !imagePreview) {
+    toast.warning("Please upload a post image before submitting.");
+    return;
+  }
 
-    // const categoryId = Number(formData.master_category);
+  if (formData.shortDesc.length > 160) {
+    toast.warning("Short description must be less than 160 characters.");
+    return;
+  }
 
-    // if (statusType === "PUBLISHED" && !categoryId && !formData.id) {
-    //   toast.warning("Please select a category.");
-    //   return;
-    // }
+  setIsLoading(true);
 
-    setIsLoading(true);
+  try {
+    // ✅ Handle DISTRIBUTED NEWS UPDATE
+    if (isDistributedEdit && distributedNewsId) {
+      const updatePayload = {
+        news_post_title: formData.title || formData.headline,
+        ai_short_description: formData.shortDesc,
+        ai_content: formData.longDesc,
+        slug: formData.slug,
+      };
 
-    try {
-      const formDataToSend = new FormData();
-
-      formDataToSend.append("title", formData.title || formData.headline);
-      formDataToSend.append("short_description", formData.shortDesc);
-      formDataToSend.append("content", formData.longDesc);
-      formDataToSend.append("post_image", formData.image);
-      formDataToSend.append("meta_title", formData.meta_title);
-      formDataToSend.append("slug", formData.slug);
-      formDataToSend.append("status", statusType);
-      formDataToSend.append("counter", formData.counter);
-      formDataToSend.append("order", formData.order);
-      formDataToSend.append(
-        "cross_portal_category_id",
-        mappedPortals[0]?.mapping_found
-          ? mappedPortals[0]?.portalCategoryId // when mapping found → subcategory id
-          : mappedPortals[0]?.id // when manually added
-      );
-
-      if (formData.tags && formData.tags.length > 0) {
-        const formattedTags = formData.tags
-          .map((tag) => {
-            const tagData = availableTags.find((t) => t.id === tag);
-            const tagName = tagData ? tagData.name : tag;
-            return `#${tagName}`;
-          })
-          .join(", ");
-        formDataToSend.append("post_tag", formattedTags);
+      // Only add image if a new one was uploaded
+      if (formData.image && typeof formData.image !== 'string') {
+        updatePayload.news_post_image = formData.image;
       }
 
-      formDataToSend.append(
-        "latest_news",
-        formData.latestNews ? "true" : "false"
-      );
-      formDataToSend.append(
-        "Head_Lines",
-        formData.headlines ? "true" : "false"
-      );
-      formDataToSend.append("articles", formData.articles ? "true" : "false");
-      formDataToSend.append("trending", formData.trending ? "true" : "false");
-      formDataToSend.append(
-        "BreakingNews",
-        formData.breakingNews ? "true" : "false"
-      );
-      formDataToSend.append(
-        "upcoming_event",
-        formData.upcomingEvents ? "true" : "false"
-      );
-
-      if (formData.eventStartDate) {
-        formDataToSend.append(
-          "Event_date",
-          new Date(formData.eventStartDate).toISOString().split("T")[0]
-        );
-      }
-      if (formData.eventEndDate) {
-        formDataToSend.append(
-          "Event_end_date",
-          new Date(formData.eventEndDate).toISOString().split("T")[0]
-        );
-      }
-      if (formData.scheduleDate) {
-        formDataToSend.append("schedule_date", formData.scheduleDate);
-      }
-
-      let createdArticle;
-
-      // -------------------- UPDATE EXISTING --------------------
-      if (formData.id) {
-        const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-        const changedFields = originalDraft
-          ? buildDraftDiff(originalDraft, formData)
-          : formData;
-
-        if (changedFields.longDesc) {
-          changedFields.content = changedFields.longDesc;
-          delete changedFields.longDesc;
-        }
-
-        changedFields.title = changedFields.title || formData.headline;
-        changedFields.content = formData.longDesc || formData.content;
-        changedFields.master_category = Number(formData.master_category);
-
-        const selectedCategories = mappedPortals
-          .filter((p) => p.selected)
-          .map((p) => Number(p.portalCategoryId));
-
-       const excludedCategories = mappedPortals
-        .filter((p) => !p.selected)
-        .map((p) => Number(p.id));
-
-
-        changedFields.portal_category_ids = selectedCategories;
-        changedFields.exclude_portal_categories = excludedCategories;
-
-        console.log("🟣 Payload for UPDATE:", changedFields);
-
-        // await updateDraftNews(formData.id, nextStatus, changedFields);
-        createdArticle = { id: formData.id };
-        if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
-      }
-
-      // -------------------- CREATE NEW --------------------
-      else {
-        // 🟢 Collect IDs of manually added AND selected categories (portalId === 0)
-        const newlyAddedCategories = mappedPortals
-          .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId)
-          .map((p) => Number(p.id));
-
-        // 🟠 Exclude unchecked categories (existing ones only)
-        const excludedCategories = mappedPortals
-        .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
-        .map((p) => Number(p.portalCategoryId));
-
-
-        // ✅ Append clean lists based on mapping_found
-        if (mappedPortals[0]?.mapping_found) {
-          // When mapping found → send manually added categories if any exist
-          formDataToSend.append(
-            "portal_category_ids",
-            JSON.stringify(newlyAddedCategories)
-          );
-        } else {
-          // When no mapping → send manually added category IDs OR requested category ID
-          const categoryIds =
-            newlyAddedCategories.length > 0
-              ? newlyAddedCategories
-              : [mappedPortals[0]?.id];
-
-          formDataToSend.append(
-            "portal_category_ids",
-            JSON.stringify(categoryIds)
-          );
-        }
-        formDataToSend.append(
-          "exclude_portal_categories",
-          JSON.stringify(excludedCategories)
-        );
-        // 🟡 Log FormData cleanly
-        const logFormData = {};
-        for (let [key, value] of formDataToSend.entries()) {
-          logFormData[key] = value;
-        }
-        console.log("🟡 Payload for CREATE (FormData):", logFormData);
-
-        const response = await createNewsArticle(formDataToSend);
-        createdArticle = response.data.data;
-      }
-
-      if (statusType === "DRAFT") {
-        resetForm();
-         await loadAssignedCategories(); 
+      const res = await updateDistributedNews(distributedNewsId, updatePayload);
+      
+      if (res?.data?.status) {
+        toast.success("Distributed news updated successfully!");
+        
+        // Redirect back to news list
+        setTimeout(() => {
+          navigate('/news-list');
+        }, 1500);
+        
+        return;
+      } else {
+        toast.error(res?.data?.message || "Failed to update distributed news.");
         setIsLoading(false);
         return;
       }
+    }
 
-      // if (createdArticle?.id && statusType === "PUBLISHED") {
-      //   console.log("🟢 Would now call publishNewsArticle for:", createdArticle.id);
-      //   // const res = await publishNewsArticle(createdArticle.id, {});
-      //   resetForm();
-      //   // if (res?.data?.message) toast.success(res.data.message);
-      // }
-      if (statusType === "PUBLISHED") {
-        const res = await publishNewsArticle(createdArticle.id, {
-          portal_category_id: mappedPortals[0]?.mapping_found
-            ? mappedPortals[0]?.master_category_id
-            : mappedPortals[0]?.id,
-        });
+    // ✅ Original logic for master news posts (unchanged)
+    const formDataToSend = new FormData();
 
-        if (res?.data?.message) toast.success(res.data.message);
+    formDataToSend.append("title", formData.title || formData.headline);
+    formDataToSend.append("short_description", formData.shortDesc);
+    formDataToSend.append("content", formData.longDesc);
+    formDataToSend.append("post_image", formData.image);
+    formDataToSend.append("meta_title", formData.meta_title);
+    formDataToSend.append("slug", formData.slug);
+    formDataToSend.append("status", statusType);
+    formDataToSend.append("counter", formData.counter);
+    formDataToSend.append("order", formData.order);
+    formDataToSend.append(
+      "cross_portal_category_id",
+      mappedPortals[0]?.mapping_found
+        ? mappedPortals[0]?.portalCategoryId
+        : mappedPortals[0]?.id
+    );
 
-        // 🔥 RESET EVERYTHING AFTER SUCCESSFUL PUBLISH
-       // reset UI first
-setMappedPortals([]);
-setSelectedPortalForCategories("");
-setCategoryHistory([]);
+    if (formData.tags && formData.tags.length > 0) {
+      const formattedTags = formData.tags
+        .map((tag) => {
+          const tagData = availableTags.find((t) => t.id === tag);
+          const tagName = tagData ? tagData.name : tag;
+          return `#${tagName}`;
+        })
+        .join(", ");
+      formDataToSend.append("post_tag", formattedTags);
+    }
 
-// reset form fields (local)
-resetForm();
+    formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
+    formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
+    formDataToSend.append("articles", formData.articles ? "true" : "false");
+    formDataToSend.append("trending", formData.trending ? "true" : "false");
+    formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
+    formDataToSend.append("upcoming_event", formData.upcomingEvents ? "true" : "false");
 
-// reload portals and only show portal section after load finishes
-await loadAssignedCategories(); // this now guarantees isPortalsLoading toggles off
-// ensure portal section shows only if we have mapped portals
-if (mappedPortals.length === 0 && assignedCategories.length > 0) {
-  // try to fetch parent categories for default assigned portal (first one)
-  const defaultPortalId = assignedCategories[0]?.id;
-  if (defaultPortalId) {
-    try {
-      const categoryRes = await fetchPortalParentCategories(defaultPortalId);
-      const parents = categoryRes?.data?.data?.parent_categories || [];
-      if (parents.length) {
-        setMappedPortals(
-          parents.map((c) => ({
-            id: c.parent_external_id,
-            portalId: defaultPortalId,
-            portalName: assignedCategories[0].name,
-            portalCategoryName: c.parent_name,
-            portalCategoryId: c.parent_external_id,
-            selected: true,
-            has_subcategories: true,
-          }))
+    if (formData.eventStartDate) {
+      formDataToSend.append(
+        "Event_date",
+        new Date(formData.eventStartDate).toISOString().split("T")[0]
+      );
+    }
+    if (formData.eventEndDate) {
+      formDataToSend.append(
+        "Event_end_date",
+        new Date(formData.eventEndDate).toISOString().split("T")[0]
+      );
+    }
+    if (formData.scheduleDate) {
+      formDataToSend.append("schedule_date", formData.scheduleDate);
+    }
+
+    let createdArticle;
+
+    // UPDATE EXISTING MASTER NEWS
+    if (formData.id) {
+      const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+      const changedFields = originalDraft
+        ? buildDraftDiff(originalDraft, formData)
+        : formData;
+
+      if (changedFields.longDesc) {
+        changedFields.content = changedFields.longDesc;
+        delete changedFields.longDesc;
+      }
+
+      changedFields.title = changedFields.title || formData.headline;
+      changedFields.content = formData.longDesc || formData.content;
+      changedFields.master_category = Number(formData.master_category);
+
+      const selectedCategories = mappedPortals
+        .filter((p) => p.selected)
+        .map((p) => Number(p.portalCategoryId));
+
+      const excludedCategories = mappedPortals
+        .filter((p) => !p.selected)
+        .map((p) => Number(p.id));
+
+      changedFields.portal_category_ids = selectedCategories;
+      changedFields.exclude_portal_categories = excludedCategories;
+
+      createdArticle = { id: formData.id };
+      if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
+    }
+    // CREATE NEW MASTER NEWS
+    else {
+      const newlyAddedCategories = mappedPortals
+        .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId)
+        .map((p) => Number(p.id));
+
+      const excludedCategories = mappedPortals
+        .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
+        .map((p) => Number(p.portalCategoryId));
+
+      if (mappedPortals[0]?.mapping_found) {
+        formDataToSend.append(
+          "portal_category_ids",
+          JSON.stringify(newlyAddedCategories)
         );
-        setShowPortalSection(true);
       } else {
-        setShowPortalSection(false);
-      }
-    } catch (err) {
-      setShowPortalSection(false);
-    }
-  }
-} else {
-  setShowPortalSection(mappedPortals.length > 0);
-}
+        const categoryIds =
+          newlyAddedCategories.length > 0
+            ? newlyAddedCategories
+            : [mappedPortals[0]?.id];
 
-      } else {
-        resetForm();
+        formDataToSend.append(
+          "portal_category_ids",
+          JSON.stringify(categoryIds)
+        );
       }
-    } catch (err) {
-      toast.error("Failed to process form.");
-    } finally {
-      setIsLoading(false);
+      formDataToSend.append(
+        "exclude_portal_categories",
+        JSON.stringify(excludedCategories)
+      );
+
+      const response = await createNewsArticle(formDataToSend);
+      createdArticle = response.data.data;
     }
-  };
+
+    if (statusType === "DRAFT") {
+      resetForm();
+      await loadAssignedCategories();
+      setIsLoading(false);
+      return;
+    }
+
+    if (statusType === "PUBLISHED") {
+      const res = await publishNewsArticle(createdArticle.id, {
+        portal_category_id: mappedPortals[0]?.mapping_found
+          ? mappedPortals[0]?.master_category_id
+          : mappedPortals[0]?.id,
+      });
+
+      if (res?.data?.message) toast.success(res.data.message);
+
+      setMappedPortals([]);
+      setSelectedPortalForCategories("");
+      setCategoryHistory([]);
+
+      resetForm();
+
+      await loadAssignedCategories();
+      
+      if (mappedPortals.length === 0 && assignedCategories.length > 0) {
+        const defaultPortalId = assignedCategories[0]?.id;
+        if (defaultPortalId) {
+          try {
+            const categoryRes = await fetchPortalParentCategories(defaultPortalId);
+            const parents = categoryRes?.data?.data?.parent_categories || [];
+            if (parents.length) {
+              setMappedPortals(
+                parents.map((c) => ({
+                  id: c.parent_external_id,
+                  portalId: defaultPortalId,
+                  portalName: assignedCategories[0].name,
+                  portalCategoryName: c.parent_name,
+                  portalCategoryId: c.parent_external_id,
+                  selected: true,
+                  has_subcategories: true,
+                }))
+              );
+              setShowPortalSection(true);
+            } else {
+              setShowPortalSection(false);
+            }
+          } catch (err) {
+            setShowPortalSection(false);
+          }
+        }
+      } else {
+        setShowPortalSection(mappedPortals.length > 0);
+      }
+    } else {
+      resetForm();
+    }
+  } catch (err) {
+    console.error("Error processing form:", err);
+    toast.error("Failed to process form.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const [editorKey, setEditorKey] = useState(Date.now());
   const resetForm = () => {
@@ -2335,7 +2389,7 @@ if (mappedPortals.length === 0 && assignedCategories.length > 0) {
               </div>
             </section>
 
-            {/* Submit Actions */}
+            {/* Submit Actions - Updated button text */}
             <div className="flex justify-end space-x-3 pt-6 border-t-2 border-gray-200">
               <button
                 type="button"
@@ -2344,15 +2398,20 @@ if (mappedPortals.length === 0 && assignedCategories.length > 0) {
               >
                 Reset Form
               </button>
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={(e) => handleSubmit(e, "DRAFT")}
-                className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
-              >
-                <SaveAll className="w-4 h-4 mr-2" />
-                Save as Draft
-              </button>
+              
+              {/* Only show Draft button if NOT editing distributed news */}
+              {!isDistributedEdit && (
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={(e) => handleSubmit(e, "DRAFT")}
+                  className="px-8 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-600 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
+                >
+                  <SaveAll className="w-4 h-4 mr-2" />
+                  Save as Draft
+                </button>
+              )}
+              
               <button
                 type="submit"
                 disabled={isLoading}
@@ -2381,12 +2440,12 @@ if (mappedPortals.length === 0 && assignedCategories.length > 0) {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Publishing...
+                    {isDistributedEdit ? "Updating..." : "Publishing..."}
                   </>
                 ) : (
                   <>
                     <Save className="w-5 h-5 mr-2" />
-                    Publish Article
+                    {isDistributedEdit ? "Update & Publish" : "Publish Article"}
                   </>
                 )}
               </button>
