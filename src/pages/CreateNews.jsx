@@ -131,186 +131,66 @@ const NewsArticleForm = () => {
   }, [isEditMode, id]);
 
   // Add this useEffect to load distributed news data
-// FIXED useEffect - Properly loads portal and content
 useEffect(() => {
   const loadDistributedNewsData = async () => {
-    if (!distId) return;
+    if (distId) {
+      try {
+        setIsLoading(true);
+        const res = await fetchDistributedNewsDetail(distId);
+        
+        if (res?.data?.status) {
+          const dist = res.data.data;
+          
+          setIsDistributedEdit(true);
+          setDistributedNewsId(distId);
+          
+         const nd = res.data.data.portal_response;
 
-    try {
-      setIsLoading(true);
-      console.log("🔵 Loading distributed news with ID:", distId);
-      
-      const res = await fetchDistributedNewsDetail(distId);
-      
-      if (res?.data?.status) {
-        const dist = res.data.data;
-        const nd = dist.portal_response;
-        
-        console.log("📦 Full Response:", dist);
-        console.log("📰 Portal Response:", nd);
-        console.log("🏢 Portal Name:", dist.portal);
-        
-        // Mark as distributed edit mode
-        setIsDistributedEdit(true);
-        setDistributedNewsId(distId);
-        
-        // Process tags - handle empty array or null
-        const processedTags = Array.isArray(nd.tags) && nd.tags.length > 0
-          ? nd.tags.map(t => typeof t === 'object' ? (t?.name || t?.id || '') : String(t)).filter(Boolean)
-          : [];
-        
-        console.log("🏷️ Processed Tags:", processedTags);
-        
-        // ✅ FIX: Find the correct portal ID from assignedCategories using portal name
-        let portalId = nd.post_cat;
-        let foundPortal = null;
-        
-        if (assignedCategories && assignedCategories.length > 0) {
-          foundPortal = assignedCategories.find(
-            cat => cat.name.toLowerCase() === dist.portal.toLowerCase()
-          );
-          
-          if (foundPortal) {
-            portalId = foundPortal.id;
-            console.log("✅ Found matching portal:", foundPortal.name, "ID:", portalId);
-          } else {
-            console.warn("⚠️ Portal not found in assignedCategories, using post_cat:", portalId);
-          }
-        }
-        
-        // Set ALL form data fields
-        setFormData({
-          headline: nd.post_title || "",
-          title: nd.post_title || "",
-          shortDesc: nd.post_short_des || "",
-          longDesc: nd.post_des || "", // ✅ FIX: This is the full content
-          meta_title: nd.meta_title || "",
-          slug: nd.slug || generateSlug(nd.post_title || ""),
-          status: "PUBLISHED",
-          image: null, // Will be set via imagePreview
-          
-          // Tags
-          tags: processedTags,
-          
-          // Boolean flags - Convert to proper booleans
-          latestNews: Boolean(nd.Head_Lines),
-          headlines: Boolean(nd.Head_Lines),
-          articles: Boolean(nd.articles),
-          trending: Boolean(nd.trending),
-          breakingNews: Boolean(nd.BreakingNews),
-          upcomingEvents: Boolean(nd.Event),
-          
-          // Dates
-          eventStartDate: nd.Event_date || "",
-          eventEndDate: nd.Eventend_date || "",
-          scheduleDate: nd.schedule_date || "",
-          
-          // Numbers
-          counter: Number(nd.viewcounter) || 0,
-          order: Number(nd.order) || 0,
-          
-          // ✅ FIX: Use the correct portal ID
-          master_category: String(portalId),
-          
-          // Portal information
-          portal: dist.portal || "",
-          portal_news_id: dist.portal_news_id || "",
-          
-          // Misc
-          excluded_portals: [],
-          slugEdited: false,
-        });
+            setFormData({
+              headline: nd.post_title || "",
+              title: nd.post_title || "",
+              shortDesc: nd.post_short_des || "",
+              longDesc: nd.post_des || "",
+              meta_title: nd.meta_title || "",
+              slug: nd.slug || generateSlug(nd.post_title || ""),
+              status: "PUBLISHED",
+              image: null,
+              tags: nd.tags || [],
+              latestNews: nd.Head_Lines || false,
+              headlines: nd.Head_Lines || false,
+              articles: nd.articles || false,
+              trending: nd.trending || false,
+              breakingNews: nd.BreakingNews || false,
+              upcomingEvents: nd.Event || false,
+              eventStartDate: nd.Event_date || "",
+              eventEndDate: nd.Eventend_date || "",
+              scheduleDate: nd.schedule_date || "",
+              counter: nd.viewcounter || 0,
+              order: nd.order || 0,
+              slugEdited: false,
+              master_category: res.data.data.portal_news_id || "",
+            });
 
-        // Set image preview from portal response
-        if (nd.post_image) {
-          console.log("🖼️ Setting image preview:", nd.post_image);
+          
+          // Set image preview if available
+         if (nd.post_image) {
           setImagePreview(nd.post_image);
         }
 
-        // ✅ CRITICAL: Load portal and its parent categories
-        if (portalId) {
-          console.log("🔍 Loading portal categories for portal ID:", portalId);
           
-          // Show portal section immediately
-          setShowPortalSection(true);
-          setIsPortalsLoading(true);
-
-          try {
-            // Fetch parent categories for this portal
-            const categoryRes = await fetchPortalParentCategories(portalId, 1);
-            const parents = categoryRes?.data?.data?.parent_categories || [];
-            
-            console.log("📂 Loaded parent categories:", parents);
-
-            if (parents.length > 0) {
-              // Use the correct portal name from dist.portal or foundPortal
-              const portalName = foundPortal?.name || dist.portal || "Portal";
-
-              // Format and set mapped portals
-              const formattedPortals = parents.map(c => ({
-                id: c.parent_external_id,
-                portalId: Number(portalId),
-                portalName: portalName, // ✅ FIX: Use correct portal name
-                portalCategoryName: c.parent_name,
-                portalCategoryId: c.parent_external_id,
-                selected: true,
-                has_subcategories: true,
-              }));
-
-              setMappedPortals(formattedPortals);
-              console.log("✅ Mapped portals set:", formattedPortals);
-            } else {
-              console.warn("⚠️ No parent categories found for this portal");
-              setMappedPortals([]);
-            }
-
-            // Handle pagination
-            const nextUrl = categoryRes?.data?.pagination?.next;
-            if (nextUrl) {
-              const nextPageParam = new URL(nextUrl).searchParams.get("page");
-              setNextPage(Number(nextPageParam));
-            } else {
-              setNextPage(null);
-            }
-
-          } catch (catError) {
-            console.error("❌ Failed to load portal categories:", catError);
-            toast.error("Failed to load portal categories");
-            setMappedPortals([]);
-          } finally {
-            setIsPortalsLoading(false);
-          }
+          toast.info(`Loaded distributed news: ${dist.news_post_title}`);
         }
-
-        toast.success(`Loaded: ${nd.post_title}`);
-
-      } else {
-        toast.error("Failed to fetch distributed news details");
+      } catch (err) {
+        console.error("Failed to load distributed news:", err);
+        toast.error("Failed to load distributed news data");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error("❌ Error loading distributed news:", err);
-      toast.error("Failed to load distributed news data");
-    } finally {
-      setIsLoading(false);
     }
   };
   
-  // ✅ FIX: Wait for assignedCategories to load first
-  if (assignedCategories && assignedCategories.length > 0) {
-    loadDistributedNewsData();
-  } else if (distId) {
-    // If we have distId but no assignedCategories yet, wait a bit
-    const timer = setTimeout(() => {
-      if (assignedCategories && assignedCategories.length > 0) {
-        loadDistributedNewsData();
-      }
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }
-}, [distId, assignedCategories]);
-
-
+  loadDistributedNewsData();
+}, [distId]);
  const handlePortalCategoryClick = async (portal) => {
   try {
     setIsPortalsLoading(true);
@@ -942,247 +822,252 @@ useEffect(() => {
       tags: prev.tags.filter((tag) => tag !== tagToRemove),
     }));
   };
-      const handleSubmit = async (e, statusType = "PUBLISHED") => {
-        e.preventDefault();
 
-        const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
+// NewsArticleForm.jsx - Replace the handleSubmit function with this updated version
 
-        // Validations
-        if (!formData.meta_title.trim()) {
-          toast.warning("Meta title is required.");
-          return;
-        }
+const handleSubmit = async (e, statusType = "PUBLISHED") => {
+  e.preventDefault();
 
-        if (!valid_statuses.includes(statusType)) {
-          toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
-          return;
-        }
+  const valid_statuses = ["DRAFT", "PUBLISHED", "rejected"];
 
-        if (!formData.image && !imagePreview) {
-          toast.warning("Please upload a post image before submitting.");
-          return;
-        }
+  if (!formData.meta_title.trim()) {
+    toast.warning("Meta title is required.");
+    return;
+  }
 
-        if (formData.shortDesc.length > 160) {
-          toast.warning("Short description must be less than 160 characters.");
-          return;
-        }
+  if (!valid_statuses.includes(statusType)) {
+    toast.warning(`Invalid status. Must be one of: ${valid_statuses.join(", ")}`);
+    return;
+  }
 
-        setIsLoading(true);
+  if (!formData.image && !imagePreview) {
+    toast.warning("Please upload a post image before submitting.");
+    return;
+  }
 
-        try {
-          // ✅ DISTRIBUTED NEWS UPDATE - Complete Payload
-          if (isDistributedEdit && distributedNewsId) {
-            console.log("🔄 Updating distributed news ID:", distributedNewsId);
-            
-            const updatePayload = new FormData();
-            
-            // ✅ All required fields from Postman
-            updatePayload.append("ai_title", formData.title || formData.headline);
-            updatePayload.append("ai_short_description", formData.shortDesc);
-            updatePayload.append("ai_content", formData.longDesc);
-            updatePayload.append("ai_meta_title", formData.meta_title);
-            updatePayload.append("ai_slug", formData.slug);
-            
-            // ✅ Tags - Format as comma-separated hashtags
-            if (formData.tags && formData.tags.length > 0) {
-              const formattedTags = formData.tags
-                .map(tag => {
-                  const tagData = availableTags.find(t => t.id === tag || t.name === tag);
-                  const tagName = tagData ? tagData.name : tag;
-                  return `#${tagName}`;
-                })
-                .join(",");
-              updatePayload.append("post_tag", formattedTags);
-            } else {
-              updatePayload.append("post_tag", "");
-            }
-            
-            // ✅ Active status
-            updatePayload.append("is_active", "1");
-            
-            // ✅ Boolean flags (0 or 1)
-            updatePayload.append("Head_Lines", formData.headlines ? "1" : "0");
-            updatePayload.append("articles", formData.articles ? "1" : "0");
-            updatePayload.append("trending", formData.trending ? "1" : "0");
-            updatePayload.append("BreakingNews", formData.breakingNews ? "1" : "0");
-            updatePayload.append("Event", formData.upcomingEvents ? "1" : "0");
-            
-            // ✅ Event dates
-            updatePayload.append("Event_date", formData.eventStartDate || "");
-            updatePayload.append("Event_end_date", formData.eventEndDate || "");
-            
-            // ✅ Schedule date (format: YYYY-MM-DDTHH:mm:ss+05:30)
-            if (formData.scheduleDate) {
-              updatePayload.append("schedule_date", formData.scheduleDate);
-            } else {
-              // Default to current date-time if not provided
-              const now = new Date();
-              const offset = "+05:30"; // Indian timezone
-              const formatted = now.toISOString().slice(0, 19) + offset;
-              updatePayload.append("schedule_date", formatted);
-            }
-            
-            // ✅ Post status (100 = active/published)
-            updatePayload.append("post_status", "100");
-            
-            // ✅ Image upload - Only if new file selected
-            if (formData.image && formData.image instanceof File) {
-              updatePayload.append("edited_image", formData.image);
-              console.log("📤 Uploading new image:", formData.image.name);
-            }
+  if (formData.shortDesc.length > 160) {
+    toast.warning("Short description must be less than 160 characters.");
+    return;
+  }
 
-            console.log("📦 Update Payload:");
-            for (let [key, value] of updatePayload.entries()) {
-              console.log(`  ${key}:`, value);
-            }
+  setIsLoading(true);
 
-            // ✅ API call to update distributed news
-            const res = await updateDistributedNews(distributedNewsId, updatePayload);
-            
-            if (res?.data?.status) {
-              toast.success("✅ Distributed news updated successfully!");
-              
-              // Redirect to news list after 1.5 seconds
-              setTimeout(() => {
-                window.location.href = '/news-list';
-              }, 1500);
-              
-              return;
-            } else {
-              toast.error(res?.data?.message || "Failed to update distributed news.");
-              setIsLoading(false);
-              return;
-            }
-          }
-
-          // ✅ MASTER NEWS CREATION (Original logic for creating new posts)
-          const formDataToSend = new FormData();
-
-          formDataToSend.append("title", formData.title || formData.headline);
-          formDataToSend.append("short_description", formData.shortDesc);
-          formDataToSend.append("content", formData.longDesc);
-          formDataToSend.append("post_image", formData.image);
-          formDataToSend.append("meta_title", formData.meta_title);
-          formDataToSend.append("slug", formData.slug);
-          formDataToSend.append("status", statusType);
-          formDataToSend.append("counter", formData.counter);
-          formDataToSend.append("order", formData.order);
-          formDataToSend.append(
-            "cross_portal_category_id",
-            mappedPortals[0]?.mapping_found
-              ? mappedPortals[0]?.portalCategoryId
-              : mappedPortals[0]?.id
-          );
-
-          if (formData.tags && formData.tags.length > 0) {
-            const formattedTags = formData.tags
-              .map((tag) => {
-                const tagData = availableTags.find((t) => t.id === tag);
-                const tagName = tagData ? tagData.name : tag;
-                return `#${tagName}`;
-              })
-              .join(", ");
-            formDataToSend.append("post_tag", formattedTags);
-          }
-
-          formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
-          formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
-          formDataToSend.append("articles", formData.articles ? "true" : "false");
-          formDataToSend.append("trending", formData.trending ? "true" : "false");
-          formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
-          formDataToSend.append("Event", formData.upcomingEvents ? "true" : "false");
-
-          if (formData.upcomingEvents) {
-            formDataToSend.append("Event_date", formData.eventStartDate);
-            formDataToSend.append("Eventend_date", formData.eventEndDate);
-          }
-
-          if (formData.scheduleDate) {
-            formDataToSend.append("schedule_date", formData.scheduleDate);
-          }
-
-          // Excluded portals
-          const excludedPortalIds = mappedPortals
-            .filter((p) => !p.selected)
-            .map((p) => p.portalId);
-
-          if (excludedPortalIds.length > 0) {
-            formDataToSend.append("excluded_portals", JSON.stringify(excludedPortalIds));
-          }
-
-          console.log("📦 Master News Payload:");
-          for (let [key, value] of formDataToSend.entries()) {
-            console.log(`  ${key}:`, value);
-          }
-
-          let response;
-          if (statusType === "DRAFT") {
-            // Draft logic
-            if (formData.id) {
-              const draftDiff = buildDraftDiff(originalDraft, {
-                title: formData.title,
-                short_description: formData.shortDesc,
-                content: formData.longDesc,
-                meta_title: formData.meta_title,
-                slug: formData.slug,
-                latest_news: formData.latestNews,
-                upcoming_event: formData.upcomingEvents,
-                Head_Lines: formData.headlines,
-                articles: formData.articles,
-                trending: formData.trending,
-                BreakingNews: formData.breakingNews,
-                Event_date: formData.eventStartDate,
-                Event_end_date: formData.eventEndDate,
-                schedule_date: formData.scheduleDate,
-                counter: formData.counter,
-                excluded_portals: excludedPortalIds,
-                master_category: formData.master_category,
-              });
-
-              const draftPayload = new FormData();
-              Object.keys(draftDiff).forEach((key) => {
-                if (key === "excluded_portals") {
-                  draftPayload.append(key, JSON.stringify(draftDiff[key]));
-                } else {
-                  draftPayload.append(key, draftDiff[key]);
-                }
-              });
-
-              if (formData.image) {
-                draftPayload.append("post_image", formData.image);
-              }
-
-              response = await updateDraftNews(formData.id, draftPayload);
-            } else {
-              response = await createNewsArticle(formDataToSend);
-            }
-          } else {
-            // PUBLISHED status
-            response = await publishNewsArticle(formDataToSend);
-          }
-
-          if (response?.data?.status) {
-            toast.success(
-              statusType === "DRAFT"
-                ? "✅ Draft saved successfully!"
-                : "✅ News published successfully!"
-            );
-            
-            setTimeout(() => {
-              window.location.href = '/news-list';
-            }, 1500);
-          } else {
-            toast.error(response?.data?.message || "Failed to submit news");
-          }
-
-        } catch (error) {
-          console.error("❌ Submit error:", error);
-          toast.error(error?.response?.data?.message || "An error occurred while submitting");
-        } finally {
-          setIsLoading(false);
-        }
+  try {
+    // ✅ Handle DISTRIBUTED NEWS UPDATE
+    if (isDistributedEdit && distributedNewsId) {
+      const updatePayload = {
+        news_post_title: formData.title || formData.headline,
+        ai_short_description: formData.shortDesc,
+        ai_content: formData.longDesc,
+        slug: formData.slug,
       };
+
+      // Only add image if a new one was uploaded
+      if (formData.image && typeof formData.image !== 'string') {
+        updatePayload.news_post_image = formData.image;
+      }
+
+      const res = await updateDistributedNews(distributedNewsId, updatePayload);
+      
+      if (res?.data?.status) {
+        toast.success("Distributed news updated successfully!");
+        
+        // Redirect back to news list
+        setTimeout(() => {
+          navigate('/news-list');
+        }, 1500);
+        
+        return;
+      } else {
+        toast.error(res?.data?.message || "Failed to update distributed news.");
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // ✅ Original logic for master news posts (unchanged)
+    const formDataToSend = new FormData();
+
+    formDataToSend.append("title", formData.title || formData.headline);
+    formDataToSend.append("short_description", formData.shortDesc);
+    formDataToSend.append("content", formData.longDesc);
+    formDataToSend.append("post_image", formData.image);
+    formDataToSend.append("meta_title", formData.meta_title);
+    formDataToSend.append("slug", formData.slug);
+    formDataToSend.append("status", statusType);
+    formDataToSend.append("counter", formData.counter);
+    formDataToSend.append("order", formData.order);
+    formDataToSend.append(
+      "cross_portal_category_id",
+      mappedPortals[0]?.mapping_found
+        ? mappedPortals[0]?.portalCategoryId
+        : mappedPortals[0]?.id
+    );
+
+    if (formData.tags && formData.tags.length > 0) {
+      const formattedTags = formData.tags
+        .map((tag) => {
+          const tagData = availableTags.find((t) => t.id === tag);
+          const tagName = tagData ? tagData.name : tag;
+          return `#${tagName}`;
+        })
+        .join(", ");
+      formDataToSend.append("post_tag", formattedTags);
+    }
+
+    formDataToSend.append("latest_news", formData.latestNews ? "true" : "false");
+    formDataToSend.append("Head_Lines", formData.headlines ? "true" : "false");
+    formDataToSend.append("articles", formData.articles ? "true" : "false");
+    formDataToSend.append("trending", formData.trending ? "true" : "false");
+    formDataToSend.append("BreakingNews", formData.breakingNews ? "true" : "false");
+    formDataToSend.append("upcoming_event", formData.upcomingEvents ? "true" : "false");
+
+    if (formData.eventStartDate) {
+      formDataToSend.append(
+        "Event_date",
+        new Date(formData.eventStartDate).toISOString().split("T")[0]
+      );
+    }
+    if (formData.eventEndDate) {
+      formDataToSend.append(
+        "Event_end_date",
+        new Date(formData.eventEndDate).toISOString().split("T")[0]
+      );
+    }
+    if (formData.scheduleDate) {
+      formDataToSend.append("schedule_date", formData.scheduleDate);
+    }
+
+    let createdArticle;
+
+    // UPDATE EXISTING MASTER NEWS
+    if (formData.id) {
+      const nextStatus = statusType === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+      const changedFields = originalDraft
+        ? buildDraftDiff(originalDraft, formData)
+        : formData;
+
+      if (changedFields.longDesc) {
+        changedFields.content = changedFields.longDesc;
+        delete changedFields.longDesc;
+      }
+
+      changedFields.title = changedFields.title || formData.headline;
+      changedFields.content = formData.longDesc || formData.content;
+      changedFields.master_category = Number(formData.master_category);
+
+      const selectedCategories = mappedPortals
+        .filter((p) => p.selected)
+        .map((p) => Number(p.portalCategoryId));
+
+      const excludedCategories = mappedPortals
+        .filter((p) => !p.selected)
+        .map((p) => Number(p.id));
+
+      changedFields.portal_category_ids = selectedCategories;
+      changedFields.exclude_portal_categories = excludedCategories;
+
+      createdArticle = { id: formData.id };
+      if (nextStatus === "DRAFT") toast.success("Draft saved successfully.");
+    }
+    // CREATE NEW MASTER NEWS
+    else {
+      const newlyAddedCategories = mappedPortals
+        .filter((p) => p.portalId === 0 && p.selected && p.portalCategoryId)
+        .map((p) => Number(p.id));
+
+      const excludedCategories = mappedPortals
+        .filter((p) => !p.selected && p.portalId !== 0 && p.portalCategoryId)
+        .map((p) => Number(p.portalCategoryId));
+
+      if (mappedPortals[0]?.mapping_found) {
+        formDataToSend.append(
+          "portal_category_ids",
+          JSON.stringify(newlyAddedCategories)
+        );
+      } else {
+        const categoryIds =
+          newlyAddedCategories.length > 0
+            ? newlyAddedCategories
+            : [mappedPortals[0]?.id];
+
+        formDataToSend.append(
+          "portal_category_ids",
+          JSON.stringify(categoryIds)
+        );
+      }
+      formDataToSend.append(
+        "exclude_portal_categories",
+        JSON.stringify(excludedCategories)
+      );
+
+      const response = await createNewsArticle(formDataToSend);
+      createdArticle = response.data.data;
+    }
+
+    if (statusType === "DRAFT") {
+      resetForm();
+      await loadAssignedCategories();
+      setIsLoading(false);
+      return;
+    }
+
+    if (statusType === "PUBLISHED") {
+      const res = await publishNewsArticle(createdArticle.id, {
+        portal_category_id: mappedPortals[0]?.mapping_found
+          ? mappedPortals[0]?.master_category_id
+          : mappedPortals[0]?.id,
+      });
+
+      if (res?.data?.message) toast.success(res.data.message);
+
+      setMappedPortals([]);
+      setSelectedPortalForCategories("");
+      setCategoryHistory([]);
+
+      resetForm();
+
+      await loadAssignedCategories();
+      
+      if (mappedPortals.length === 0 && assignedCategories.length > 0) {
+        const defaultPortalId = assignedCategories[0]?.id;
+        if (defaultPortalId) {
+          try {
+            const categoryRes = await fetchPortalParentCategories(defaultPortalId);
+            const parents = categoryRes?.data?.data?.parent_categories || [];
+            if (parents.length) {
+              setMappedPortals(
+                parents.map((c) => ({
+                  id: c.parent_external_id,
+                  portalId: defaultPortalId,
+                  portalName: assignedCategories[0].name,
+                  portalCategoryName: c.parent_name,
+                  portalCategoryId: c.parent_external_id,
+                  selected: true,
+                  has_subcategories: true,
+                }))
+              );
+              setShowPortalSection(true);
+            } else {
+              setShowPortalSection(false);
+            }
+          } catch (err) {
+            setShowPortalSection(false);
+          }
+        }
+      } else {
+        setShowPortalSection(mappedPortals.length > 0);
+      }
+    } else {
+      resetForm();
+    }
+  } catch (err) {
+    console.error("Error processing form:", err);
+    toast.error("Failed to process form.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const [editorKey, setEditorKey] = useState(Date.now());
   const resetForm = () => {
