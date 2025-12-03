@@ -280,7 +280,7 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
     const res = await deleteDistributedNews(distId);
     
     if (res?.data?.status) {
-      toast.success("Distributed news deleted successfully!");
+      toast.success(res.data.message || "Distributed news deleted successfully.");
       
       // Reload the distributed news for this item
       await loadDistributedNews(newsPostId);
