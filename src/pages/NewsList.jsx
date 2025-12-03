@@ -586,17 +586,6 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
                               if (!publishingId) handleRetryPublish(item);
                             }}
                           >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // prevent expanding the row
-                                
-                                navigate(`/edit-news/${item.id}`); // ✅ smooth SPA navigation
-                              }}
-                              className="text-sm text-purple-600 hover:text-purple-800 font-medium"
-                              title="Edit News"
-                            >
-                              Edit
-                            </button>
 
                             {publishingId === item.id ? (
                               <div className="flex items-center gap-2 text-gray-600 text-sm">

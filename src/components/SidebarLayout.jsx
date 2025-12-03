@@ -19,7 +19,15 @@ export default function SidebarLayout() {
   }, [location.pathname]);
   const menuItems = [
     { name: "Dashboard", icon: Home, path: "/dashboard" },
-    { name: "Create News", icon: FilePlus2, path: "/create-news" },
+   {
+  name:
+    new URLSearchParams(location.search).has("dist_id")
+      ? "Update News"
+      : "Create News",
+  icon: FilePlus2,
+  path: "/create-news",
+},
+
     { name: "News List", icon: Newspaper, path: "/news-list" },
     { name: "Analytics", icon: BarChart3, path: "/analytics" },
     ...(isMaster

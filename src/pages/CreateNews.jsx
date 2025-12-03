@@ -6,9 +6,8 @@ import {createNewsArticle,publishNewsArticle,fetchAllTags,updateDistributedNews,
 } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
-import { useParams } from "react-router-dom";
 import webpfy from "webpfy";
-import { useLocation } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 const NewsArticleForm = () => {
   const { id } = useParams();
   const isEditMode = Boolean(id);
@@ -83,6 +82,7 @@ const NewsArticleForm = () => {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
       // Add this inside the component
     const location = useLocation();
+    const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
     const distId = queryParams.get("dist_id");
     const [isDistributedEdit, setIsDistributedEdit] = useState(false);
@@ -135,7 +135,7 @@ useEffect(() => {
   const loadDistributedNewsData = async () => {
     if (distId) {
       try {
-        setIsLoading(true);
+        setIsLoading(false);  
         const res = await fetchDistributedNewsDetail(distId);
         
         if (res?.data?.status) {
@@ -151,11 +151,16 @@ useEffect(() => {
               title: nd.post_title || "",
               shortDesc: nd.post_short_des || "",
               longDesc: nd.post_des || "",
+
               meta_title: nd.meta_title || "",
               slug: nd.slug || generateSlug(nd.post_title || ""),
               status: "PUBLISHED",
               image: null,
-              tags: nd.tags || [],
+             tags: nd.post_tag 
+                      ? nd.post_tag
+                          .split(",")                // "#AI", " #climate"
+                          .map(t => t.replace("#","").trim())  // "AI", "climate"
+                      : [],
               latestNews: nd.Head_Lines || false,
               headlines: nd.Head_Lines || false,
               articles: nd.articles || false,
@@ -170,7 +175,7 @@ useEffect(() => {
               slugEdited: false,
               master_category: res.data.data.portal_news_id || "",
             });
-
+             setEditorKey(Date.now());
           
           // Set image preview if available
          if (nd.post_image) {
@@ -178,7 +183,6 @@ useEffect(() => {
         }
 
           
-          toast.info(`Loaded distributed news: ${dist.news_post_title}`);
         }
       } catch (err) {
         console.error("Failed to load distributed news:", err);
@@ -191,6 +195,7 @@ useEffect(() => {
   
   loadDistributedNewsData();
 }, [distId]);
+
  const handlePortalCategoryClick = async (portal) => {
   try {
     setIsPortalsLoading(true);
@@ -713,7 +718,7 @@ useEffect(() => {
         setAssignedCategories(finalList);
 
         // 🔥 AUTO-SELECT FIRST PORTAL AND FETCH CATEGORIES IMMEDIATELY
-        if (finalList.length > 0) {
+        if (finalList.length > 0 && !distId) {
           const defaultPortal = finalList[0];
 
           setFormData((p) => ({
@@ -854,36 +859,62 @@ const handleSubmit = async (e, statusType = "PUBLISHED") => {
 
   try {
     // ✅ Handle DISTRIBUTED NEWS UPDATE
-    if (isDistributedEdit && distributedNewsId) {
-      const updatePayload = {
-        news_post_title: formData.title || formData.headline,
-        ai_short_description: formData.shortDesc,
-        ai_content: formData.longDesc,
-        slug: formData.slug,
-      };
+if (isDistributedEdit && distributedNewsId) {
+  const updatePayload = {
+   ai_title: formData.headline || formData.title,
+    ai_short_description: formData.shortDesc,
+    ai_content: formData.longDesc,
+    ai_meta_title: formData.meta_title,
+    ai_slug: formData.slug,
+    post_tag: formData.tags && formData.tags.length > 0
+      ? formData.tags
+          .map((tag) => {
+            const tagData = availableTags.find((t) => t.id === tag);
+            const tagName = tagData ? tagData.name : tag;
+            return `#${tagName}`;
+          })
+          .join(", ")
+      : "",
+    is_active: formData.latestNews ? 1 : 0,
+    Head_Lines: formData.headlines ? 1 : 0,
+    articles: formData.articles ? 1 : 0,
+    trending: formData.trending ? 1 : 0,
+    BreakingNews: formData.breakingNews ? 1 : 0,
+    Event: formData.upcomingEvents ? 1 : 0,
+    Event_date: formData.eventStartDate 
+      ? new Date(formData.eventStartDate).toISOString().split("T")[0]
+      : null,
+    Event_end_date: formData.eventEndDate
+      ? new Date(formData.eventEndDate).toISOString().split("T")[0]
+      : null,
+    schedule_date: formData.scheduleDate || null,
+    post_status: statusType === "PUBLISHED" ? 100 : 0,
+  };
 
-      // Only add image if a new one was uploaded
-      if (formData.image && typeof formData.image !== 'string') {
-        updatePayload.news_post_image = formData.image;
-      }
+  // Only add image if a new one was uploaded
+  if (formData.image && typeof formData.image !== 'string') {
+    updatePayload.edited_image = formData.image;
+  }
 
-      const res = await updateDistributedNews(distributedNewsId, updatePayload);
-      
-      if (res?.data?.status) {
-        toast.success("Distributed news updated successfully!");
-        
-        // Redirect back to news list
-        setTimeout(() => {
-          navigate('/news-list');
-        }, 1500);
-        
-        return;
-      } else {
-        toast.error(res?.data?.message || "Failed to update distributed news.");
-        setIsLoading(false);
-        return;
-      }
-    }
+  const res = await updateDistributedNews(distributedNewsId, updatePayload);
+  
+  if (res?.data?.status) {
+    
+    // Clear all fields after update
+        resetForm();
+        setImagePreview(null);
+        setMappedPortals([]);
+        setCategoryHistory([]);
+    // Redirect back to news list
+        navigate('/news-list');
+    
+    return;
+  } else {
+    toast.error(res?.data?.message || "Failed to update distributed news.");
+    setIsLoading(false);
+    return;
+  }
+}
 
     // ✅ Original logic for master news posts (unchanged)
     const formDataToSend = new FormData();
@@ -1128,8 +1159,9 @@ const handleSubmit = async (e, statusType = "PUBLISHED") => {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-white">
-                    Create News Article
+                    {distId ? "Update News Article" : "Create News Article"}
                   </h1>
+
                   <p className="text-gray-300 text-sm">
                     Fill in the details to publish your article
                   </p>
@@ -1164,43 +1196,43 @@ const handleSubmit = async (e, statusType = "PUBLISHED") => {
                     Save as Draft
                   </button>
 
-                  <button
-                    type="submit"
-                    onClick={(e) => handleSubmit(e, "PUBLISHED")}
-                    disabled={isLoading}
-                    className="px-8 py-3 bg-gradient-to-r from-gray-600 to-gray-600 text-white rounded-lg text-xs font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-3 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        Publish Article
-                      </>
-                    )}
-                  </button>
+                   <button
+                type="submit"
+                disabled={isLoading}
+                onClick={(e) => handleSubmit(e, "PUBLISHED")}
+                className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-sm font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
+              >
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    {distId  ? "Updating..." : "Publishing..."}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5 mr-2" />
+                    {distId  ? "Update & Publish" : "Publish Article"}
+                  </>
+                )}
+              </button>
                 </div>
               </div>
             </div>
@@ -1209,6 +1241,7 @@ const handleSubmit = async (e, statusType = "PUBLISHED") => {
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
             {/* Basic Info */}
             <section className="space-y-5">
+            {!distId && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* LEFT SIDE: portal Selection */}
                 <div>
@@ -1263,8 +1296,8 @@ const handleSubmit = async (e, statusType = "PUBLISHED") => {
                   )}
                 </div>
               </div>
-
-              {showPortalSection && (
+             )}
+              {showPortalSection && !distId && (
                 <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
                   {/* Header Section */}
                   <div className="relative flex items-center justify-between items-center pb-3 border-b-2 border-gray-200">
