@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, X, Clock } from "lucide-react";
+import { FileText, X, Clock, Loader2  } from "lucide-react";
 import {fetchMyNewsPosts,fetchDistributedNews,publishNewsArticle,fetchNewsDetail,fetchMasterCategories,fetchPortals,
   fetchPortalCategories,editNews,deleteDistributedNews,updateDistributedNews,fetchDistributedNewsDetail} from "../../server";
 import constant from "../../Constant";
@@ -42,7 +42,8 @@ const NewsList = () => {
   const [selectedPortalCategory, setSelectedPortalCategory] = useState("");
   const [selectedMasterCategory, setSelectedMasterCategory] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+const [isLoadingNews, setIsLoadingNews] = useState(false);
+const [loadingDistributed, setLoadingDistributed] = useState({}); 
   // 🔹 Dropdown Data
   const [portals, setPortals] = useState([]);
   const [portalCategories, setPortalCategories] = useState([]);
@@ -103,6 +104,7 @@ const NewsList = () => {
   }, []);
 
   const loadDistributedNews = async (newsPostId) => {
+    setLoadingDistributed((prev) => ({ ...prev, [newsPostId]: true }));
     try {
       const res = await fetchDistributedNews({ news_post_id: newsPostId });
       if (res?.data?.status) {
@@ -117,6 +119,9 @@ const NewsList = () => {
       console.error("Failed to fetch distributed list:", err);
       setDistributedData((prev) => ({ ...prev, [newsPostId]: [] }));
     }
+     finally {
+    setLoadingDistributed((prev) => ({ ...prev, [newsPostId]: false })); // ✅ ADD THIS
+  }
   };
 
   const handleRetryPublish = async (item) => {
@@ -142,6 +147,7 @@ const NewsList = () => {
       console.error("❌ Error while republishing:", err);
       toast.error("Something went wrong while republishing.");
     } finally {
+
       setPublishingId(null);
     }
   };
@@ -174,6 +180,7 @@ const NewsList = () => {
 
   const loadNewsWithFilters = async (filters) => {
     setIsRefreshing(true);
+     setIsLoadingNews(true);
 
     try {
       let date_filter = "";
@@ -238,6 +245,7 @@ const NewsList = () => {
       console.error("Failed to fetch filtered news:", err);
     } finally {
       setIsRefreshing(false);
+        setIsLoadingNews(false); 
     }
   };
 
@@ -463,6 +471,12 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
 
             {/* Table */}
             <div className="overflow-x-auto mt-4">
+            {isLoadingNews ? ( // ✅ ADD THIS CONDITION
+    <div className="flex flex-col items-center justify-center py-20 space-y-4">
+      <Loader2 className="w-12 h-12 text-black animate-spin" />
+      <p className="text-gray-600 text-sm font-medium">Loading news articles...</p>
+    </div>
+  ) : (
               <table className="w-full border border-gray-200 rounded-lg overflow-hidden">
                 <thead className="bg-gray-100 text-center">
                   <tr>
@@ -624,7 +638,12 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
                         {expandedRow === item.id && (
                           <tr className="bg-white border-t border-gray-200">
                             <td colSpan="9" className="p-0">
-                              {distributedData[item.id]?.length > 0 ? (
+                              {loadingDistributed[item.id] ? ( // ✅ ADD THIS CONDITION
+                                <div className="flex flex-col items-center justify-center py-12 space-y-3 bg-gray-50">
+                                  <Loader2 className="w-10 h-10 text-black animate-spin" />
+                                  <p className="text-gray-600 text-sm font-medium">Loading distributed news...</p>
+                                </div>
+                              ) : distributedData[item.id]?.length > 0 ? (
                                 <table className="w-full text-sm bg-gray-50">
                                   {/* ✅ Table Header */}
                                   <thead className="bg-gray-100 text-gray-700 text-xs uppercase tracking-wide border-b">
@@ -679,7 +698,7 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
                                         <td className="px-2 py-3 max-w-[220px]">
                                           <div className="flex flex-col">
                                             <span className="text-sm font-semibold text-gray-900">
-                                              {dist.news_post_title}
+                                               {dist.ai_title ? dist.ai_title : dist.news_post_title}
                                             </span>
                                             <span className="text-xs text-gray-500 truncate max-w-[200px]">
                                               {dist.ai_short_description || "—"}
@@ -832,6 +851,7 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
                   )}
                 </tbody>
               </table>
+              )}
               {/* {totalPages > 1 && (
                 <div className="flex justify-center items-center space-x-2 mt-4">
                   <button
