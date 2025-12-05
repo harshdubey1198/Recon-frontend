@@ -797,17 +797,18 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
                                       <td className="px-2 py-3 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                           {/* Edit Button */}
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              navigate(`/create-news?dist_id=${dist.id}`);
-                                            }}
-                                            className="text-sm text-purple-600 hover:text-purple-800 font-medium"
-                                            title="Edit Distributed News"
-                                          >
-                                            
-                                            Edit
-                                          </button>
+                                         {(dist.status || "").toString().trim().toUpperCase() !== "FAILED" && (
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/create-news?dist_id=${dist.id}`);
+                                                  }}
+                                                  className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                                                  title="Edit Distributed News"
+                                                >
+                                                  Edit
+                                                </button>
+                                              )}
 
                                           {/* Delete Button */}
                                           <button
