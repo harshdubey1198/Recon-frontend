@@ -332,7 +332,7 @@ export default function Dashboard() {
             height={520}
             className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
           />
-          <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" />
+          {/* <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" /> */}
         </div>
       </div>
     </div>
