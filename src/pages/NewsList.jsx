@@ -151,16 +151,18 @@ const [loadingDistributed, setLoadingDistributed] = useState({});
       setPublishingId(null);
     }
   };
-  useEffect(() => {
-    if (!expandedRow) return; 
+ useEffect(() => {
+  if (!expandedRow) return; 
+  if (dateFilter !== "today") return; // ✅ If dateFilter is NOT "today", stop here (no refresh)
 
-    const interval = setInterval(() => {
-      console.log(`⏳ Auto-refreshing distribution for news ID: ${expandedRow}`);
-      loadDistributedNews(expandedRow);
-    }, 15000);
+  const interval = setInterval(() => {
+    console.log(`⏳ Auto-refreshing distribution for news ID: ${expandedRow}`);
+    loadDistributedNews(expandedRow);
+  }, 15000);
 
-    return () => clearInterval(interval); 
-  }, [expandedRow]);
+  return () => clearInterval(interval); 
+}, [expandedRow, dateFilter]);
+
 
   useEffect(() => {
     const loadPortalCats = async () => {
@@ -797,7 +799,7 @@ const handleDeleteDistributedNews = async (distId, newsPostId) => {
                                       <td className="px-2 py-3 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                           {/* Edit Button */}
-                                         {(dist.status || "").toString().trim().toUpperCase() !== "FAILED" && (
+                                         {(dist.status || "").toString().trim().toUpperCase() == "SUCCESS" && (
                                                 <button
                                                   onClick={(e) => {
                                                     e.stopPropagation();

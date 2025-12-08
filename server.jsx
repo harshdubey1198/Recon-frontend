@@ -151,14 +151,6 @@ export async function updateDraftNews(id, status = "PUBLISHED",payload) {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
-
-
-
-
-export async function fetchNewsList(page = 1){
-  return axiosInstance.get(`/api/news/distributed/list/?page=${page}`);
-}
-
 /**
  * Get detail of a distributed news article
  * @param {number|string} id - news article ID
