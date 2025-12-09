@@ -639,9 +639,15 @@ useEffect(() => {
         rotation
       );
       if (!blob) return;
-      const croppedFile = new File([blob], "cropped.jpg", {
-        type: "image/jpeg",
-      });
+     const originalName =
+      formData?.image?.name || "image.jpg";
+
+    const baseName = originalName.replace(/\.[^/.]+$/, "");
+
+    const croppedFile = new File([blob], `${baseName}.jpg`, {
+      type: "image/jpeg",
+    });
+
     
 
       // Convert JPEG → WebP
@@ -649,9 +655,11 @@ useEffect(() => {
       try {
         const { webpBlob, fileName } = await webpfy({ image: croppedFile });
         if (webpBlob) {
-          finalFile = new File([webpBlob], fileName || "image.webp", {
-            type: "image/webp",
-          });
+          finalFile = new File(
+                [webpBlob],
+                `${baseName}.webp`,
+                { type: "image/webp" }
+              );
          
         }
       } catch (webpError) {
@@ -1841,8 +1849,10 @@ if (isDistributedEdit && distributedNewsId) {
                     initData={formData.longDesc}
                     onBeforeLoad={(CKEDITOR) => {
                       CKEDITOR.disableAutoInline = true;
-                      
+                      document.body.setAttribute("contenteditable", "false");
+                      document.body.style.caretColor = "transparent";
                     }}
+
                     config={{
                       height: 400,
                       versionCheck: false,
