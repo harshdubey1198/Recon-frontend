@@ -130,6 +130,34 @@ export async function fetchDistributedNewsDetail(id) {
 }
 
 
+/**
+ * Upload multiple portal-specific images
+ * @param {number} newsId - The ID of the created news article (e.g., 114)
+ * @param {Array} portalImages - Array of objects with { portalId: number, file: File }
+ 
+ */
+export async function uploadMultipleImages(newsId, portalImages) {
+  if (!newsId) throw new Error("News ID is required for image upload.");
+  if (!portalImages || portalImages.length === 0) {
+    throw new Error("At least one portal image is required.");
+  }
+
+  const formData = new FormData();
+
+  // Append each image with its portal_image_{portalId} key
+  portalImages.forEach(({ portalId, file }) => {
+    if (portalId && file) {
+      formData.append(`portal_image_${portalId}`, file);
+    }
+  });
+
+  return axiosInstance.post(`/api/portal-image-upload/${newsId}/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
+
 
 export async function updateDraftNews(id, status = "PUBLISHED",payload) {
   if (!id) throw new Error("News ID is required to update draft.");

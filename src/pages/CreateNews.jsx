@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {Upload,X,Plus,Calendar,Eye,Save,RefreshCw,Image as ImageIcon,Tag,FileText,Settings,Clock,TrendingUp,AlertCircle,Star,Crop,RotateCw,ZoomIn,Maximize2,SaveAll,} from "lucide-react";
 import Cropper from "react-easy-crop";
 import { CKEditor } from "ckeditor4-react";
-import {createNewsArticle,publishNewsArticle,fetchAllTags,updateDistributedNews,fetchDistributedNewsDetail,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortals,fetchUserPortalsByUserId,fetchSubCategoriesByParent,
+import {createNewsArticle,publishNewsArticle,fetchAllTags,updateDistributedNews,uploadMultipleImages,fetchDistributedNewsDetail,fetchPortalParentCategories,fetchCrossPortalMappings,fetchDraftNews,updateDraftNews,fetchPortals,fetchUserPortalsByUserId,fetchSubCategoriesByParent,
 } from "../../server";
 import constant from "../../Constant";
 import { toast } from "react-toastify";
@@ -37,6 +37,9 @@ const NewsArticleForm = () => {
     slugEdited: false,
   });
   const [portalLoading, setPortalLoading] = useState(false);
+  const [isCrossMappingChecked, setIsCrossMappingChecked] = useState(false);
+   const [isPublished, setIsPublished] = useState(false);
+
   const [originalDraft, setOriginalDraft] = useState(null);
   const [isCategoryloading, setIsCategoryloading] = useState(true);
   const [availableTags, setAvailableTags] = useState([]);
@@ -87,6 +90,11 @@ const NewsArticleForm = () => {
     const distId = queryParams.get("dist_id");
     const [isDistributedEdit, setIsDistributedEdit] = useState(false);
     const [distributedNewsId, setDistributedNewsId] = useState(null);
+    const [portalImages, setPortalImages] = useState({}); 
+    const [portalImagePreviews, setPortalImagePreviews] = useState({}); 
+    const [showPortalImageUpload, setShowPortalImageUpload] = useState(false);
+    const canUploadImages =isCrossMappingChecked && mappedPortals.some(p => p.mapping_found === true);
+
   const filteredTags = availableTags.filter((tag) => {
     const matchesSearch = tag.name
       .toLowerCase()
@@ -245,10 +253,10 @@ useEffect(() => {
     }
 
     console.log("🔍 Calling cross-portal mapping API for portal.id:", portal.id);
-
     try {
-      const matchingRes = await fetchCrossPortalMappings(portal.id);
 
+      const matchingRes = await fetchCrossPortalMappings(portal.id);
+       setIsCrossMappingChecked(true);
       const matchingData = matchingRes?.data?.data || {};
       const mappingFound = matchingData.mapping_found;
       const requestedCategory = matchingData.requested_portal_category;
@@ -318,6 +326,7 @@ useEffect(() => {
         setCategoryHistory((prev) => prev.slice(0, -1));
       }
     } catch (matchError) {
+      setIsCrossMappingChecked(true);
       // If no subcategories and matching failed, remove from history
       if (!hasSubcategories) {
         setCategoryHistory((prev) => prev.slice(0, -1));
@@ -481,13 +490,77 @@ useEffect(() => {
     }
   };
 
-  // const buildDraftDiff = (oldData, newData) => {
-  //   const diff = {};
-  //   Object.keys(newData).forEach((key) => {
-  //     if (newData[key] !== oldData[key]) diff[key] = newData[key];
-  //   });
-  //   return diff;
-  // };
+ // Add this helper function to handle portal-specific image uploads
+const handlePortalImageUpload = (portalId, file) => {
+  if (file) {
+    if (file.size > 10 * 1024 * 1024) {
+      toast.warning("Image size must be less than 10MB");
+      return;
+    }
+    
+    // Store the file
+    setPortalImages(prev => ({
+      ...prev,
+      [portalId]: file
+    }));
+    
+    // Create preview
+    const objectUrl = URL.createObjectURL(file);
+    setPortalImagePreviews(prev => ({
+      ...prev,
+      [portalId]: objectUrl
+    }));
+  }
+};
+
+// Add this helper function to remove portal image
+const removePortalImage = (portalId) => {
+  // Revoke preview URL
+  if (portalImagePreviews[portalId]) {
+    URL.revokeObjectURL(portalImagePreviews[portalId]);
+  }
+  
+  // Remove from state
+  setPortalImages(prev => {
+    const updated = { ...prev };
+    delete updated[portalId];
+    return updated;
+  });
+  
+  setPortalImagePreviews(prev => {
+    const updated = { ...prev };
+    delete updated[portalId];
+    return updated;
+  });
+};
+
+const getUniqueSelectedPortals = () => {
+  const uniquePortals = [];
+  const seenPortalIds = new Set();
+  
+  mappedPortals
+    .filter(portal => portal.selected)
+    .forEach(portal => {
+      // Use portalId if available, otherwise use id
+     const actualPortalId =
+        portal.portal ??
+        portal.portalId ??
+        portal.id ??
+        portal.manualPortalId;
+      
+      if (!seenPortalIds.has(actualPortalId)) {
+        seenPortalIds.add(actualPortalId);
+        uniquePortals.push({
+          portalId: actualPortalId,
+          portalName: portal.portalName,
+          portalCategoryName: portal.portalCategoryName,
+          portalParentCategory: portal.portalParentCategory
+        });
+      }
+    });
+  
+  return uniquePortals;
+};
 
   const buildDraftDiff = (oldData, newData) => {
     const diff = {};
@@ -794,11 +867,13 @@ useEffect(() => {
     const previousState = categoryHistory[categoryHistory.length - 1];
     setMappedPortals(previousState);
     setCategoryHistory((prev) => prev.slice(0, -1));
-    
-    // ✅ When going back to parent categories, reset subcategory view flag
+
     setIsViewingSubcategories(false);
+
+     setIsCrossMappingChecked(false); // ← ADD THIS LINE
   }
 };
+
 
   useEffect(() => {
     loadAssignedCategories();
@@ -1043,22 +1118,46 @@ if (isDistributedEdit && distributedNewsId) {
       return;
     }
 
-    if (statusType === "PUBLISHED") {
+      if (statusType === "PUBLISHED") {
+      // 🔥 STEP 1: Upload portal-specific images BEFORE publishing
+      if (Object.keys(portalImages).length > 0) {
+        try {
+          const portalImageArray = Object.entries(portalImages).map(([portalId, file]) => ({
+            portalId: Number(portalId),
+            file: file
+          }));
+
+          await uploadMultipleImages(createdArticle.id, portalImageArray);
+          toast.success(`Successfully uploaded ${portalImageArray.length} portal image${portalImageArray.length > 1 ? 's' : ''}`);
+          
+          // Clear portal images after successful upload
+          setPortalImages({});
+          Object.values(portalImagePreviews).forEach(url => URL.revokeObjectURL(url));
+          setPortalImagePreviews({});
+        } catch (imgErr) {
+          console.error("❌ Portal image upload failed:", imgErr);
+          toast.error("Failed to upload portal images. Please try again.");
+          setIsLoading(false);
+          return; // Stop execution if image upload fails
+        }
+      }
+
+      // 🔥 STEP 2: Publish article AFTER images are uploaded
       const res = await publishNewsArticle(createdArticle.id, {
         portal_category_id: mappedPortals[0]?.mapping_found
           ? mappedPortals[0]?.master_category_id
           : mappedPortals[0]?.id,
       });
-
+        
       if (res?.data?.message) toast.success(res.data.message);
-
+        setIsPublished(true);
       setMappedPortals([]);
       setSelectedPortalForCategories("");
       setCategoryHistory([]);
-
       resetForm();
-
       await loadAssignedCategories();
+  
+
       
       if (mappedPortals.length === 0 && assignedCategories.length > 0) {
         const defaultPortalId = assignedCategories[0]?.id;
@@ -2130,8 +2229,139 @@ if (isDistributedEdit && distributedNewsId) {
                 </div>
               )}
             </section>
+            
+            {showPortalSection && mappedPortals.length > 0 && !distId && (
+  <section className="space-y-5">
+    <div className="flex items-center justify-between pb-3 border-b-2 border-gray-200">
+      <div className="flex items-center space-x-2">
+        <div className="p-2 bg-gray-100 rounded-lg">
+          <ImageIcon className="w-5 h-5 text-gray-700" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Portal-Specific Images
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Upload custom images for each portal (optional)
+          </p>
+        </div>
+      </div>
+        <button
+      type="button"
+       disabled={!isCrossMappingChecked || isPublished}
+     onClick={
+    !isPublished
+      ? () => setShowPortalImageUpload(prev => !prev)
+      : undefined
+  }
+      className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
+        ${isCrossMappingChecked && !isPublished
+          ? "bg-gray-900 text-white hover:bg-gray-800"
+          : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+      `}
+    >
+      {showPortalImageUpload ? (
+        <>
+          <Eye className="w-4 h-4" />
+          Hide
+        </>
+      ) : (
+        <>
+          <Upload className="w-4 h-4" />
+          Upload Images
+        </>
+      )}
+    </button>
 
+
+    </div>
+
+      {showPortalImageUpload && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {mappedPortals
+            .filter(portal => portal.selected && (portal.portalId || portal.is_manually_added))
+            .map((portal, idx) => (
+              <div
+                key={idx}
+                className="border-2 border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-all"
+              >
+                <div className="mb-3">
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {portal.portalName}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {portal.portalCategoryName}
+                  </p>
+                </div>
+
+                {portalImagePreviews[portal.portalId] ? (
+                  <div className="relative group">
+                    <div className="aspect-video rounded-lg overflow-hidden border border-gray-200">
+                      <img
+                        src={portalImagePreviews[portal.portalId]}
+                        alt={`${portal.portalName} preview`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePortalImage(portal.portalId)}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="mt-2 text-xs text-gray-600 flex items-center gap-1">
+                      <ImageIcon className="w-3 h-3" />
+                      {portalImages[portal.portalId]?.name}
+                    </div>
+                  </div>
+                ) : (
+                  <label className="block cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-all">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-xs text-gray-600 font-medium">
+                        Click to upload
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PNG, JPG up to 10MB
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          handlePortalImageUpload(portal.portalId, file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
+
+            {Object.keys(portalImages).length > 0 && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    {Object.keys(portalImages).length} portal image{Object.keys(portalImages).length > 1 ? 's' : ''} ready to upload
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    These images will be uploaded automatically after publishing the article
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
             <section className="space-y-5">
+               {/* Portal-Specific Images Section */}
+        
               {/* Header */}
               <div className="flex items-center space-x-2 pb-3 border-b-2 border-gray-200">
                 <div className="p-2 bg-gray-100 rounded-lg">
