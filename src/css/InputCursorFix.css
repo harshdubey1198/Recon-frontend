@@ -113,7 +113,7 @@ textarea:focus::placeholder {
   input[type="number"],
   textarea {
     caret-color: #fff !important;
-    color: #f9fafb !important;
+    color: #1d1d1dbc !important;
   }
   
   [contenteditable="true"],
