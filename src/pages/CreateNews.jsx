@@ -8,6 +8,8 @@ import constant from "../../Constant";
 import { toast } from "react-toastify";
 import webpfy from "webpfy";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
+import "../css/InputCursorFix.css";
+
 const NewsArticleForm = () => {
   const { id } = useParams();
   const isEditMode = Boolean(id);
@@ -499,6 +501,12 @@ const handlePortalImageUpload = (portalId, file) => {
     toast.warning("Image size must be less than 10MB");
     return;
   }
+
+  // ✅ STORE ORIGINAL FILE TEMPORARILY (so we can get its name later)
+  setPortalImages(prev => ({
+    ...prev,
+    [portalId]: file
+  }));
 
   // ✅ TELL SYSTEM THIS IS PORTAL IMAGE (NOT FEATURED)
   setActivePortalForCrop(portalId);
