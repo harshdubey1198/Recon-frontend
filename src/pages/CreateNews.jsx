@@ -702,7 +702,7 @@ const buildDraftDiff = (oldData, newData) => {
       // Convert JPEG → WebP
       let finalFile = croppedFile;
       try {
-        const { webpBlob, fileName } = await webpfy({ image: croppedFile });
+        const { webpBlob } = await webpfy({ image: croppedFile, fileName: `${baseName}.webp` });
         if (webpBlob) {
           finalFile = new File(
                 [webpBlob],
