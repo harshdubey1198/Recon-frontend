@@ -38,9 +38,11 @@ const NewsArticleForm = () => {
   });
   const [portalLoading, setPortalLoading] = useState(false);
   const [isCrossMappingChecked, setIsCrossMappingChecked] = useState(false);
-   const [isPublished, setIsPublished] = useState(false);
+  const [cropPreview, setCropPreview] = useState(null);
 
-  const [originalDraft, setOriginalDraft] = useState(null);
+   const [isPublished, setIsPublished] = useState(false);
+   const [activePortalForCrop, setActivePortalForCrop] = useState(null);
+   const [originalDraft, setOriginalDraft] = useState(null);
   const [isCategoryloading, setIsCategoryloading] = useState(true);
   const [availableTags, setAvailableTags] = useState([]);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
@@ -93,8 +95,7 @@ const NewsArticleForm = () => {
     const [portalImages, setPortalImages] = useState({}); 
     const [portalImagePreviews, setPortalImagePreviews] = useState({}); 
     const [showPortalImageUpload, setShowPortalImageUpload] = useState(false);
-    const canUploadImages =isCrossMappingChecked && mappedPortals.some(p => p.mapping_found === true);
-
+    const canUploadImages = !isPublished && isCrossMappingChecked && mappedPortals.some(p => p.mapping_found === true);
   const filteredTags = availableTags.filter((tag) => {
     const matchesSearch = tag.name
       .toLowerCase()
@@ -492,26 +493,21 @@ useEffect(() => {
 
  // Add this helper function to handle portal-specific image uploads
 const handlePortalImageUpload = (portalId, file) => {
-  if (file) {
-    if (file.size > 10 * 1024 * 1024) {
-      toast.warning("Image size must be less than 10MB");
-      return;
-    }
-    
-    // Store the file
-    setPortalImages(prev => ({
-      ...prev,
-      [portalId]: file
-    }));
-    
-    // Create preview
-    const objectUrl = URL.createObjectURL(file);
-    setPortalImagePreviews(prev => ({
-      ...prev,
-      [portalId]: objectUrl
-    }));
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    toast.warning("Image size must be less than 10MB");
+    return;
   }
+
+  // ✅ TELL SYSTEM THIS IS PORTAL IMAGE (NOT FEATURED)
+  setActivePortalForCrop(portalId);
+
+  // ✅ OPEN CROPPER ONLY FOR PORTAL IMAGE
+  setCropPreview(URL.createObjectURL(file));
+  setShowCropper(true);
 };
+
 
 // Add this helper function to remove portal image
 const removePortalImage = (portalId) => {
@@ -533,36 +529,7 @@ const removePortalImage = (portalId) => {
     return updated;
   });
 };
-
-const getUniqueSelectedPortals = () => {
-  const uniquePortals = [];
-  const seenPortalIds = new Set();
-  
-  mappedPortals
-    .filter(portal => portal.selected)
-    .forEach(portal => {
-      // Use portalId if available, otherwise use id
-     const actualPortalId =
-        portal.portal ??
-        portal.portalId ??
-        portal.id ??
-        portal.manualPortalId;
-      
-      if (!seenPortalIds.has(actualPortalId)) {
-        seenPortalIds.add(actualPortalId);
-        uniquePortals.push({
-          portalId: actualPortalId,
-          portalName: portal.portalName,
-          portalCategoryName: portal.portalCategoryName,
-          portalParentCategory: portal.portalParentCategory
-        });
-      }
-    });
-  
-  return uniquePortals;
-};
-
-  const buildDraftDiff = (oldData, newData) => {
+const buildDraftDiff = (oldData, newData) => {
     const diff = {};
     Object.keys(newData).forEach((key) => {
       if (newData[key] !== oldData[key]) diff[key] = newData[key];
@@ -682,7 +649,7 @@ const getUniqueSelectedPortals = () => {
         return;
       }
       setFormData((prev) => ({ ...prev, image: file }));
-      setPreviewFromFile(file);
+      setCropPreview(URL.createObjectURL(file));
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setRotation(0);
@@ -701,13 +668,13 @@ const getUniqueSelectedPortals = () => {
   };
 
   const applyCrop = async () => {
-    if (!imagePreview || !croppedAreaPixels) {
+    if (!cropPreview  || !croppedAreaPixels) {
       setShowCropper(false);
       return;
     }
     try {
       const blob = await getCroppedImg(
-        imagePreview,
+       cropPreview,
         croppedAreaPixels,
         rotation
       );
@@ -731,14 +698,32 @@ const getUniqueSelectedPortals = () => {
         console.warn("WebP conversion failed, using original JPEG:", webpError);
       }
 
-      setPreviewFromFile(finalFile);
-      setFormData((prev) => ({ ...prev, image: finalFile }));
-    } catch (e) {
-      console.error("Crop failed", e);
-    } finally {
-      setShowCropper(false);
-    }
-  };
+       if (activePortalForCrop !== null) {
+  // ✅ PORTAL IMAGE ONLY
+  setPortalImages(prev => ({
+    ...prev,
+    [activePortalForCrop]: croppedFile
+  }));
+
+  setPortalImagePreviews(prev => ({
+    ...prev,
+    [activePortalForCrop]: URL.createObjectURL(croppedFile)
+  }));
+
+  // ✅ RESET FLAG
+  setActivePortalForCrop(null);
+        } else {
+          // ✅ FEATURED IMAGE ONLY
+          setFormData(prev => ({ ...prev, image: croppedFile }));
+          setPreviewFromFile(croppedFile);
+        }
+      } catch (e) {
+            console.error("Crop failed", e);
+          } finally {
+            setCropPreview(null);
+             setShowCropper(false);
+          }
+        };
 
   useEffect(() => {
     const loadTags = async () => {
@@ -862,15 +847,19 @@ const getUniqueSelectedPortals = () => {
     }
   };
 
- const handleGoBack = () => {
+const handleGoBack = () => {
   if (categoryHistory.length > 0) {
     const previousState = categoryHistory[categoryHistory.length - 1];
     setMappedPortals(previousState);
     setCategoryHistory((prev) => prev.slice(0, -1));
-
     setIsViewingSubcategories(false);
-
-     setIsCrossMappingChecked(false); // ← ADD THIS LINE
+    
+    // Only reset if going back to categories without mapping
+    const hasMappedPortals = previousState.some(p => p.mapping_found === true);
+    if (!hasMappedPortals) {
+      setIsCrossMappingChecked(false);
+      
+    }
   }
 };
 
@@ -1112,6 +1101,7 @@ if (isDistributedEdit && distributedNewsId) {
     }
 
     if (statusType === "DRAFT") {
+      setIsPublished(false); 
       resetForm();
       await loadAssignedCategories();
       setIsLoading(false);
@@ -1119,7 +1109,6 @@ if (isDistributedEdit && distributedNewsId) {
     }
 
       if (statusType === "PUBLISHED") {
-      // 🔥 STEP 1: Upload portal-specific images BEFORE publishing
       if (Object.keys(portalImages).length > 0) {
         try {
           const portalImageArray = Object.entries(portalImages).map(([portalId, file]) => ({
@@ -1150,8 +1139,14 @@ if (isDistributedEdit && distributedNewsId) {
       });
         
       if (res?.data?.message) toast.success(res.data.message);
-        setIsPublished(true);
-      setMappedPortals([]);
+      // After successful publish API call
+        if (statusType === "PUBLISHED") {
+          setIsPublished(true);
+          setShowPortalImageUpload(false);
+           setIsCrossMappingChecked(false);
+            setIsViewingSubcategories(false); 
+        }
+       setMappedPortals([]);
       setSelectedPortalForCategories("");
       setCategoryHistory([]);
       resetForm();
@@ -1201,6 +1196,8 @@ if (isDistributedEdit && distributedNewsId) {
 
   const [editorKey, setEditorKey] = useState(Date.now());
   const resetForm = () => {
+     setIsPublished(false);
+     setIsCrossMappingChecked(false); 
     revokeIfBlob(imagePreview);
    setFormData((prev) => ({
   headline: "",
@@ -1337,7 +1334,7 @@ if (isDistributedEdit && distributedNewsId) {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+          <form onSubmit={(e) => e.preventDefault()} className="p-8 space-y-8">
             {/* Basic Info */}
             <section className="space-y-5">
             {!distId && (
@@ -1811,7 +1808,7 @@ if (isDistributedEdit && distributedNewsId) {
                                 if (!exists) {
                                   updated.push({
                                     id: cat.id, // use ONLY integer timestamp
-                                    portalId: 0, // mark manually added category
+                                    portalId: Number(selectedPortalForCategories), // mark manually added category
                                     portalName: actualPortalName,
                                     portalCategoryName: cat.name,
                                     portalParentCategory: cat.parent_name,
@@ -2119,7 +2116,7 @@ if (isDistributedEdit && distributedNewsId) {
                     {/* Cropper Section */}
                     <div className="relative w-full flex-1 min-h-[300px] sm:min-h-[400px] md:min-h-[500px] bg-gray-900">
                       <Cropper
-                        image={imagePreview}
+                        image={cropPreview}
                         crop={crop}
                         zoom={zoom}
                         aspect={aspect}
@@ -2246,20 +2243,17 @@ if (isDistributedEdit && distributedNewsId) {
           </p>
         </div>
       </div>
-        <button
-      type="button"
-       disabled={!isCrossMappingChecked || isPublished}
-     onClick={
-    !isPublished
-      ? () => setShowPortalImageUpload(prev => !prev)
-      : undefined
-  }
-      className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
-        ${isCrossMappingChecked && !isPublished
-          ? "bg-gray-900 text-white hover:bg-gray-800"
-          : "bg-gray-300 text-gray-500 cursor-not-allowed"}
-      `}
-    >
+      <button
+        type="button"
+        disabled={!isCrossMappingChecked || isPublished}
+        onClick={() => setShowPortalImageUpload(prev => !prev)}
+        className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
+          ${isCrossMappingChecked && !isPublished
+            ? "bg-gray-900 text-white hover:bg-gray-800"
+            : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+        `}
+      >
+
       {showPortalImageUpload ? (
         <>
           <Eye className="w-4 h-4" />
@@ -2327,16 +2321,13 @@ if (isDistributedEdit && distributedNewsId) {
                       </p>
                     </div>
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          handlePortalImageUpload(portal.portalId, file);
-                        }
-                      }}
-                      className="hidden"
-                    />
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handlePortalImageUpload(portal.portalId, e.target.files[0])
+                          }
+                          className="hidden"
+                        />
                   </label>
                 )}
               </div>
@@ -2676,7 +2667,7 @@ if (isDistributedEdit && distributedNewsId) {
               )}
               
               <button
-                type="submit"
+                type="button"
                 disabled={isLoading}
                 onClick={(e) => handleSubmit(e, "PUBLISHED")}
                 className="px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg text-sm font-semibold hover:from-gray-800 hover:to-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg"
