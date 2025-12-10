@@ -679,8 +679,9 @@ const buildDraftDiff = (oldData, newData) => {
         rotation
       );
       if (!blob) return;
-     const originalName =
-      formData?.image?.name || "image.jpg";
+     const originalName = activePortalForCrop !== null 
+  ? (portalImages[activePortalForCrop]?.name || formData?.image?.name || "image.jpg")
+  : (formData?.image?.name || "image.jpg");
 
     const baseName = originalName.replace(/\.[^/.]+$/, "");
 
@@ -706,25 +707,25 @@ const buildDraftDiff = (oldData, newData) => {
         console.warn("WebP conversion failed, using original JPEG:", webpError);
       }
 
-       if (activePortalForCrop !== null) {
-  // ✅ PORTAL IMAGE ONLY
+      if (activePortalForCrop !== null) {
+  // ✅ PORTAL IMAGE ONLY - Use finalFile (WebP converted)
   setPortalImages(prev => ({
     ...prev,
-    [activePortalForCrop]: croppedFile
+    [activePortalForCrop]: finalFile  // ← Changed from croppedFile
   }));
 
   setPortalImagePreviews(prev => ({
     ...prev,
-    [activePortalForCrop]: URL.createObjectURL(croppedFile)
+    [activePortalForCrop]: URL.createObjectURL(finalFile)  // ← Changed from croppedFile
   }));
 
   // ✅ RESET FLAG
   setActivePortalForCrop(null);
-        } else {
-          // ✅ FEATURED IMAGE ONLY
-          setFormData(prev => ({ ...prev, image: croppedFile }));
-          setPreviewFromFile(croppedFile);
-        }
+          } else {
+            // ✅ FEATURED IMAGE ONLY - Use finalFile (WebP converted)
+            setFormData(prev => ({ ...prev, image: finalFile }));  // ← Changed from croppedFile
+            setPreviewFromFile(finalFile);  // ← Changed from croppedFile
+          }
       } catch (e) {
             console.error("Crop failed", e);
           } finally {
