@@ -13,6 +13,7 @@ export const useFormSubmit = (
   formData,
   imagePreview,
   mappedPortals,
+  setImagePreview,
   availableTags,
   originalDraft,
   portalImages,
@@ -291,7 +292,8 @@ export const useFormSubmit = (
             ? mappedPortals[0]?.master_category_id
             : mappedPortals[0]?.id,
         });
-
+       // ✅ CLEAR FEATURED IMAGE STATE AFTER PUBLISH
+            setImagePreview(null);
         if (res?.data?.message) toast.success(res.data.message);
 
         if (statusType === "PUBLISHED") {

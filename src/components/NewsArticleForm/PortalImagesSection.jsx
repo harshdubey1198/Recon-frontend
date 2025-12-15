@@ -11,6 +11,7 @@ const PortalImagesSection = ({
   portalImagePreviews,
   handlePortalImageUpload,
   removePortalImage,
+  canUploadImages,
 }) => {
   return (
     <section className="space-y-5">
@@ -25,25 +26,28 @@ const PortalImagesSection = ({
           </div>
         </div>
         <button
-          type="button"
-          disabled={!isCrossMappingChecked || isPublished}
-          onClick={() => setShowPortalImageUpload((prev) => !prev)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
-            isCrossMappingChecked && !isPublished ? "bg-gray-900 text-white hover:bg-gray-800" : "bg-gray-300 text-gray-500 cursor-not-allowed"
-          }`}
-        >
-          {showPortalImageUpload ? (
-            <>
-              <Eye className="w-4 h-4" />
-              Hide
-            </>
-          ) : (
-            <>
-              <Upload className="w-4 h-4" />
-              Upload Images
-            </>
-          )}
-        </button>
+        type="button"
+        disabled={!isCrossMappingChecked || isPublished}
+        onClick={() => setShowPortalImageUpload(prev => !prev)}
+        className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
+          ${isCrossMappingChecked && !isPublished
+            ? "bg-gray-900 text-white hover:bg-gray-800"
+            : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+        `}
+      >
+
+      {showPortalImageUpload ? (
+        <>
+          <Eye className="w-4 h-4" />
+          Hide
+        </>
+      ) : (
+        <>
+          <Upload className="w-4 h-4" />
+          Upload Images
+        </>
+      )}
+    </button>
       </div>
 
       {showPortalImageUpload && (

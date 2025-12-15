@@ -164,7 +164,6 @@ const NewsArticleForm = () => {
     distributedNewsId
   );
 
-  const canUploadImages = !isPublished && isCrossMappingChecked && mappedPortals.some((p) => p.mapping_found === true);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
@@ -194,7 +193,11 @@ const NewsArticleForm = () => {
                 categoryHistory={categoryHistory}
                 isViewingSubcategories={isViewingSubcategories}
                 handlePortalCategoryClick={handlePortalCategoryClick}
-                handleGoBack={handleGoBack}
+                handleGoBack={() =>
+                                handleGoBack(() => {
+                                  setShowPortalImageUpload(false); // modal close
+                                })
+                              }
                 setShowPortalCategoryModal={setShowPortalCategoryModal}
                 forceEnablePortal={forceEnablePortal}
                 setForceEnablePortal={setForceEnablePortal}

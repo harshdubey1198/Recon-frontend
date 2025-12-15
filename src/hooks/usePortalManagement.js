@@ -246,19 +246,34 @@ export const usePortalManagement = (userId, formData, setFormData, distId) => {
     }
   };
 
-  const handleGoBack = () => {
-    if (categoryHistory.length > 0) {
-      const previousState = categoryHistory[categoryHistory.length - 1];
-      setMappedPortals(previousState);
-      setCategoryHistory((prev) => prev.slice(0, -1));
-      setIsViewingSubcategories(false);
+const handleGoBack = (resetImages) => {
+  if (categoryHistory.length > 0) {
+    const previousState = categoryHistory[categoryHistory.length - 1];
 
-      const hasMappedPortals = previousState.some((p) => p.mapping_found === true);
-      if (!hasMappedPortals) {
-        setIsCrossMappingChecked(false);
-      }
+    // restore previous mapped portals
+    setMappedPortals(previousState);
+
+    // pop history
+    setCategoryHistory((prev) => prev.slice(0, -1));
+
+    // exit subcategory view
+    setIsViewingSubcategories(false);
+
+    // check if any mapping exists in previous state
+    const hasMappedPortals = previousState.some(
+      (p) => p.mapping_found === true
+    );
+
+    // reset cross-mapping + images ONLY if mapping not found
+    if (!hasMappedPortals) {
+      setIsCrossMappingChecked(false);
+
+      // 🔥 safely reset image upload state (modal close)
+      resetImages?.();
     }
-  };
+  }
+};
+
 
   const loadAssignedCategories = async (page = 1, append = false) => {
     try {
