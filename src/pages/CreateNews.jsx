@@ -863,22 +863,39 @@ const buildDraftDiff = (oldData, newData) => {
       setIsPortalsLoading(false);
     }
   };
-
-const handleGoBack = () => {
+const resetPortalImages = () => {
+  setShowPortalImageUpload(false); // modal close
+  setPortalImages({});
+  setPortalImagePreviews({});
+};
+const handleGoBack = (resetImages) => {
   if (categoryHistory.length > 0) {
     const previousState = categoryHistory[categoryHistory.length - 1];
+
+    // 🔁 restore previous mapped portals
     setMappedPortals(previousState);
+
+    // 🧹 pop history
     setCategoryHistory((prev) => prev.slice(0, -1));
+
+    // ⬅️ exit subcategory view
     setIsViewingSubcategories(false);
-    
-    // Only reset if going back to categories without mapping
-    const hasMappedPortals = previousState.some(p => p.mapping_found === true);
+
+    // 🔍 check mapping exists or not
+    const hasMappedPortals = previousState.some(
+      (p) => p.mapping_found === true
+    );
+
+    // ❌ reset cross mapping & images ONLY when mapping not found
     if (!hasMappedPortals) {
       setIsCrossMappingChecked(false);
-      
+
+      // 🔥 close modal + clear images safely
+      resetImages?.();
     }
   }
 };
+
 
 
   useEffect(() => {
@@ -1462,10 +1479,8 @@ if (isDistributedEdit && distributedNewsId) {
                         {/* Back Button */}
                         {categoryHistory.length > 0 && (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleGoBack();
-                            }}
+                            type="button"
+                            onClick={() => handleGoBack(resetPortalImages)}
                             className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-all"
                           >
                             <svg
