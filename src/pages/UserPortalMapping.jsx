@@ -319,11 +319,12 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+   <div className="min-h-screen bg-gray-50 py-8 overflow-hidden">
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-100">
           {/* Header */}
-          <div className="bg-gray-900 px-8 py-6">
+          <div className="bg-black px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -468,7 +469,7 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
               </div>
             </div>
 
-            {/* Master Category Multi-Select */}
+            {/* select multi portal  */}
             <div className="space-y-3">
               <label className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
                 <div className="bg-gray-900 p-1.5 rounded-lg">
@@ -491,7 +492,7 @@ const loadUserAssignments = async (userId, page = 1, append = false) => {
                     )
                   }
                   onScroll={handleCategoryScroll}
-                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 transition-all bg-white text-gray-700 font-medium h-64 cursor-pointer hover:border-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none"
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 transition-all bg-white text-gray-700 font-medium h-64 cursor-pointer hover:border-gray-900 focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-20 outline-none overflow-hidden"
                 >
                   {masterCategories.map((cat) => (
                     <option key={cat.id} value={cat.name} className="py-2 px-2 hover:bg-gray-50">

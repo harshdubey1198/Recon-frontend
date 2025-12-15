@@ -7,6 +7,7 @@ import HeatMapCategory from "../components/dashboard/HeatMapCategory";
 import AnalyticsComponent from "../components/dashboard/AnalyticsComponent";
 import SuccessRateChart from "../components/dashboard/SuccessRateChart";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
+import GA4Leaderboard from "../components/dashboard/GA4Leaderboard";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -242,6 +243,10 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+                <GA4Leaderboard
+    range={range} 
+    customRange={customRange} 
+/>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -313,6 +318,8 @@ export default function Dashboard() {
         <KPIOverview data={stats} />
         <StatusOverview data={stats} />
         <PortalLeaderboard ref={portalLeaderboardRef} range={range} customRange={customRange} />
+
+
         
         <div className="space-y-10">
           <HeatMapCategory
@@ -325,7 +332,7 @@ export default function Dashboard() {
             height={520}
             className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
           />
-          <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" />
+          {/* <AnalyticsComponent className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" /> */}
         </div>
       </div>
     </div>

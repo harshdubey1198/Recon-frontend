@@ -13,55 +13,61 @@ import CategoryMapping from "./pages/CategoryMapping";
 import AllCategories from "./pages/AllCategories";
 import PortalManagement from "./pages/PortalManagement";
 import UserCategories from "./pages/UserCategories";
+import GoogleAnalytics from "./pages/GoogleAnalytics";
 import { ToastContainer } from "react-toastify";
 
 export default function AppRoutes() {
   const authUser = JSON.parse(localStorage.getItem("auth_data") || "{}");
   const role = authUser?.data?.role || null;
-const isMaster = role === "master";
+  const isMaster = role === "master";
 
   return (
-    <Routes>
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <>
+      <Routes>
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* Public routes */}
-      <Route path="/signin" element={<SignIn />} />
-      <Route path="/signup" element={<SignUp />} />
+        {/* Public routes */}
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
 
-      {/* Protected routes with Sidebar */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <SidebarLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/dashboard" element={<Dashboard />} />
-<Route path="/create-news" element={<CreateNews />} />
-<Route path="/edit-news/:id" element={<CreateNews />} />
-        <Route path="news-list" element={<NewsList />} />
-        <Route path="news/:id" element={<NewsDetail />} />
-        <Route path="/portal-management" element={<PortalManagement />} />
+        {/* Protected routes with Sidebar */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <SidebarLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/create-news" element={<CreateNews />} />
+          <Route path="/edit-news/:id" element={<CreateNews />} />
+          <Route path="/news-list" element={<NewsList />} />
+          <Route path="/news/:id" element={<NewsDetail />} />
+          <Route path="/portal-management" element={<PortalManagement />} />
+          <Route path="/analytics" element={<GoogleAnalytics />} />
 
-        {/* Master-only routes */}
-        {isMaster && (
-          <>
-            <Route path="/access-control" element={<AccessControl />} />
-            <Route path="/user-access-list" element={<UserAccessList />} />
-            <Route path="/all-categories" element={<AllCategories />} />
-            <Route path="/category-mapping" element={<CategoryMapping />} />
-            <Route path="/portal-management" element={<PortalManagement />} />
-            <Route path="/user-categories" element={<UserCategories />} />
-          </>
-        )}
-      </Route>
+          {/* Master-only routes */}
+          {isMaster && (
+            <>
+              <Route path="/access-control" element={<AccessControl />} />
+              <Route path="/user-access-list" element={<UserAccessList />} />
+              <Route path="/all-categories" element={<AllCategories />} />
+              <Route path="/category-mapping" element={<CategoryMapping />} />
+              <Route path="/user-categories" element={<UserCategories />} />
+            </>
+          )}
+        </Route>
 
-      {/* Catch-all */}
-      <Route
-        path="*"
-        element={<div style={{ padding: 20 }}>404 — Page not found</div>}
-      />
-    </Routes>
+        {/* Catch-all */}
+        <Route
+          path="*"
+          element={<div style={{ padding: 20 }}>404 — Page not found</div>}
+        />
+      </Routes>
+
+      {/* Toast container */}
+      <ToastContainer />
+    </>
   );
 }

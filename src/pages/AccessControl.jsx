@@ -321,7 +321,7 @@ const AccessControl = () => {
                   <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  Access Control
+                   Category Mapping
                 </h1>
                 <p className="text-gray-300 text-sm mt-1">Manage user permissions and master categories</p>
               </div>

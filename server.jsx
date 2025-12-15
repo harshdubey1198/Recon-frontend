@@ -94,6 +94,70 @@ export async function fetchDistributedNews(filters = {}, page = 1) {
   });
 }
 
+// Delete distributed news article
+export async function deleteDistributedNews(id) {
+  if (!id) throw new Error("News ID is required to delete.");
+
+  return axiosInstance.delete(`/api/delete/news/${id}/`);
+}
+
+// Update distributed news data
+export async function updateDistributedNews(id, payload) {
+  if (!id) throw new Error("News ID is required.");
+
+  const formData = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      if (Array.isArray(value)) {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value);
+      }
+    }
+  });
+
+  return axiosInstance.put(`/api/edit/news/${id}/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+// Get single distributed news detail
+export async function fetchDistributedNewsDetail(id) {
+  if (!id) throw new Error("News ID is required.");
+
+  return axiosInstance.get(`/api/news/${id}/`);
+}
+
+
+/**
+ * Upload multiple portal-specific images
+ * @param {number} newsId - The ID of the created news article (e.g., 114)
+ * @param {Array} portalImages - Array of objects with { portalId: number, file: File }
+ 
+ */
+export async function uploadMultipleImages(newsId, portalImages) {
+  if (!newsId) throw new Error("News ID is required for image upload.");
+  if (!portalImages || portalImages.length === 0) {
+    throw new Error("At least one portal image is required.");
+  }
+
+  const formData = new FormData();
+
+  // Append each image with its portal_image_{portalId} key
+  portalImages.forEach(({ portalId, file }) => {
+    if (portalId && file) {
+      formData.append(`portal_image_${portalId}`, file);
+    }
+  });
+
+  return axiosInstance.post(`/api/portal-image-upload/${newsId}/`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
+
 
 export async function updateDraftNews(id, status = "PUBLISHED",payload) {
   if (!id) throw new Error("News ID is required to update draft.");
@@ -115,14 +179,6 @@ export async function updateDraftNews(id, status = "PUBLISHED",payload) {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
-
-
-
-
-export async function fetchNewsList(page = 1){
-  return axiosInstance.get(`/api/news/distributed/list/?page=${page}`);
-}
-
 /**
  * Get detail of a distributed news article
  * @param {number|string} id - news article ID
@@ -297,6 +353,34 @@ export async function mapMasterCategory(data) {
   });
 }
 
+// create portal category mapping
+export async function createPortalCategoryMapping(data) {
+  return axiosInstance.post("/api/cross-portal-mappings/", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// get target portals list by source category
+export async function fetchCrossPortalMappings(sourceCategoryId) {
+  return axiosInstance.get(`/api/cross-portal-mappings`, {
+    params: {
+      source_category_id: sourceCategoryId,
+    },
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+// delete cross portal mapping (NO params)
+export async function deleteCrossPortalMapping(mappingId) {
+  return axiosInstance.delete(
+    `/api/cross-portal-mappings/${mappingId}/`
+  );
+}
+
 export async function registerUser(data) {
   // data should be a plain object: { username, password, email }
   return axiosInstance.post("/account/registration/", data, {
@@ -433,6 +517,26 @@ export async function editNews(id, formData) {
       "Content-Type": "multipart/form-data",
     },
   });
+}
+
+/**
+ * Query Google Analytics 4 (GA4) data
+ * @param {Object} data - The request body, must include pid, endpoint, and body as specified in the curl example.
+ */
+export async function queryGA4(data) {
+  return axiosInstance.post(
+    "/api/ga4/query/",
+    data,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+}
+
+export async function fetchAssignPortal(userId) {
+  return axiosInstance.get(`/account/user/portals/${userId}/`)
 }
 
 export default axiosInstance;

@@ -1,0 +1,207 @@
+/* InputCursorFix.css - Cursor visibility fix for all input fields */
+
+/* ============================================
+   MAIN CURSOR FIX
+   ============================================ */
+
+/* Basic input fields cursor fix */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  caret-color: #000 !important;
+  color: #1f2937 !important; /* Ensure text is visible */
+}
+
+/* Checkbox aur radio buttons ko cursor fix se exclude karo */
+input[type="checkbox"],
+input[type="radio"] {
+  caret-color: auto !important;
+  cursor: pointer !important;
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+}
+
+/* Checkbox labels */
+label {
+  cursor: pointer;
+}
+
+/* Focus state - cursor ko aur visible banane ke liye */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="datetime-local"]:focus,
+input[type="search"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  caret-color: #010818d4 !important; /* Blue cursor on focus */
+  outline: 2px solid #010a18d6;
+  outline-offset: 0px;
+}
+
+/* ============================================
+   CKEditor SPECIFIC FIX
+   ============================================ */
+
+/* CKEditor content area */
+.cke_editable,
+.cke_wysiwyg_frame,
+.cke_wysiwyg_div,
+.cke_contents iframe {
+  caret-color: #000 !important;
+}
+
+.cke_editable:focus {
+  caret-color: #2563eb !important;
+}
+
+/* CKEditor body */
+.cke_editable_themed {
+  caret-color: #000 !important;
+  color: #1f2937 !important;
+}
+
+/* ============================================
+   CONTENTEDITABLE ELEMENTS
+   ============================================ */
+
+[contenteditable="true"] {
+  caret-color: #000 !important;
+  color: #1f2937 !important;
+}
+
+[contenteditable="true"]:focus {
+  caret-color: #2563eb !important;
+}
+
+/* ============================================
+   PLACEHOLDER STYLE
+   ============================================ */
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: #d1d5db !important;
+}
+
+/* ============================================
+   DARK MODE SUPPORT (Optional)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    caret-color: #fff !important;
+    color: #1d1d1dbc !important;
+  }
+  
+  [contenteditable="true"],
+  .cke_editable {
+    caret-color: #fff !important;
+    color: #f9fafb !important;
+  }
+}
+
+/* ============================================
+   DISABLED STATE
+   ============================================ */
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  caret-color: transparent !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ============================================
+   SELECTION COLOR
+   ============================================ */
+
+input::selection,
+textarea::selection,
+[contenteditable="true"]::selection {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* ============================================
+   ADDITIONAL FIXES
+   ============================================ */
+
+/* Remove any conflicting transforms - except checkbox/radio */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+  transform: none !important;
+  -webkit-transform: none !important;
+}
+
+/* Ensure proper rendering - except checkbox/radio */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Fix for Safari */
+input::-webkit-textfield-decoration-container {
+  caret-color: inherit;
+}
+
+/* ============================================
+   UTILITY CLASSES (Optional)
+   ============================================ */
+
+.cursor-black {
+  caret-color: #000 !important;
+}
+
+.cursor-blue {
+  caret-color: #2563eb !important;
+}
+
+.cursor-red {
+  caret-color: #dc2626 !important;
+}
+
+.cursor-green {
+  caret-color: #16a34a !important;
+}
