@@ -64,34 +64,55 @@ export const useFormData = (distId) => {
     }));
   };
 
-  const resetForm = () => {
-    setFormData((prev) => ({
-      headline: "",
-      title: "",
-      shortDesc: "",
-      longDesc: "",
-      image: null,
-      tags: [],
-      content: "",
-      latestNews: false,
-      headlines: false,
-      articles: false,
-      trending: false,
-      breakingNews: false,
-      upcomingEvents: false,
-      eventStartDate: "",
-      eventEndDate: "",
-      scheduleDate: "",
-      counter: 0,
-      order: 0,
-      status: "PUBLISHED",
-      meta_title: "",
-      slug: "",
-      slugEdited: false,
-      master_category: prev.master_category,
-    }));
-    setEditorKey(Date.now());
-  };
+ const resetForm = () => {
+  setIsPublished(false);
+  setIsCrossMappingChecked(false);
+  
+  // 🔥 Revoke all portal image preview URLs
+  Object.values(portalImagePreviews).forEach(url => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
+  });
+  
+  revokeIfBlob(imagePreview);
+  
+  setFormData((prev) => ({
+    headline: "",
+    title: "",
+    shortDesc: "",
+    longDesc: "",
+    image: null,
+    tags: [],
+    content: "",
+    latestNews: false,
+    headlines: false,
+    articles: false,
+    trending: false,
+    breakingNews: false,
+    upcomingEvents: false,
+    eventStartDate: "",
+    eventEndDate: "",
+    scheduleDate: "",
+    counter: 0,
+    order: 0,
+    status: "PUBLISHED",
+    meta_title: "",
+    slug: "",
+    slugEdited: false,
+    master_category: prev.master_category, // Keep selected portal
+  }));
+  
+  setTagInput("");
+  setImagePreview(null);
+  
+  // 🔥 Clear portal images and previews
+  setPortalImages({});
+  setPortalImagePreviews({});
+  setShowPortalImageUpload(false);
+  
+  setEditorKey(Date.now()); // Force CKEditor remount
+};
 
   // Load distributed news data
   useEffect(() => {

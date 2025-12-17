@@ -20,9 +20,7 @@ const PortalCategoryModal = ({
   if (!showPortalCategoryModal) return null;
 
   return (
-   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-
-
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-2xl p-6 relative">
         <button
           className="absolute top-3 right-3 text-gray-500 hover:text-black"
@@ -109,8 +107,15 @@ const PortalCategoryModal = ({
                       onChange={(e) => {
                         e.stopPropagation();
                         const isChecked = e.target.checked;
-                        setPortalCategoriesModal((prev) => prev.map((c) => ({ ...c, selected: c.external_id === cat.external_id ? isChecked : c.selected })));
+                        // Single select: uncheck all others when checking one
+                        setPortalCategoriesModal((prev) =>
+                          prev.map((c) => ({
+                            ...c,
+                            selected: c.external_id === cat.external_id ? isChecked : false
+                          }))
+                        );
                       }}
+                      className="w-5 h-5 accent-gray-900"
                     />
                   )}
                   <span className="flex-1">{isSubcategoryView ? cat.name : cat.parent_name}</span>
@@ -128,9 +133,10 @@ const PortalCategoryModal = ({
             <button
               className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
               onClick={() => {
-                const selectedCats = portalCategoriesModal.filter((c) => c.selected);
-                if (selectedCats.length === 0) {
-                  toast.warning("Please select at least one subcategory.");
+                const selectedCat = portalCategoriesModal.find((c) => c.selected);
+                
+                if (!selectedCat) {
+                  toast.warning("Please select a subcategory.");
                   return;
                 }
 
@@ -139,25 +145,30 @@ const PortalCategoryModal = ({
 
                 setMappedPortals((prev) => {
                   const updated = [...prev];
-                  selectedCats.forEach((cat) => {
-                    const exists = updated.some((p) => p.portalName === actualPortalName && p.portalCategoryId === cat.external_id);
-                    if (!exists) {
-                      updated.push({
-                        id: cat.id,
-                        portalId: Number(selectedPortalForCategories),
-                        portalName: actualPortalName,
-                        portalCategoryName: cat.name,
-                        portalParentCategory: cat.parent_name,
-                        portalCategoryId: cat.external_id,
-                        selected: true,
-                        is_manually_added: true,
-                      });
-                    }
-                  });
+                  const exists = updated.some(
+                    (p) => p.portalName === actualPortalName && p.portalCategoryId === selectedCat.external_id
+                  );
+                  
+                  if (!exists) {
+                    updated.push({
+                      id: selectedCat.id,
+                      portalId: Number(selectedPortalForCategories),
+                      portalName: actualPortalName,
+                      portalCategoryName: selectedCat.name,
+                      portalParentCategory: selectedCat.parent_name,
+                      portalCategoryId: selectedCat.external_id,
+                      selected: true,
+                      is_manually_added: true,
+                    });
+                  } else {
+                    toast.info("This category is already added");
+                    return prev;
+                  }
+                  
                   return updated;
                 });
 
-                toast.success(`${selectedCats.length} subcategor${selectedCats.length > 1 ? "ies" : "y"} added`);
+                toast.success("Subcategory added successfully");
 
                 setShowPortalCategoryModal(false);
                 setIsSubcategoryView(false);
@@ -166,7 +177,7 @@ const PortalCategoryModal = ({
                 setShowPortalSection(true);
               }}
             >
-              Save Selected
+              Add Selected
             </button>
           </div>
         )}

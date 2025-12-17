@@ -1,5 +1,5 @@
 import React from "react";
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 
 const PortalSelectionSection = ({
   isCategoryloading,
@@ -23,34 +23,38 @@ const PortalSelectionSection = ({
 }) => {
   return (
     <div className="grid grid-cols-1 gap-6">
-
-     <div className="w-full md:w-1/2">
-  <label className="block text-sm font-semibold text-gray-700 mb-2">
-    Portal
-  </label>
-
-  <select
-    name="master_category"
-    value={formData.master_category || assignedCategories[0]?.id}
-    onChange={(e) => {
-      setFormData((prev) => ({ ...prev, master_category: e.target.value }));
-      handleCategorySelect(e);
-    }}
-    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-               focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-  >
-    {assignedCategories.map((portal) => (
-      <option key={portal.id} value={portal.id}>
-        {portal.name}
-      </option>
-    ))}
-  </select>
-</div>
-
+      <div className="w-full md:w-1/2">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Portal
+        </label>
+        <select
+          name="master_category"
+          value={formData.master_category || assignedCategories[0]?.id}
+          onChange={(e) => {
+            setFormData((prev) => ({ ...prev, master_category: e.target.value }));
+            handleCategorySelect(e);
+          }}
+          disabled={isCategoryloading || assignedCategories.length === 0}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
+                     focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+        >
+          {isCategoryloading ? (
+            <option>Loading...</option>
+          ) : assignedCategories.length === 0 ? (
+            <option>No portal found</option>
+          ) : (
+            assignedCategories.map((portal) => (
+              <option key={portal.id} value={portal.id}>
+                {portal.name}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
 
       {showPortalSection && (
         <section className="space-y-5 mt-2 border-2 p-2 border-gray-200 rounded relative">
-          <div className="relative flex items-center justify-between items-center pb-3 border-b-2 border-gray-200">
+          <div className="relative flex items-center justify-between pb-3 border-b-2 border-gray-200">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gray-100 rounded-lg">
                 <Settings className="w-5 h-5 text-gray-700" />
@@ -111,37 +115,119 @@ const PortalSelectionSection = ({
                     <div
                       key={i}
                       onClick={(e) => {
+                        // Don't allow navigation if manually added
+                        if (isManuallyAdded) {
+                          e.stopPropagation();
+                          return;
+                        }
+                        
                         if (portal.mapping_found) {
                           e.stopPropagation();
-                          setMappedPortals((prev) => prev.map((p) => (p.id === portal.id ? { ...p, selected: !p.selected } : p)));
+                          setMappedPortals((prev) =>
+                            prev.map((p) =>
+                              p.id === portal.id
+                                ? { ...p, selected: !p.selected }
+                                : p
+                            )
+                          );
                         } else {
                           handlePortalCategoryClick(portal);
                         }
                       }}
-                      className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
-                        portal.selected ? "bg-gray-900 border-gray-900 text-white shadow-lg" : "bg-white border-gray-900 hover:border-gray-400"
-                      }`}
+                      className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl transition-all ${
+                        portal.selected
+                          ? "bg-gray-900 border-gray-900 text-white shadow-lg"
+                          : "bg-white border-gray-900 hover:border-gray-400"
+                      } ${isManuallyAdded ? "" : "cursor-pointer"}`}
                     >
+                      {/* DELETE BUTTON for manually added categories */}
+                      {isManuallyAdded && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMappedPortals((prev) =>
+                              prev.filter(
+                                (p) =>
+                                  !(
+                                    p.portalName === portal.portalName &&
+                                    p.portalCategoryId === portal.portalCategoryId
+                                  )
+                              )
+                            );
+                          }}
+                          className="absolute top-2 right-2 p-1.5 bg-white hover:bg-gray-100 rounded-full transition-all z-10 shadow-md"
+                        >
+                          <X className="w-3 h-3 text-gray-900" />
+                        </button>
+                      )}
+
+                      {/* Card Content */}
                       <div className="w-full">
-                        {portal.mapping_found ? (
+                        {isManuallyAdded || portal.mapping_found ? (
                           <>
-                            <div className="absolute top-3 left-3">
-                              {portal.selected ? (
-                                <input type="checkbox" checked={portal.selected} onChange={() => setMappedPortals((prev) => prev.map((p, idx) => (idx === i ? { ...p, selected: !p.selected } : p)))} className="w-5 h-5 accent-gray-900" />
-                              ) : (
-                                <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
-                              )}
-                            </div>
-                            <div className="ml-6 mr-8">
-                              <p className="text-lg font-semibold">{portal.portalName}</p>
-                              <p className="text-sm text-gray-300">{portal.portalParentCategory}</p>
-                              <p className="text-xs text-gray-400">{portal.portalCategoryName}</p>
+                            {/* Checkbox Section - Only for non-manually added */}
+                            {!isManuallyAdded && (
+                              <div className="absolute top-3 left-3">
+                                {portal.selected ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={portal.selected}
+                                    onChange={() =>
+                                      setMappedPortals((prev) =>
+                                        prev.map((p, idx) =>
+                                          idx === i
+                                            ? {
+                                                ...p,
+                                                selected: !p.selected,
+                                              }
+                                            : p
+                                        )
+                                      )
+                                    }
+                                    className="w-5 h-5 accent-gray-900"
+                                  />
+                                ) : (
+                                  <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Text Content - Portal → Parent → Category */}
+                            <div className={`${isManuallyAdded ? "mr-8" : "ml-6 mr-8"}`}>
+                              <p className="text-lg font-semibold">
+                                {portal.portalName}
+                              </p>
+                              <p className="text-sm text-gray-300">
+                                {portal.portalParentCategory}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {portal.portalCategoryName}
+                              </p>
                             </div>
                           </>
                         ) : (
                           <div className="mr-8">
-                            <p className="text-lg font-semibold">{portal.portalCategoryName}</p>
-                            <p className="text-sm text-gray-300">{portal.portalName}</p>
+                            {categoryHistory.length > 0 ? (
+                              <>
+                                {/* SUBCATEGORY VIEW */}
+                                <p className="text-lg font-semibold">
+                                  {portal.portalCategoryName}
+                                </p>
+                                <p className="text-sm text-gray-300">
+                                  {portal.portalParentCategory}
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                {/* INITIAL PARENT CATEGORIES */}
+                                <p className="text-lg font-semibold">
+                                  {portal.portalCategoryName}
+                                </p>
+                                <p className="text-sm text-gray-300">
+                                  {portal.portalName}
+                                </p>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

@@ -301,6 +301,3 @@ const NewsArticleForm = () => {
 };
 
 export default NewsArticleForm;
-
-
-

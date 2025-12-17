@@ -174,23 +174,33 @@ export const useImageManagement = (formData, setFormData) => {
     }
   };
 
-  const handlePortalImageUpload = (portalId, file) => {
-    if (!file) return;
+ const handlePortalImageUpload = (portalId, file) => {
+  if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.warning("Image size must be less than 10MB");
-      return;
-    }
+  if (file.size > 10 * 1024 * 1024) {
+    toast.warning("Image size must be less than 10MB");
+    return;
+  }
 
-    setPortalImages((prev) => ({
-      ...prev,
-      [portalId]: file,
-    }));
+  // ✅ STORE ORIGINAL FILE (NOT blob URL)
+  setPortalImages(prev => ({
+    ...prev,
+    [portalId]: file
+  }));
 
-    setActivePortalForCrop(portalId);
-    setCropPreview(URL.createObjectURL(file));
-    setShowCropper(true);
-  };
+  // ✅ CREATE PREVIEW (blob URL for display only)
+  setPortalImagePreviews(prev => ({
+    ...prev,
+    [portalId]: URL.createObjectURL(file)
+  }));
+
+  // ✅ TELL SYSTEM THIS IS PORTAL IMAGE (NOT FEATURED)
+  setActivePortalForCrop(portalId);
+
+  // ✅ OPEN CROPPER ONLY FOR PORTAL IMAGE
+  setCropPreview(URL.createObjectURL(file));
+  setShowCropper(true);
+};
 
   const removePortalImage = (portalId) => {
     if (portalImagePreviews[portalId]) {

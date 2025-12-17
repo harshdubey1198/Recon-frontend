@@ -258,44 +258,67 @@ export const useFormSubmit = (
       }
 
       if (statusType === "PUBLISHED") {
+        // 🔥 STEP 1: Upload portal images FIRST (if any)
+        let portalImagesUploaded = false;
+        
         if (Object.keys(portalImages).length > 0) {
           try {
-            const portalImageArray = Object.entries(portalImages).map(
-              ([portalId, file]) => ({
+            // 🔥 Convert blob URLs to actual File objects
+            const portalImageArray = [];
+            
+            for (const [portalId, fileOrUrl] of Object.entries(portalImages)) {
+              let actualFile = fileOrUrl;
+              
+              // If it's a blob URL string, fetch and convert to File
+              if (typeof fileOrUrl === 'string' && fileOrUrl.startsWith('blob:')) {
+                const response = await fetch(fileOrUrl);
+                const blob = await response.blob();
+                actualFile = new File([blob], `portal_${portalId}.webp`, {
+                  type: blob.type || 'image/webp'
+                });
+              }
+              
+              portalImageArray.push({
                 portalId: Number(portalId),
-                file: file,
-              })
-            );
+                file: actualFile
+              });
+            }
 
-            await uploadMultipleImages(createdArticle.id, portalImageArray);
+            const uploadRes = await uploadMultipleImages(createdArticle.id, portalImageArray);
+            
+            console.log("✅ Upload Response:", uploadRes);
+            
+            // 🔥 Don't throw error, just log and continue
             toast.success(
               `Successfully uploaded ${portalImageArray.length} portal image${
                 portalImageArray.length > 1 ? "s" : ""
               }`
             );
 
+            portalImagesUploaded = true;
+
+            // Clear portal images after successful upload
             setPortalImages({});
             Object.values(portalImagePreviews).forEach((url) =>
               URL.revokeObjectURL(url)
             );
             setPortalImagePreviews({});
           } catch (imgErr) {
-            console.error("❌ Portal image upload failed:", imgErr);
-            toast.error("Failed to upload portal images. Please try again.");
-            setIsLoading(false);
-            return;
+            console.error("❌ Portal image upload error:", imgErr);
+            // 🔥 Don't stop - continue to publish even if image upload fails
           }
         }
 
+        // 🔥 STEP 2: Publish article AFTER images are uploaded
         const res = await publishNewsArticle(createdArticle.id, {
           portal_category_id: mappedPortals[0]?.mapping_found
             ? mappedPortals[0]?.master_category_id
             : mappedPortals[0]?.id,
         });
-       // ✅ CLEAR FEATURED IMAGE STATE AFTER PUBLISH
-            setImagePreview(null);
+
         if (res?.data?.message) toast.success(res.data.message);
 
+        // After successful publish API call
         if (statusType === "PUBLISHED") {
           setIsPublished(true);
           setShowPortalImageUpload(false);
