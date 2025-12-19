@@ -1768,22 +1768,21 @@ if (isDistributedEdit && distributedNewsId) {
                             >
                               {isSubcategoryView && (
                                 <input
-                                  type="checkbox"
-                                  checked={cat.selected || false}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    const isChecked = e.target.checked;
-                                    setPortalCategoriesModal((prev) =>
-                                      prev.map((c) => ({
-                                        ...c,
-                                        selected:
-                                          c.external_id === cat.external_id
-                                            ? isChecked
-                                            : c.selected,
-                                      }))
-                                    );
-                                  }}
-                                />
+                      type="checkbox"
+                      checked={cat.selected || false}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        const isChecked = e.target.checked;
+                        // Single select: uncheck all others when checking one
+                        setPortalCategoriesModal((prev) =>
+                          prev.map((c) => ({
+                            ...c,
+                            selected: c.external_id === cat.external_id ? isChecked : false
+                          }))
+                        );
+                      }}
+                      className="w-5 h-5 accent-gray-900"
+                    />
                               )}
                               <span className="flex-1">
                                 <span className="flex-1">
