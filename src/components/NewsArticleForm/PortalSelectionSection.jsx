@@ -39,7 +39,7 @@ const PortalSelectionSection = ({
                      focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
           {isCategoryloading ? (
-            <option>Loading...</option>
+            <option>Loading portal...</option>
           ) : assignedCategories.length === 0 ? (
             <option>No portal found</option>
           ) : (
