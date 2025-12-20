@@ -240,17 +240,18 @@ useEffect(() => {
     if (hasSubcategories) {
       console.log("✅ Showing subcategories");
       setIsViewingSubcategories(true);
-      setMappedPortals(
-        subcats.map((c) => ({
-          id: c.id,
-          portalId: portal.portalId,
-          portalName: portal.portalName,
-          portalCategoryName: c.name,
-          portalParentCategory: c.parent_name,
-          portalCategoryId: c.external_id,
-          selected: true,
-          has_subcategories: true,
-        }))
+     setMappedPortals(
+          subcats.map((c) => ({
+            id: c.id,
+            portalId: portal.portalId,
+            portalName: portal.portalName,
+            portalCategoryName: c.name,
+            portalParentCategory: c.parent_name,
+            portalCategoryId: c.external_id,
+            selected: true,
+            has_subcategories: true,
+            is_manually_added: false, // ✅ ADD THIS - from click flow, not modal
+          }))
       );
       return; // ✅ EXIT HERE - Don't call cross-portal mapping API
     }
@@ -284,6 +285,8 @@ useEffect(() => {
              selected: true,
             mapping_found: mappingFound,
             master_category_id: matchingData.master_category_id,
+             is_requested: true,
+             selected: true, 
           });
         }
 
@@ -1087,7 +1090,7 @@ if (isDistributedEdit && distributedNewsId) {
 
       const selectedCategories = mappedPortals
         .filter((p) => p.selected)
-        .map((p) => Number(p.portalCategoryId));
+        .map((p) => Number(p.id));
 
       const excludedCategories = mappedPortals
         .filter((p) => !p.selected)
@@ -1520,20 +1523,28 @@ if (isDistributedEdit && distributedNewsId) {
                           return (
                             <div
                               key={i}
-                              onClick={(e) => {
-                                if (portal.mapping_found) {
-                                  e.stopPropagation();
-                                  setMappedPortals((prev) =>
-                                    prev.map((p) =>
-                                      p.id === portal.id
-                                        ? { ...p, selected: !p.selected }
-                                        : p
-                                    )
-                                  );
-                                } else {
-                                  handlePortalCategoryClick(portal);
-                                }
-                              }}
+                             onClick={(e) => {
+                                      // 🔒 Requested portal → DO NOTHING
+                                      if (portal.is_requested) {
+                                        e.stopPropagation();
+                                        return;
+                                      }
+
+                                      // ✅ Only mapped portals can toggle
+                                      if (portal.mapping_found) {
+                                        e.stopPropagation();
+                                        setMappedPortals((prev) =>
+                                          prev.map((p) =>
+                                            p.id === portal.id ? { ...p, selected: !p.selected } : p
+                                          )
+                                        );
+                                        return;
+                                      }
+
+                                      // ✅ Normal flow (subcategory / API)
+                                      handlePortalCategoryClick(portal);
+                                    }}
+
                               className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl cursor-pointer transition-all ${
                                 portal.selected
                                   ? "bg-gray-900 border-gray-900 text-white shadow-lg"
@@ -1567,28 +1578,24 @@ if (isDistributedEdit && distributedNewsId) {
                                 {portal.mapping_found ? (
                                   <>
                                     {/* Checkbox Section */}
-                                    <div className="absolute top-3 left-3">
-                                      {portal.selected ? (
-                                        <input
-                                          type="checkbox"
-                                          checked={portal.selected}
-                                          onChange={() =>
-                                            setMappedPortals((prev) =>
-                                              prev.map((p, idx) =>
-                                                idx === i
-                                                  ? {
-                                                      ...p,
-                                                      selected: !p.selected,
-                                                    }
-                                                  : p
-                                              )
+                                  <div className="absolute top-3 left-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={portal.selected}
+                                        disabled={portal.is_requested}   // 🔒 disable click
+                                        onChange={() => {
+                                          if (portal.is_requested) return;
+
+                                          setMappedPortals((prev) =>
+                                            prev.map((p, idx) =>
+                                              idx === i ? { ...p, selected: !p.selected } : p
                                             )
-                                          }
-                                          className="w-5 h-5 accent-gray-900"
-                                        />
-                                      ) : (
-                                        <span ></span>
-                                      )}
+                                          );
+                                        }}
+                                        className={`w-5 h-5 accent-gray-900 ${
+                                          portal.is_requested ? "cursor-not-allowed opacity-80" : ""
+                                        }`}
+                                      />
                                     </div>
 
                                     {/* Text Content - CONSISTENT ORDER: Portal → Parent → Category */}
@@ -1829,17 +1836,18 @@ if (isDistributedEdit && distributedNewsId) {
                               selectedPortalData?.name || "Unknown Portal";
 
                             setMappedPortals((prev) => {
-                              const updated = [...prev];
-                              selectedCats.forEach((cat) => {
-                                const exists = updated.some(
-                                  (p) =>
-                                    p.portalName === actualPortalName &&
-                                    p.portalCategoryId === cat.external_id
-                                );
-                                if (!exists) {
-                                  updated.push({
+                                    const updated = [...prev];
+                                    selectedCats.forEach((cat) => {
+                                      const exists = updated.some(
+                                        (p) =>
+                                          p.portalName === actualPortalName &&
+                                          p.id === cat.id  // ✅ NOW CHECK BY cat.id
+                                      );
+                                      if (!exists) {
+                                        console.log(`✅ Adding subcategory: ${cat.name}, ID: ${cat.id}, external_id: ${cat.external_id}`);
+                                       updated.push({
                                     id: cat.id, // use ONLY integer timestamp
-                                    portalId: Number(selectedPortalForCategories), // mark manually added category
+                                    portalId: 0, // mark manually added category
                                     portalName: actualPortalName,
                                     portalCategoryName: cat.name,
                                     portalParentCategory: cat.parent_name,
@@ -1847,10 +1855,10 @@ if (isDistributedEdit && distributedNewsId) {
                                     selected: true,
                                     is_manually_added: true, // ✅ IMPORTANT FIX
                                   });
-                                }
-                              });
-                              return updated;
-                            });
+                                      }
+                                    });
+                                    return updated;
+                                  });
 
                             toast.success(
                               `${selectedCats.length} subcategor${
