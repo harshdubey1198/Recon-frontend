@@ -1587,7 +1587,7 @@ if (isDistributedEdit && distributedNewsId) {
                                           className="w-5 h-5 accent-gray-900"
                                         />
                                       ) : (
-                                        <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
+                                        <span ></span>
                                       )}
                                     </div>
 
@@ -1596,10 +1596,10 @@ if (isDistributedEdit && distributedNewsId) {
                                       <p className="text-lg font-semibold">
                                         {portal.portalName}
                                       </p>
-                                      <p className="text-sm text-gray-300">
+                                      <p className="text-sm font-medium">
                                         {portal.portalParentCategory}
                                       </p>
-                                      <p className="text-xs text-gray-400">
+                                      <p className="text-xs">
                                         {portal.portalCategoryName}
                                       </p>
                                     </div>
