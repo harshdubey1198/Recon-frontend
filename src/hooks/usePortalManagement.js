@@ -37,9 +37,14 @@ export const usePortalManagement = (userId, formData, setFormData, distId) => {
 
   useEffect(() => {
     if (showPortalCategoryModal) {
-      fetchPortals(portalPage).then((res) =>
-        setPortalList(res?.data?.data || [])
+      fetchPortals(portalPage).then((res) => {
+      const allPortals = res?.data?.data || [];
+      // Filter out the currently selected portal
+      const filteredPortals = allPortals.filter(
+        (portal) => portal.id !== Number(formData.master_category)
       );
+      setPortalList(filteredPortals);
+    })
     }
   }, [showPortalCategoryModal, portalPage]);
 
