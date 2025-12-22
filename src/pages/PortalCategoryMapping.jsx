@@ -257,93 +257,7 @@ const PortalCategoryMapping = () => {
   };
 
   // Handle saving selected subcategories from modal
-  const handleSaveModalSelection = async () => {
-    const selectedCats = portalCategoriesModal.filter(c => c.selected);
-    
-    if (selectedCats.length === 0) {
-      alert("Please select at least one subcategory.");
-      return;
-    }
-
-    if (!selectedSubcategory) {
-      alert("Please select a source category first.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitStatus(null);
-
-    try {
-      // Get target category IDs from selected subcategories
-      const targetCategoryIds = selectedCats.map(cat => cat.id);
-
-      // Prepare payload for API
-      const payload = {
-        source_category_id: selectedSubcategory.id,
-        target_category_ids: targetCategoryIds
-      };
-
-      // Call API to create mappings
-      const response = await createPortalCategoryMapping(payload);
-
-      const selectedPortalData = portalList.find(
-        p => p.id === Number(selectedPortalForCategories)
-      );
-      const actualPortalName = selectedPortalData?.name || "Unknown Portal";
-
-      const newMappings = selectedCats.map(cat => ({
-        id: cat.id,
-        portal_category_id: cat.external_id,
-        name: cat.name,
-        parent_name: selectedParentCategory?.parent_name || cat.parent_name,
-        portal_name: actualPortalName
-      }));
-
-      // Add to target mappings
-      setTargetMappings(prev => {
-        const updated = [...prev];
-        newMappings.forEach(mapping => {
-          const exists = updated.some(
-            m => m.portal_category_id === mapping.portal_category_id
-          );
-          if (!exists) {
-            updated.push(mapping);
-          }
-        });
-        return updated;
-      });
-
-      // Add to selected IDs
-      setSelectedTargetIds(prev => {
-        const newIds = newMappings.map(m => m.id);
-        return [...new Set([...prev, ...newIds])];
-      });
-
-      setSubmitStatus('success');
-      setSubmitMessage(response.data.message || `${selectedCats.length} mapping(s) created successfully!`);
-      
-      // Reload target mappings to show updated state
-      await loadTargetMappings(selectedSubcategory.id);
-
-      setTimeout(() => {
-        setSubmitStatus(null);
-      }, 3000);
-
-      // Reset modal
-      setShowPortalCategoryModal(false);
-      setIsSubcategoryView(false);
-      setSelectedPortalForCategories("");
-      setPortalCategoriesModal([]);
-      setSelectedParentCategory(null);
-      setCategoryPage(1);
-    } catch (error) {
-      setSubmitStatus('error');
-      setSubmitMessage(error.response?.data?.message || error.message || 'Failed to create mapping');
-      setTimeout(() => setSubmitStatus(null), 3000);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+ 
 
   return (
      <div className="min-h-screen bg-gray-50 py-8">
@@ -615,8 +529,67 @@ const PortalCategoryMapping = () => {
               <div className="flex justify-end mt-5">
                 <button
                   className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-all shadow-md"
-                  onClick={handleSaveModalSelection}
-                >
+                  onClick={() => {
+                            const selectedCats = portalCategoriesModal.filter(
+                              (c) => c.selected
+                            );
+                            if (selectedCats.length === 0) {
+                              toast.warning(
+                                "Please select at least one subcategory."
+                              );
+                              return;
+                            }
+
+                            // ✅ Get the actual portal name from portalList
+                            const selectedPortalData = portalList.find(
+                              (p) =>
+                                p.id === Number(selectedPortalForCategories)
+                            );
+                            const actualPortalName =
+                              selectedPortalData?.name || "Unknown Portal";
+
+                            setMappedPortals((prev) => {
+                                    const updated = [...prev];
+                                    selectedCats.forEach((cat) => {
+                                      const exists = updated.some(
+                                        (p) =>
+                                          p.portalName === actualPortalName &&
+                                          p.id === cat.id  // ✅ NOW CHECK BY cat.id
+                                      );
+                                      if (!exists) {
+                                        console.log(`✅ Adding subcategory: ${cat.name}, ID: ${cat.id}, external_id: ${cat.external_id}`);
+                                       updated.push({
+                                    id: cat.id, // use ONLY integer timestamp
+                                    portalId: 0, // mark manually added category
+                                    portalName: actualPortalName,
+                                    portalCategoryName: cat.name,
+                                    portalParentCategory: cat.parent_name,
+                                    portalCategoryId: cat.external_id,
+                                    selected: true,
+                                    is_manually_added: true, // ✅ IMPORTANT FIX
+                                  });
+                                      }
+                                    });
+                                    return updated;
+                                  });
+
+                            toast.success(
+                              `${selectedCats.length} subcategor${
+                                selectedCats.length > 1 ? "ies" : "y"
+                              } added`
+                            );
+
+                            // 🔥 RESET MODAL DATA
+                            setShowPortalCategoryModal(false);
+                            setIsSubcategoryView(false);
+                            setSelectedPortalForCategories(""); // Clear selected portal
+                            setPortalCategoriesModal([]); // Clear categories list
+                            setSelectedParentCategory(null); // Clear parent category
+                            setCategoryPage(1); // Reset page to 1
+                            setShowPortalSection(true);
+                          }}
+                        >
+
                   Save Selected
                 </button>
               </div>

@@ -12,7 +12,14 @@ const PortalImagesSection = ({
   handlePortalImageUpload,
   removePortalImage,
   canUploadImages,
+  showPortalSection = true, // Added with default value
+  distId = null, // Added with default value
 }) => {
+  // Early return if conditions aren't met
+  if (!showPortalSection || mappedPortals.length === 0 || distId) {
+    return null;
+  }
+
   return (
     <section className="space-y-5">
       <div className="flex items-center justify-between pb-3 border-b-2 border-gray-200">
@@ -26,28 +33,27 @@ const PortalImagesSection = ({
           </div>
         </div>
         <button
-        type="button"
-        disabled={!isCrossMappingChecked || isPublished}
-        onClick={() => setShowPortalImageUpload(prev => !prev)}
-        className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
-          ${isCrossMappingChecked && !isPublished
-            ? "bg-gray-900 text-white hover:bg-gray-800"
-            : "bg-gray-300 text-gray-500 cursor-not-allowed"}
-        `}
-      >
-
-      {showPortalImageUpload ? (
-        <>
-          <Eye className="w-4 h-4" />
-          Hide
-        </>
-      ) : (
-        <>
-          <Upload className="w-4 h-4" />
-          Upload Images
-        </>
-      )}
-    </button>
+          type="button"
+          disabled={!isCrossMappingChecked || isPublished}
+          onClick={() => setShowPortalImageUpload(prev => !prev)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all
+            ${isCrossMappingChecked && !isPublished
+              ? "bg-gray-900 text-white hover:bg-gray-800"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+          `}
+        >
+          {showPortalImageUpload ? (
+            <>
+              <Eye className="w-4 h-4" />
+              Hide
+            </>
+          ) : (
+            <>
+              <Upload className="w-4 h-4" />
+              Upload Images
+            </>
+          )}
+        </button>
       </div>
 
       {showPortalImageUpload && (

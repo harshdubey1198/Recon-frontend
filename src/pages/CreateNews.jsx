@@ -137,32 +137,32 @@ const NewsArticleForm = () => {
     handleSelectDraft,
   } = useDraftManagement(setFormData, setImagePreview, setMappedPortals, setShowPortalSection, setCategoryHistory);
 
-  const { isLoading, isPublished, handleSubmit } = useFormSubmit(
-    formData,
-    imagePreview,
-    mappedPortals,
-    availableTags,
-    originalDraft,
-    portalImages,
-    portalImagePreviews,
-    distId,
-    resetForm,
-    loadAssignedCategories,
-    navigate,
-    setShowPortalImageUpload,
-    setIsCrossMappingChecked,
-    setIsViewingSubcategories,
-    setMappedPortals,
-    setSelectedPortalForCategories,
-    setCategoryHistory,
-    setPortalImages,
-    setPortalImagePreviews,
-    assignedCategories,
-    setShowPortalSection,
-    setEditorKey,
-    isDistributedEdit,
-    distributedNewsId
-  );
+ const { isLoading, isPublished, handleSubmit } = useFormSubmit(
+  formData,
+  imagePreview,
+  mappedPortals,
+  availableTags,
+  originalDraft,
+  portalImages,
+  portalImagePreviews,
+  distId,
+  resetForm,
+  loadAssignedCategories,
+  navigate,
+  setShowPortalImageUpload,
+  setIsCrossMappingChecked,
+  setIsViewingSubcategories,
+  setMappedPortals,
+  setSelectedPortalForCategories,
+  setCategoryHistory,
+  setPortalImages,
+  setPortalImagePreviews,
+  assignedCategories,
+  setShowPortalSection,
+  setEditorKey,
+  isDistributedEdit,
+  distributedNewsId
+);
 
 
   return (

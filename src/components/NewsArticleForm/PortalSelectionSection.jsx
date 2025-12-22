@@ -115,25 +115,27 @@ const PortalSelectionSection = ({
                     <div
                       key={i}
                       onClick={(e) => {
-                        // Don't allow navigation if manually added
-                        if (isManuallyAdded) {
-                          e.stopPropagation();
-                          return;
-                        }
-                        
-                        if (portal.mapping_found) {
-                          e.stopPropagation();
-                          setMappedPortals((prev) =>
-                            prev.map((p) =>
-                              p.id === portal.id
-                                ? { ...p, selected: !p.selected }
-                                : p
-                            )
-                          );
-                        } else {
-                          handlePortalCategoryClick(portal);
-                        }
-                      }}
+                              // 🔒 Requested portal → DO NOTHING
+                              if (portal.is_requested) {
+                                e.stopPropagation();
+                                return;
+                              }
+
+                              // ✅ Only mapped portals can toggle
+                              if (portal.mapping_found) {
+                                e.stopPropagation();
+                                setMappedPortals((prev) =>
+                                  prev.map((p) =>
+                                    p.id === portal.id ? { ...p, selected: !p.selected } : p
+                                  )
+                                );
+                                return;
+                              }
+
+                              // ✅ Normal flow (subcategory / API)
+                              handlePortalCategoryClick(portal);
+                            }}
+
                       className={`relative flex items-center space-x-3 border-2 p-4 rounded-xl transition-all ${
                         portal.selected
                           ? "bg-gray-900 border-gray-900 text-white shadow-lg"
@@ -168,28 +170,25 @@ const PortalSelectionSection = ({
                             {/* Checkbox Section - Only for non-manually added */}
                             {!isManuallyAdded && (
                               <div className="absolute top-3 left-3">
-                                {portal.selected ? (
                                   <input
                                     type="checkbox"
                                     checked={portal.selected}
-                                    onChange={() =>
+                                    disabled={portal.is_requested}   // 🔒 disable click
+                                    onChange={() => {
+                                      if (portal.is_requested) return;
+
                                       setMappedPortals((prev) =>
                                         prev.map((p, idx) =>
-                                          idx === i
-                                            ? {
-                                                ...p,
-                                                selected: !p.selected,
-                                              }
-                                            : p
+                                          idx === i ? { ...p, selected: !p.selected } : p
                                         )
-                                      )
-                                    }
-                                    className="w-5 h-5 accent-gray-900"
+                                      );
+                                    }}
+                                    className={`w-5 h-5 accent-gray-900 ${
+                                      portal.is_requested ? "cursor-not-allowed opacity-80" : ""
+                                    }`}
                                   />
-                                ) : (
-                                  <span className="w-4 h-4 border border-gray-400 rounded bg-white"></span>
-                                )}
-                              </div>
+                                </div>
+
                             )}
 
                             {/* Text Content - Portal → Parent → Category */}
@@ -197,10 +196,10 @@ const PortalSelectionSection = ({
                               <p className="text-lg font-semibold">
                                 {portal.portalName}
                               </p>
-                              <p className="text-sm text-gray-300">
+                              <p className="text-sm font-medium">
                                 {portal.portalParentCategory}
                               </p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs">
                                 {portal.portalCategoryName}
                               </p>
                             </div>

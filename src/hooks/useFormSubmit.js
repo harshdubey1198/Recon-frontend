@@ -201,8 +201,8 @@ export const useFormSubmit = (
         changedFields.master_category = Number(formData.master_category);
 
         const selectedCategories = mappedPortals
-          .filter((p) => p.selected)
-          .map((p) => Number(p.portalCategoryId));
+        .filter((p) => p.selected)
+        .map((p) => Number(p.id));
 
         const excludedCategories = mappedPortals
           .filter((p) => !p.selected)

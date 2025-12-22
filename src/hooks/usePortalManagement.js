@@ -190,6 +190,8 @@ export const usePortalManagement = (userId, formData, setFormData, distId) => {
               selected: true,
               mapping_found: mappingFound,
               master_category_id: matchingData.master_category_id,
+                selected: true,        // ✅ always true
+               is_requested: true,    // 🔒 LOCK FLAG
             });
           }
 
