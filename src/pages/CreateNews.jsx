@@ -1094,14 +1094,17 @@ if (isDistributedEdit && distributedNewsId) {
       changedFields.master_category = Number(formData.master_category);
 
       const selectedCategories = mappedPortals
-        .filter((p) => p.selected)
-        .map((p) => Number(p.id));
+  .filter((p) => p.selected && p.is_manually_added === true)
+  .map((p) => Number(p.id));
 
       const excludedCategories = mappedPortals
         .filter((p) => !p.selected)
         .map((p) => Number(p.id));
 
-      changedFields.portal_category_ids = selectedCategories;
+      // ✅ ONLY send when manually added portals exist
+        changedFields.portal_category_ids = selectedCategories.length
+          ? selectedCategories
+          : [];
       changedFields.exclude_portal_categories = excludedCategories;
 
       createdArticle = { id: formData.id };
@@ -1125,9 +1128,8 @@ if (isDistributedEdit && distributedNewsId) {
       } else {
         const categoryIds =
           newlyAddedCategories.length > 0
-            ? newlyAddedCategories
-            : [mappedPortals[0]?.id];
-
+          ? newlyAddedCategories
+          : [];
         formDataToSend.append(
           "portal_category_ids",
           JSON.stringify(categoryIds)
