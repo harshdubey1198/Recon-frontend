@@ -664,6 +664,7 @@ const buildDraftDiff = (oldData, newData) => {
         toast.warning("Image size must be less than 10MB");
         return;
       }
+       setActivePortalForCrop(null); 
       setFormData((prev) => ({ ...prev, image: file }));
       setCropPreview(URL.createObjectURL(file));
       setCrop({ x: 0, y: 0 });
@@ -684,6 +685,7 @@ const buildDraftDiff = (oldData, newData) => {
   };
 
   const applyCrop = async () => {
+     console.log("DEBUG activePortalForCrop:", activePortalForCrop);
     if (!cropPreview  || !croppedAreaPixels) {
       setShowCropper(false);
       return;
@@ -724,29 +726,31 @@ const buildDraftDiff = (oldData, newData) => {
       }
 
       if (activePortalForCrop !== null) {
-  // ✅ PORTAL IMAGE ONLY - Use finalFile (WebP converted)
-  setPortalImages(prev => ({
-    ...prev,
-    [activePortalForCrop]: finalFile  // ← Changed from croppedFile
-  }));
+          // ✅ PORTAL IMAGE ONLY - Use finalFile (WebP converted)
+          setPortalImages(prev => ({
+            ...prev,
+            [activePortalForCrop]: finalFile  // ← Changed from croppedFile
+          }));
 
-  setPortalImagePreviews(prev => ({
-    ...prev,
-    [activePortalForCrop]: URL.createObjectURL(finalFile)  // ← Changed from croppedFile
-  }));
+          setPortalImagePreviews(prev => ({
+            ...prev,
+            [activePortalForCrop]: URL.createObjectURL(finalFile)  // ← Changed from croppedFile
+          }));
 
-  // ✅ RESET FLAG
-  setActivePortalForCrop(null);
+          // ✅ RESET FLAG
+          setActivePortalForCrop(null);
           } else {
             // ✅ FEATURED IMAGE ONLY - Use finalFile (WebP converted)
             setFormData(prev => ({ ...prev, image: finalFile }));  // ← Changed from croppedFile
             setPreviewFromFile(finalFile);  // ← Changed from croppedFile
+            console.log("FINAL FEATURED IMAGE TYPE:", finalFile.type);
           }
       } catch (e) {
             console.error("Crop failed", e);
           } finally {
             setCropPreview(null);
              setShowCropper(false);
+              setActivePortalForCrop(null);
           }
         };
 
