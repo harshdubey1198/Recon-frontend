@@ -617,6 +617,9 @@ const buildDraftDiff = (oldData, newData) => {
     outCanvas.width = Math.round(cropPixels.width);
     outCanvas.height = Math.round(cropPixels.height);
     const outCtx = outCanvas.getContext("2d");
+    outCtx.imageSmoothingEnabled = false;
+    outCtx.imageSmoothingQuality = "high";
+
 
     outCtx.drawImage(
       tempCanvas,
@@ -712,7 +715,12 @@ const buildDraftDiff = (oldData, newData) => {
       // Convert JPEG → WebP
       let finalFile = croppedFile;
       try {
-        const { webpBlob } = await webpfy({ image: croppedFile, fileName: `${baseName}.webp` });
+       const { webpBlob } = await webpfy({
+        image: croppedFile,
+        fileName: `${baseName}.webp`,
+        lossless: true
+      });
+
         if (webpBlob) {
           finalFile = new File(
                 [webpBlob],
